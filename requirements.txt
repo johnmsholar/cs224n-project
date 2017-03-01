@@ -1,2 +1,6 @@
+numpy
 tensorflow>=0.12
 matplotlib
+sklearn
+enum
+scipy
