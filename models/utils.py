@@ -1,10 +1,11 @@
 from sklearn.model_selection import train_test_split
 import numpy as np
+from collections import defaultdict
 
 from enum import Enum
 import csv
 
-GLOVE_SIZE = 300
+
 # Enums
 class Labels(Enum):
     UNRELATED = 0
@@ -22,7 +23,31 @@ LABEL_MAPPING = {
 
 RANDOM_STATE = 42
 TEST_SIZE = .20
->>>>>>> 388852f0326e713731e8cd2099833efb40808387
+GLOVE_SIZE = 300
+
+TRAIN_BODIES_FNAME = "../fnc_1/train_bodies.csv"
+TRAIN_STANCES_FNAME = "../fnc_1/train_stances.csv"
+GLOVE_FILENAME = "../../glove.6B/glove.6B.300.short.txt"
+
+BODY_EMBEDDING_FNAME = "../fnc_1/glove_body_matrix"
+HEADLINE_EMBEDDING_FNAME = "../fnc_1/glove_headline_matrix"
+ID_ID_STANCES_FNAME = "../fnc_1/id_id_stance.csv"
+
+def construct_binaries():
+    b_id_to_body, h_id_to_headline, h_id_b_id_to_stance = construct_data_set()
+    glove_vectors = read_glove_set()
+    save_glove_sums_matrix(b_id_to_body, h_id_to_headline, glove_vectors)
+    write_id_id_stance(h_id_b_id_to_stance)
+
+def read_binaries():
+    glove_body_matrix, glove_headline_matrix = read_glove_sums()
+    id_map = read_id_id_stance()
+    X_train, X_test, y_train, y_test = test_train_split(id_map, TEST_SIZE)
+    X_train_input = compute_id_embeddings(X_train, glove_body_matrix, glove_headline_matrix)
+    X_test_input = compute_id_embeddings(X_train, glove_body_matrix, glove_headline_matrix)
+    y_train_input = compute_stance_embeddings(y_train)
+    y_test_input = compute_stance_embeddings(y_train)
+
 
 def construct_data_set():
     # File Headers
@@ -32,42 +57,53 @@ def construct_data_set():
     stance_header = 'Stance'
 
     # Mappings
+    b_id_to_index = {}
     b_id_to_body = {}
     h_id_to_headline = {}
     h_id_b_id_to_stance = {}
 
     # Read Article Bodies
-    with open('../fnc_1/train_bodies.csv') as bodies_file:
+    with open(TRAIN_BODIES_FNAME) as bodies_file:
         bodies_reader = csv.DictReader(bodies_file, delimiter = ',')
+        index = 0
         for row in bodies_reader:
             b_id = int(row[body_id_header])
+            b_id_to_index[b_id] = index
             article_body = row[article_body_header]
-            b_id_to_body[b_id] = article_body
+            b_id_to_body[index] = article_body
+            index += 1
 
     # Read Headline, ID -> Stance Mappings
-    with open('../fnc_1/train_stances.csv') as stances_file:
+    with open(TRAIN_STANCES_FNAME) as stances_file:
         stances_reader = csv.DictReader(stances_file, delimiter = ',')
         for h_id, row in enumerate(stances_reader):
             headline = row[headline_header]
             b_id = int(row[body_id_header])
             h_id_to_headline[h_id] = headline
-            h_id_b_id_to_stance[(h_id, b_id)] = LABEL_MAPPING[row[stance_header]]
+            h_id_b_id_to_stance[(h_id, b_id_to_index[b_id])] = LABEL_MAPPING[row[stance_header]]
 
+    return b_id_to_body, h_id_to_headline, h_id_b_id_to_stance
+    # X_train, X_test, y_train, y_test = test_train_split(h_id_b_id_to_stance, TEST_SIZE)
+    # return b_id_to_body, h_id_to_headline, h_id_b_id_to_stance, X_train, X_test, y_train, y_test
+
+# Read the glove data set and return as a dict from word to numpy array
 def read_glove_set():
     default = np.zeros(GLOVE_SIZE)
-    glove_vectors = defaultdict(default)
+    glove_vectors = defaultdict(lambda: default)
     id_to_glove_body = {}
-    with open("../glove.6B/glove.6B.300d.txt") as glove_files:
-        glove_reader = csv.DictReader(glove_files, delimiter = ' ')
+    with open(GLOVE_FILENAME) as glove_files:
+        glove_reader = csv.reader(glove_files, delimiter = ' ', quotechar='|')
         for row in glove_reader:
             word = row[0]
-            vec = np.array(row[1:])
-            glove_vector[word] = vec
+            vec = np.array([float(i) for i in row[1:]])
+            glove_vectors[word] = vec
     return glove_vectors
 
-def save_glove_sums_matrix(
-    glove_vectors, body_fname="glove_body_matrix.txt",
-    headline_fname="glove_headline_matrix.txt"):
+# Read the dicts id to body and id to headline
+# For each example, compute the sum of the glove vectors
+# for each word. Create two numpy matrices to store
+# the sums per example and save as binaries
+def save_glove_sums_matrix(id_to_body, id_to_headline, glove_vectors):
     # read body
     glove_body_matrix = np.zeros((len(id_to_body), GLOVE_SIZE))
     for (body_id, text) in id_to_body.items():
@@ -83,19 +119,51 @@ def save_glove_sums_matrix(
             headline_sum += glove_vectors[word]
         glove_headline_matrix[body_id] = headline_sum
     # saves as np binaries glove_body | glove_headline
-    np.save(body_fname, glove_body_matrix)
-    np.save(headline_fname, glove_headline_matrix)
+    np.save(BODY_EMBEDDING_FNAME, glove_body_matrix)
+    np.save(HEADLINE_EMBEDDING_FNAME, glove_headline_matrix)
 
-def read_glove_sums(
-    body_fname="glove_body_matrix.txt",
-    headline_fname="glove_headline_matrix.txt"):
+# given a dict of (id, id) -> stance
+def write_id_id_stance(id_id_stance):
+    with open(ID_ID_STANCES_FNAME, 'w') as csvfile:
+        idwriter = csv.writer(csvfile, delimiter=' ')
+        for ((h_id, b_id), stance) in id_id_stance.items():
+            row = [h_id, b_id, stance]
+            idwriter.writerow(row)
 
-    glove_body_matrix = np.load(body_fname)
-    glove_headline_matrix = np.load(headline_fname)
+def read_id_id_stance():
+    id_map = {}
+    with open(ID_ID_STANCES_FNAME) as csvfile:
+            id_reader = csv.reader(csvfile, delimiter = ' ', quotechar='|')
+            for row in id_reader:
+                h_id = int(row[0])
+                b_id = int(row[1])
+                stance = int(row[2])
+                id_map[(h_id, b_id)] = stance
+    return id_map
+
+# Load the glove body + headline binaries into numpy matrices
+def read_glove_sums():
+    glove_body_matrix = np.load(BODY_EMBEDDING_FNAME+".npy")
+    glove_headline_matrix = np.load(HEADLINE_EMBEDDING_FNAME+".npy")
     return glove_body_matrix, glove_headline_matrix
 
-def compute_word_embeddings():
-    headline
+# id_id_list is [(h_id, b_id)]
+def compute_id_embeddings(id_id_list, glove_body_matrix, glove_headline_matrix):
+    input_matrix = np.zeros((len(id_id_list), GLOVE_SIZE))
+    index = 0
+    for (h_id, b_id) in id_id_list:
+        body_vec = glove_body_matrix[b_id]
+        headline_vec = glove_headline_matrix[h_id]
+        concat_vec = np.concatenate(body_vec, headline_vec)
+        input_matrix[index] = concat_vec
+        index += 1
+    return input_matrix
+
+def compute_stance_embeddings(stance_list):
+    labels_matrix = np.zeros(len(stance_list), len(LABEL_MAPPING))
+    for i in range(0,len(stance_list)):
+        labels_matrix[i][stance_list[i]] = 1
+    return labels_matrix
 
 def test_train_split(data, test_size):
     # Data is a dict of (headline_id, body_id) -> stance 
@@ -105,5 +173,5 @@ def test_train_split(data, test_size):
     return X_train, X_test, y_train, y_test
 
 if __name__ == '__main__':
-    b_id_to_body, h_id_to_headline, h_id_b_id_to_stance, X_train, X_test, y_train, y_test = construct_data_set()
-
+    # construct_binaries()
+    read_binaries()
