@@ -1,26 +1,57 @@
 from sklearn.model_selection import train_test_split
 import numpy as np
+
+from enum import Enum
 import csv
 
 GLOVE_SIZE = 300
+# Enums
+class Labels(Enum):
+    UNRELATED = 0
+    DISCUSS = 1
+    AGREE = 2
+    DISAGREE = 3
+
+# Constants
+LABEL_MAPPING = {
+    'unrelated': Labels.UNRELATED,
+    'discuss': Labels.DISCUSS,
+    'agree': Labels.AGREE,
+    'disagree': Labels.DISAGREE,
+}
+
+RANDOM_STATE = 42
+TEST_SIZE = .20
+>>>>>>> 388852f0326e713731e8cd2099833efb40808387
 
 def construct_data_set():
     # File Headers
     body_id_header = 'Body ID'
     article_body_header = 'articleBody'
     headline_header = 'Headline'
+    stance_header = 'Stance'
 
-    id_to_body = {}
-    id_to_article = {}
+    # Mappings
+    b_id_to_body = {}
+    h_id_to_headline = {}
+    h_id_b_id_to_stance = {}
 
+    # Read Article Bodies
     with open('../fnc_1/train_bodies.csv') as bodies_file:
         bodies_reader = csv.DictReader(bodies_file, delimiter = ',')
         for row in bodies_reader:
-            id_to_body[row[body_id_header]] = 
+            b_id = int(row[body_id_header])
+            article_body = row[article_body_header]
+            b_id_to_body[b_id] = article_body
 
-
+    # Read Headline, ID -> Stance Mappings
     with open('../fnc_1/train_stances.csv') as stances_file:
-        stances_reader = csv.reader(stances_file, delimiter = ',')
+        stances_reader = csv.DictReader(stances_file, delimiter = ',')
+        for h_id, row in enumerate(stances_reader):
+            headline = row[headline_header]
+            b_id = int(row[body_id_header])
+            h_id_to_headline[h_id] = headline
+            h_id_b_id_to_stance[(h_id, b_id)] = LABEL_MAPPING[row[stance_header]]
 
 def read_glove_set():
     default = np.zeros(GLOVE_SIZE)
@@ -66,10 +97,13 @@ def read_glove_sums(
 def compute_word_embeddings():
     headline
 
+def test_train_split(data, test_size):
+    # Data is a dict of (headline_id, body_id) -> stance 
+    X  = data.keys()
+    y = [data[x] for x in X]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=RANDOM_STATE)
+    return X_train, X_test, y_train, y_test
 
-
-def test_train_split():
-
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
+if __name__ == '__main__':
+    b_id_to_body, h_id_to_headline, h_id_b_id_to_stance, X_train, X_test, y_train, y_test = construct_data_set()
 
