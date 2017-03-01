@@ -53,6 +53,8 @@ def read_binaries():
     X_test_input = compute_id_embeddings(X_train, glove_body_matrix, glove_headline_matrix)
     y_train_input = compute_stance_embeddings(y_train)
     y_test_input = compute_stance_embeddings(y_train)
+    # returns tuples
+    return X_train_input, X_test_input, y_train_input, y_test_input
 
 def construct_data_set():
     # File Headers
@@ -76,7 +78,7 @@ def construct_data_set():
             b_id_to_index[b_id] = index
             article_body = row[article_body_header]
             article = clean(article_body)
-            b_id_to_body[b_id] = article
+            b_id_to_body[index] = article
             index+=1
 
     # Read Headline, ID -> Stance Mappings
@@ -123,7 +125,7 @@ def save_glove_sums_matrix(id_to_body, id_to_headline, glove_vectors):
         headline_sum = np.zeros((GLOVE_SIZE))
         for word in text:
             headline_sum += glove_vectors[word]
-        glove_headline_matrix[body_id] = headline_sum
+        glove_headline_matrix[headline_id] = headline_sum
     # saves as np binaries glove_body | glove_headline
     np.save(BODY_EMBEDDING_FNAME, glove_body_matrix)
     np.save(HEADLINE_EMBEDDING_FNAME, glove_headline_matrix)
@@ -155,18 +157,19 @@ def read_glove_sums():
 
 # id_id_list is [(h_id, b_id)]
 def compute_id_embeddings(id_id_list, glove_body_matrix, glove_headline_matrix):
-    input_matrix = np.zeros((len(id_id_list), GLOVE_SIZE))
+    input_matrix_body = np.zeros((len(id_id_list), GLOVE_SIZE))
+    input_matrix_headline = np.zeros((len(id_id_list), GLOVE_SIZE))
     index = 0
     for (h_id, b_id) in id_id_list:
         body_vec = glove_body_matrix[b_id]
         headline_vec = glove_headline_matrix[h_id]
-        concat_vec = np.concatenate(body_vec, headline_vec)
-        input_matrix[index] = concat_vec
+        input_matrix_body[index] = body_vec
+        input_matrix_headline[index] = headline_vec
         index += 1
-    return input_matrix
+    return (input_matrix_body, input_matrix_headline)
 
 def compute_stance_embeddings(stance_list):
-    labels_matrix = np.zeros(len(stance_list), len(LABEL_MAPPING))
+    labels_matrix = np.zeros((len(stance_list), len(LABEL_MAPPING)))
     for i in range(0,len(stance_list)):
         labels_matrix[i][stance_list[i]] = 1
     return labels_matrix
