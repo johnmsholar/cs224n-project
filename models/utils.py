@@ -4,6 +4,8 @@ from collections import defaultdict
 
 from enum import Enum
 import csv
+import re
+import string
 
 
 # Enums
@@ -24,6 +26,10 @@ LABEL_MAPPING = {
 RANDOM_STATE = 42
 TEST_SIZE = .20
 GLOVE_SIZE = 300
+
+SPACE_CHAR = ' '
+NEWLINE_CHAR = '\n'
+DASH_CHAR = '-'
 
 TRAIN_BODIES_FNAME = "../fnc_1/train_bodies.csv"
 TRAIN_STANCES_FNAME = "../fnc_1/train_stances.csv"
@@ -48,7 +54,6 @@ def read_binaries():
     y_train_input = compute_stance_embeddings(y_train)
     y_test_input = compute_stance_embeddings(y_train)
 
-
 def construct_data_set():
     # File Headers
     body_id_header = 'Body ID'
@@ -70,8 +75,9 @@ def construct_data_set():
             b_id = int(row[body_id_header])
             b_id_to_index[b_id] = index
             article_body = row[article_body_header]
-            b_id_to_body[index] = article_body
-            index += 1
+            article = clean(article_body)
+            b_id_to_body[b_id] = article
+            index+=1
 
     # Read Headline, ID -> Stance Mappings
     with open(TRAIN_STANCES_FNAME) as stances_file:
@@ -164,6 +170,24 @@ def compute_stance_embeddings(stance_list):
     for i in range(0,len(stance_list)):
         labels_matrix[i][stance_list[i]] = 1
     return labels_matrix
+
+def clean(article_body):
+    article_body = article_body.replace(NEWLINE_CHAR, SPACE_CHAR)
+    article_body = article_body.replace(DASH_CHAR, SPACE_CHAR)    
+
+    def clean_word(word):
+        w = word.lower()
+        tokens = re.findall(r"[\w']+|[.,!?;]", w)
+        # w = w.translate(None, string.punctuation)
+        return [t.strip() for t in tokens if (t.isalnum() or t in string.punctuation) and t.strip() != '']
+
+    cleaned_article = []
+    for w in str.split(article_body, SPACE_CHAR):
+        c_word = clean_word(w)
+        if c_word is not SPACE_CHAR:
+            cleaned_article.extend(c_word)
+
+    return cleaned_article
 
 def test_train_split(data, test_size):
     # Data is a dict of (headline_id, body_id) -> stance 
