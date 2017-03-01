@@ -3,6 +3,8 @@ import numpy as np
 
 from enum import Enum
 import csv
+import re
+import string
 
 # Enums
 class Labels(Enum):
@@ -21,6 +23,9 @@ LABEL_MAPPING = {
 
 RANDOM_STATE = 42
 TEST_SIZE = .20
+SPACE_CHAR = ' '
+NEWLINE_CHAR = '\n'
+DASH_CHAR = '-'
 
 def construct_data_set():
     # File Headers
@@ -40,7 +45,8 @@ def construct_data_set():
         for row in bodies_reader:
             b_id = int(row[body_id_header])
             article_body = row[article_body_header]
-            b_id_to_body[b_id] = article_body
+            article = clean(article_body)
+            b_id_to_body[b_id] = article
 
     # Read Headline, ID -> Stance Mappings
     with open('../fnc_1/train_stances.csv') as stances_file:
@@ -56,6 +62,24 @@ def construct_data_set():
 
     return b_id_to_body, h_id_to_headline, h_id_b_id_to_stance, X_train, X_test, y_train, y_test
 
+def clean(article_body):
+    article_body = article_body.replace(NEWLINE_CHAR, SPACE_CHAR)
+    article_body = article_body.replace(DASH_CHAR, SPACE_CHAR)    
+
+    def clean_word(word):
+        w = word.lower()
+        tokens = re.findall(r"[\w']+|[.,!?;]", w)
+        # w = w.translate(None, string.punctuation)
+        return [t.strip() for t in tokens if (t.isalnum() or t in string.punctuation) and t.strip() != '']
+
+    cleaned_article = []
+    for w in str.split(article_body, SPACE_CHAR):
+        c_word = clean_word(w)
+        if c_word is not SPACE_CHAR:
+            cleaned_article.extend(c_word)
+
+    return cleaned_article
+
 def test_train_split(data, test_size):
     # Data is a dict of (headline_id, body_id) -> stance 
     X  = data.keys()
@@ -65,4 +89,4 @@ def test_train_split(data, test_size):
 
 if __name__ == '__main__':
     b_id_to_body, h_id_to_headline, h_id_b_id_to_stance, X_train, X_test, y_train, y_test = construct_data_set()
-
+    print b_id_to_body
