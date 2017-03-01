@@ -2,16 +2,28 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
+from utils import read_binaries
+import itertools
+import random
+
+def generate_batch(article_input_matrix, headline_input_matrix, label_matrix):
+  length = article_input_matrix.shape[0]
+  indices = random.sample(range(length), BATCH_SIZE)
+  article_batch = article_input_matrix[indices, :]
+  headline_batch = headline_input_matrix[indices, :]
+  label_batch = label_matrix[indices, :]
+  return article_batch, headline_batch, label_batch
 
 # Define Neural Net Parameters
 # TODO: Change INPUT_DIM and NUM_CLASSES appropriately (currently set for training example)
 
 INITIAL_EMBEDDING_DIM = 300
 REDUCED_EMBEDDING_DIM = 100
+BATCH_SIZE = 1000
 INPUT_DIM = 200
 NUM_CLASSES = 4
-LEARNING_RATE = .5
-NUM_ITERATIONS = 1000
+LEARNING_RATE = .01
+NUM_ITERATIONS = 100
 
 weight_names = ['W1', 'W2', 'W3']
 bias_names = ['b1', 'b2', 'b3']
@@ -60,7 +72,9 @@ layer_3 = tf.nn.tanh(tf.matmul(layer_2, weights[2]) + biases[2])
 final_layer = tf.matmul(layer_3, final_weights) + final_biases
 
 # Declare loss variable
-loss = tf.nn.softmax_cross_entropy_with_logits(labels=input_labels, logits=final_layer)
+loss = tf.reduce_mean(
+  tf.nn.softmax_cross_entropy_with_logits(labels=input_labels, logits=final_layer)
+)
 
 # Define train_step to be called repeatedly to optimize classification
 train_step = tf.train.GradientDescentOptimizer(LEARNING_RATE).minimize(loss)
@@ -98,11 +112,45 @@ train_data, test_data, train_labels, test_labels = train_test_split(
 
 sess = tf.Session()
 sess.run(tf.global_variables_initializer())
+X_train_input, X_test_input, y_train_input, y_test_input = read_binaries()
+train_article_input_matrix, train_headline_input_matrix = X_train_input
+test_article_input_matrix, test_headline_input_matrix = X_test_input
+
+print('Binaries Initialized')
 for iteration in range(NUM_ITERATIONS):
-  pass
+  article_batch, headline_batch, label_batch = generate_batch(
+    train_article_input_matrix,
+    train_headline_input_matrix,
+    y_train_input
+  )
+  print('Iteration: ' + str(iteration))
+  _ = sess.run(
+    [train_step],
+    feed_dict = {
+      article_input_matrix : article_batch,
+      headline_input_matrix : headline_batch,
+      input_labels : label_batch
+    }
+  )
+  loss_value = sess.run(
+    [loss],
+    feed_dict = {
+      article_input_matrix : train_article_input_matrix,
+      headline_input_matrix : train_headline_input_matrix,
+      input_labels : y_train_input
+    }
+  )
+  print('Loss: ' + str(loss_value))
 
 # Evaluate performance on test set
-# print sess.run(loss, feed_dict={ input_matrix: test_data, input_labels: test_labels})
+print sess.run(
+  loss, 
+  feed_dict= { 
+    article_input_matrix : test_article_input_matrix,
+    headline_input_matrix : test_headline_input_matrix,
+    input_labels : y_test_input
+  }
+)
 
 # Plot data
 """

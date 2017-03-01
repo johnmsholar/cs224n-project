@@ -33,7 +33,7 @@ DASH_CHAR = '-'
 
 TRAIN_BODIES_FNAME = "../fnc_1/train_bodies.csv"
 TRAIN_STANCES_FNAME = "../fnc_1/train_stances.csv"
-GLOVE_FILENAME = "../../glove.6B/glove.6B.300.short.txt"
+GLOVE_FILENAME = "../../glove.6B/glove.6B.300d.txt"
 
 BODY_EMBEDDING_FNAME = "../fnc_1/glove_body_matrix"
 HEADLINE_EMBEDDING_FNAME = "../fnc_1/glove_headline_matrix"
@@ -100,11 +100,16 @@ def read_glove_set():
     glove_vectors = defaultdict(lambda: default)
     id_to_glove_body = {}
     with open(GLOVE_FILENAME) as glove_files:
-        glove_reader = csv.reader(glove_files, delimiter = ' ', quotechar='|')
+        glove_reader = csv.reader(glove_files, delimiter = ' ', quotechar=None)
+        index =0
         for row in glove_reader:
             word = row[0]
+            # print (word, index)
             vec = np.array([float(i) for i in row[1:]])
             glove_vectors[word] = vec
+            index+=1
+            if index % 1000 == 0:
+                print str(index/400000.0)
     return glove_vectors
 
 # Read the dicts id to body and id to headline
@@ -135,7 +140,7 @@ def write_id_id_stance(id_id_stance):
     with open(ID_ID_STANCES_FNAME, 'w') as csvfile:
         idwriter = csv.writer(csvfile, delimiter=' ')
         for ((h_id, b_id), stance) in id_id_stance.items():
-            row = [h_id, b_id, stance]
+            row = [h_id, b_id, stance.value]
             idwriter.writerow(row)
 
 def read_id_id_stance():
@@ -200,5 +205,5 @@ def test_train_split(data, test_size):
     return X_train, X_test, y_train, y_test
 
 if __name__ == '__main__':
-    # construct_binaries()
-    read_binaries()
+    construct_binaries()
+    # read_binaries()
