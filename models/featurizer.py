@@ -2,7 +2,7 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 from collections import defaultdict
 
-from models import LABEL_MAPPING
+from __init__ import LABEL_MAPPING
 from enum import Enum
 import csv
 import re

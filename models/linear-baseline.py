@@ -1,7 +1,7 @@
 import sklearn
 import nltk
 import itertools
-from utils import construct_data_set
+from featurizer import construct_data_set
 
 # Generate modified BLEU scores for each (healdine, article) pair, in which BLEU
 # score is evaluated for a series of overlapping segments of the article.
