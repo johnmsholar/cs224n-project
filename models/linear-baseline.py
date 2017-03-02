@@ -1,3 +1,14 @@
+#!/usr/bin/env python2.7
+# -*- coding: utf-8 -*-
+"""
+CS 224N 2016-2017 
+linear-baseline.py: Linear baseline described in
+                    SNLI Corpus paper (Bowman et. al 2015).
+Sahil Chopra <schopra8@cs.stanford.edu>
+Saachi Jain <saachi@cs.stanford.edu>
+John Sholar <jmsholar@cs.stanford.edu>
+"""
+
 import sklearn
 import nltk
 import itertools

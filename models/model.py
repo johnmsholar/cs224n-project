@@ -1,3 +1,13 @@
+#!/usr/bin/env python2.7
+# -*- coding: utf-8 -*-
+"""
+CS 224N 2016-2017 
+model.py: Model class that abstracts Tensorflow graph for learning tasks.
+Sahil Chopra <schopra8@cs.stanford.edu>
+Saachi Jain <saachi@cs.stanford.edu>
+John Sholar <jmsholar@cs.stanford.edu>
+"""
+
 class Model(object):
     """Abstracts a Tensorflow graph for a learning task.
 

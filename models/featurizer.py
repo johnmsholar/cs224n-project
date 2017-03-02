@@ -1,3 +1,13 @@
+#!/usr/bin/env python2.7
+# -*- coding: utf-8 -*-
+"""
+CS 224N 2016-2017 
+featurizer.py: Constructs feature representations of articles and headlines.
+Sahil Chopra <schopra8@cs.stanford.edu>
+Saachi Jain <saachi@cs.stanford.edu>
+John Sholar <jmsholar@cs.stanford.edu>
+"""
+
 from sklearn.model_selection import train_test_split
 import numpy as np
 from collections import defaultdict
@@ -181,13 +191,6 @@ def clean(article_body):
             cleaned_article.extend(c_word)
 
     return cleaned_article
-
-def test_train_split(data, test_size):
-    # Data is a dict of (headline_id, body_id) -> stance 
-    X  = data.keys()
-    y = [data[x] for x in X]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=RANDOM_STATE)
-    return X_train, X_test, y_train, y_test
 
 if __name__ == '__main__':
     construct_binaries()
