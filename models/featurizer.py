@@ -181,7 +181,6 @@ def clean(article_body):
     def clean_word(word):
         w = word.lower()
         tokens = re.findall(r"[\w']+|[.,!?;]", w)
-        # w = w.translate(None, string.punctuation)
         return [t.strip() for t in tokens if (t.isalnum() or t in string.punctuation) and t.strip() != '']
 
     cleaned_article = []

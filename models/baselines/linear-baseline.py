@@ -12,7 +12,7 @@ John Sholar <jmsholar@cs.stanford.edu>
 import sklearn
 import nltk
 import itertools
-from featurizer import construct_data_set
+from models.featurizer import construct_data_set
 
 # Generate modified BLEU scores for each (healdine, article) pair, in which BLEU
 # score is evaluated for a series of overlapping segments of the article.

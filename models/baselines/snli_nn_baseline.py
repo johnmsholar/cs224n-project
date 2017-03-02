@@ -8,7 +8,6 @@ Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
 
-import __init__
 import itertools
 import random
 
@@ -19,9 +18,10 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
 import os
-from model import Model
-from utils import generate_batch, Progbar
-from featurizer import read_binaries
+from models import Labels, LABEL_MAPPING
+from models.model import Model
+from models.util import generate_batch, Progbar
+from models.featurizer import read_binaries
 
 class Config:
     """Holds model hyperparams and data information.
