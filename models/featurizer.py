@@ -7,22 +7,6 @@ import csv
 import re
 import string
 
-
-# Enums
-class Labels(Enum):
-    UNRELATED = 0
-    DISCUSS = 1
-    AGREE = 2
-    DISAGREE = 3
-
-# Constants
-LABEL_MAPPING = {
-    'unrelated': Labels.UNRELATED,
-    'discuss': Labels.DISCUSS,
-    'agree': Labels.AGREE,
-    'disagree': Labels.DISAGREE,
-}
-
 RANDOM_STATE = 42
 TEST_SIZE = .20
 GLOVE_SIZE = 300
@@ -206,4 +190,3 @@ def test_train_split(data, test_size):
 
 if __name__ == '__main__':
     construct_binaries()
-    # read_binaries()
