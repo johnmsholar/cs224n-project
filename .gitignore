@@ -2,3 +2,6 @@
 *.pyc
 venv
 .idea
+glove.6B.zip
+snli.zip
+snli_1.0
