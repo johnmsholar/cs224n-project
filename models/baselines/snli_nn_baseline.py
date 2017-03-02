@@ -7,21 +7,21 @@ Sahil Chopra <schopra8@cs.stanford.edu>
 Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
-
-import itertools
-import random
-
 import tensorflow as tf
 import numpy as np
 
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
+import itertools
+import random
 import os
-from models import Labels, LABEL_MAPPING
-from models.model import Model
-from models.util import generate_batch, Progbar
-from models.featurizer import read_binaries
+import sys
+sys.path.insert(0, '../')
+
+from model import Model
+from util import generate_batch, Progbar
+from featurizer import read_binaries
 
 class Config:
     """Holds model hyperparams and data information.
@@ -311,49 +311,49 @@ train_data, test_data, train_labels, test_labels = train_test_split(
 # Run TF Session
 # 1000 Train Iterations on Sample Data
 
-sess = tf.Session()
-sess.run(tf.global_variables_initializer())
-X_train_input, X_test_input, y_train_input, y_test_input = read_binaries()
-train_article_input_matrix, train_headlines_placeholder = X_train_input
-test_article_input_matrix, test_headlines_placeholder = X_test_input
+# sess = tf.Session()
+# sess.run(tf.global_variables_initializer())
+# X_train_input, X_test_input, y_train_input, y_test_input = read_binaries()
+# train_article_input_matrix, train_headlines_placeholder = X_train_input
+# test_article_input_matrix, test_headlines_placeholder = X_test_input
 
-print('Binaries Initialized')
-for iteration in range(n_epochs):
-  article_batch, headline_batch, label_batch = generate_batch(
-    train_article_input_matrix,
-    train_headlines_placeholder,
-    y_train_input
-  )
+# print('Binaries Initialized')
+# for iteration in range(n_epochs):
+#   article_batch, headline_batch, label_batch = generate_batch(
+#     train_article_input_matrix,
+#     train_headlines_placeholder,
+#     y_train_input
+#   )
 
 
-  print('Iteration: ' + str(iteration))
-  _ = sess.run(
-    [train_step],
-    feed_dict = {
-      articles_placeholder : article_batch,
-      headlines_placeholder : headline_batch,
-      labels_placeholder : label_batch
-    }
-  )
-  loss_value = sess.run(
-    [loss],
-    feed_dict = {
-      articles_placeholder : train_article_input_matrix,
-      headlines_placeholder : train_headlines_placeholder,
-      labels_placeholder : y_train_input
-    }
-  )
-  print('Loss: ' + str(loss_value))
+#   print('Iteration: ' + str(iteration))
+#   _ = sess.run(
+#     [train_step],
+#     feed_dict = {
+#       articles_placeholder : article_batch,
+#       headlines_placeholder : headline_batch,
+#       labels_placeholder : label_batch
+#     }
+#   )
+#   loss_value = sess.run(
+#     [loss],
+#     feed_dict = {
+#       articles_placeholder : train_article_input_matrix,
+#       headlines_placeholder : train_headlines_placeholder,
+#       labels_placeholder : y_train_input
+#     }
+#   )
+#   print('Loss: ' + str(loss_value))
 
-# Evaluate performance on test set
-print sess.run(
-  loss, 
-  feed_dict= { 
-    articles_placeholder : test_article_input_matrix,
-    headlines_placeholder : test_headlines_placeholder,
-    labels_placeholder : y_test_input
-  }
-)
+# # Evaluate performance on test set
+# print sess.run(
+#   loss, 
+#   feed_dict= { 
+#     articles_placeholder : test_article_input_matrix,
+#     headlines_placeholder : test_headlines_placeholder,
+#     labels_placeholder : y_test_input
+#   }
+# )
 
 # Plot data
 """
