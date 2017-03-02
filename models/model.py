@@ -8,6 +8,9 @@ Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
 
+from util import minibatches, Progbar
+from fnc1_utils.score import report_score
+
 class Model(object):
     """Abstracts a Tensorflow graph for a learning task.
 
@@ -112,6 +115,33 @@ class Model(object):
         feed = self.create_feed_dict(articles_batch, headlines_batch)
         predictions = sess.run(self.pred, feed_dict=feed)
         return predictions
+
+    # TODO: Determine how to pass articles, labels, and headlines to the 
+    #       model.
+    def run_epoch(self, sess, train_examples, dev_set):
+        prog = Progbar(target=1 + len(train_examples) / self.config.batch_size)
+        for i, (train_x, train_y) in enumerate(minibatches(train_examples, self.config.batch_size)):
+            loss = self.train_on_batch(sess, train_x, train_y)
+            prog.update(i + 1, [("train loss", loss)])
+
+        print "Evaluating on dev set"
+        preds = self.predict_on_batch(sess, )
+        dev_score = report_score(actual, preds)
+
+        print "- dev Score: {:.2f}".format(dev_score)
+        return dev_score
+
+    def fit(self, sess, saver, train_examples, dev_set):
+        best_dev_score = 0
+        for epoch in range(self.config.n_epochs):
+            print "Epoch {:} out of {:}".format(epoch + 1, self.config.n_epochs)
+            dev_score = self.run_epoch(sess, train_examples, dev_set)
+            if dev_score > best_dev_score:
+                best_dev_score = dev_score
+                if saver:
+                    print "New best dev! Saving model in ./data/weights/stance.weights"
+                    saver.save(sess, './data/weights/stance.weights')
+            print
 
     def build(self):
         self.add_placeholders()

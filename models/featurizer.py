@@ -26,13 +26,29 @@ SPACE_CHAR = ' '
 NEWLINE_CHAR = '\n'
 DASH_CHAR = '-'
 
+# Raw training data from FNC-1 Challenge
 TRAIN_BODIES_FNAME = "../fnc_1/train_bodies.csv"
 TRAIN_STANCES_FNAME = "../fnc_1/train_stances.csv"
+
+# Word Vector Representations
 GLOVE_FILENAME = "../../glove.6B/glove.6B.300d.txt"
 
+# Output embeddings and embedding references
 BODY_EMBEDDING_FNAME = "../fnc_1/glove_body_matrix"
 HEADLINE_EMBEDDING_FNAME = "../fnc_1/glove_headline_matrix"
 ID_ID_STANCES_FNAME = "../fnc_1/id_id_stance.csv"
+
+# Train/Test Split as defined by FNC-1 Baseline
+TRAINING_FNAME = '../splits/training_ids.txt'
+HOLD_OUT_FNAME = '../splits/hold_out_ids.txt'
+
+# Train/Test Splits as defined by FNC-1 Baseline
+# utilizing our indexing scheme.
+TRAINING_SPLIT_FNAME = '../splits/custom_training_ids.txt'
+TEST_SPLIT_FNAME = '../splits/custom_hold_out_ids.txt'
+
+ID_ID_STANCES_TRAINING_SPLIT_FNAME = '../splits/id_id_stance_training.csv'
+ID_ID_STANCES_TEST_SPLIT_FNAME = '../splits/id_id_stance_test.csv'
 
 def construct_binaries():
     b_id_to_body, h_id_to_headline, h_id_b_id_to_stance = construct_data_set()
@@ -191,5 +207,34 @@ def clean(article_body):
 
     return cleaned_article
 
+def read_fnc1_training_split():
+    training_fnc1_ids = []
+    with open(TRAINING_FNAME, 'rb') as csvfile:
+        training_reader = csv.reader(csvfile, delimiter = ' ', quotechar='|')
+        for l in training_reader:
+            training_fnc1_ids.append(int(l[0]))
+    return training_fnc1_ids
+
+def read_fnc1_hold_out_split():
+    hold_out_fnc1_ids = []
+    with open(HOLD_OUT_FNAME, 'rb') as csvfile:
+        training_reader = csv.reader(csvfile, delimiter = ' ', quotechar='|')
+        for l in training_reader:
+            hold_out_fnc1_ids.append(int(l[0]))
+    return hold_out_fnc1_ids
+
+def compute_splits():
+    id_id_stance = read_id_id_stance()
+    training_fnc1_ids = read_fnc1_training_split()
+    hold_out_fnc1_ids = read_fnc1_hold_out_split()
+
+    print training_fnc1_ids
+    print "----------------"
+    print hold_out_fnc1_ids
+
+def save_splits():
+    pass
+
 if __name__ == '__main__':
-    construct_binaries()
+    # construct_binaries()
+    compute_splits()

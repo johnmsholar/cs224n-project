@@ -10,6 +10,7 @@ John Sholar <jmsholar@cs.stanford.edu>
 import tensorflow as tf
 import numpy as np
 
+from fnc1_utils.score import report_score
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
@@ -20,7 +21,6 @@ import sys
 sys.path.insert(0, '../')
 
 from model import Model
-from util import generate_batch, Progbar
 from featurizer import read_binaries
 
 class Config:
@@ -203,31 +203,6 @@ class SNLI_Baseline_NN(Model):
         _, loss = sess.run([self.train_op, self.loss], feed_dict=feed)
         return loss
 
-
-    # TODO EDIT
-    def run_epoch(self, sess, train_examples, dev_set):
-        prog = Progbar(target=1 + len(train_examples) / self.config.batch_size)
-        for i, (train_x, train_y) in enumerate(minibatches(train_examples, self.config.batch_size)):
-            loss = self.train_on_batch(sess, train_x, train_y)
-            prog.update(i + 1, [("train loss", loss)])
-
-        print "Evaluating on dev set",
-        dev_UAS, _ = parser.parse(dev_set)
-        print "- dev UAS: {:.2f}".format(dev_UAS * 100.0)
-        return dev_UAS
-
-    def fit(self, sess, saver, train_examples, dev_set):
-        best_dev_score = 0
-        for epoch in range(self.config.n_epochs):
-            print "Epoch {:} out of {:}".format(epoch + 1, self.config.n_epochs)
-            dev_score = self.run_epoch(sess, train_examples, dev_set)
-            if dev_score > best_dev_score:
-                best_dev_score = dev_score
-                if saver:
-                    print "New best dev! Saving model in ./data/weights/stance.weights"
-                    saver.save(sess, './data/weights/stance.weights')
-            print
-
 def main(debug=True):
     print 80 * "="
     print "INITIALIZING"
@@ -264,49 +239,19 @@ def main(debug=True):
                 print "Restoring the best model weights found on the dev set"
                 saver.restore(session, './data/weights/stance.weights')
                 print "Final evaluation on test set",
-                UAS, dependencies = parser.parse(test_set)
-                print "- test UAS: {:.2f}".format(UAS * 100.0)
+
+                # TODO: Fix Call
+                preds = model.predict_on_batch(session, )
+                test_score = report_score(actual, preds)
+
+                print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"
-                with open('q2_test.predicted.pkl', 'w') as f:
-                    cPickle.dump(dependencies, f, -1)
+                with open('snli_nn_baseline_test_predicted.pkl', 'w') as f:
+                    cPickle.dump(preds, f, -1)
                 print "Done!"
 
 if __name__ == '__main__':
     main(False)
-
-
-
-"""
-# Generate Sample Dataset in 2-dimensional space
-# Class 1 is a Gaussian Centered Around (0, -5)
-# Class 2 is a Gaussian Centered Around (0, 5)
-
-centroid_1 = np.array([0, -1])
-centroid_2 = np.array([0, 1])
-cov = np.array([
-  [1, 0],
-  [0, 1]
-])
-size = 500
-x1, y1 = np.random.multivariate_normal(centroid_1, cov, size).T
-x2, y2 = np.random.multivariate_normal(centroid_2, cov, size).T
-labels_1 = np.concatenate([np.array([[1, 0]]) for _ in range(size)], axis=0)
-labels_2 = np.concatenate([np.array([[0, 1]]) for _ in range(size)], axis=0)
-x = np.concatenate([x1, x2], axis = 0).reshape((-1, 1))
-y = np.concatenate([y1, y2], axis = 0).reshape((-1, 1))
-all_data = np.concatenate([x, y], axis=1)
-all_labels = np.concatenate([labels_1, labels_2], axis=0)
-
-# Split example data into train and test sets
-train_data, test_data, train_labels, test_labels = train_test_split(
-  all_data, all_labels, test_size=0.2, random_state=42
-)
-"""
-
-
-
-
-
 
 # Run TF Session
 # 1000 Train Iterations on Sample Data
@@ -355,10 +300,4 @@ train_data, test_data, train_labels, test_labels = train_test_split(
 #   }
 # )
 
-# Plot data
-"""
-plt.plot(x1, y1, 'x')
-plt.plot(x2, y2, 'x')
-plt.axis('equal')
-plt.savefig('plot.png', bbox_inches='tight')
-"""
+
