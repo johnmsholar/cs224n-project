@@ -8,11 +8,16 @@ Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
 
+import sys
+import time
 import numpy as np
 
-def load_data():
-    pass
-
+def vectorize_stances(stances):
+    v_stances = []
+    for row in stances:
+        s = np.where(row == 1.0)
+        v_stances.append(s[0].tolist()[0])
+    return v_stances
 
 def get_minibatches(data, minibatch_size, shuffle=True):
     """
@@ -56,8 +61,7 @@ def minibatch(data, minibatch_idx):
     return data[minibatch_idx] if type(data) is np.ndarray else [data[i] for i in minibatch_idx]
 
 def minibatches(data, batch_size, shuffle=True):
-    batches = [np.array(col) for col in zip(*data)]
-    return get_minibatches(batches, batch_size, shuffle)
+    return get_minibatches(data, batch_size, shuffle)
 
 class Progbar(object):
     """

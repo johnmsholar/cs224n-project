@@ -41,6 +41,8 @@ class Config:
     lr = .01
     n_epochs = 100
 
+    class_weights = None
+
 class SNLI_Baseline_NN(Model):
     """Baseline Neural Network described in the SNLI Corpus Paper (Bowman, et. al 2015).
 
@@ -63,6 +65,9 @@ class SNLI_Baseline_NN(Model):
         # Matrix Names
         self.weight_names = ['W1', 'W2', 'W3']
         self.bias_names = ['b1', 'b2', 'b3']
+
+        # Class weighting
+        self.class_weights = tf.constant(self.config.class_weights, dtype=tf.float32)
 
         self.build()
 
@@ -172,10 +177,12 @@ class SNLI_Baseline_NN(Model):
         Returns:
             loss: A 0-d tensor (scalar)
         """
+        weighted_logits = tf.mul(self.class_weights, final_layer)
+
         loss = tf.reduce_mean(
             tf.nn.softmax_cross_entropy_with_logits(
                 labels=self.labels_placeholder,
-                logits=final_layer)
+                logits=weighted_logits)
         )
         return loss
 
@@ -215,7 +222,6 @@ def main(debug=True):
         print "INITIALIZING"
         print 80 * "="
         config = Config()
-        model = SNLI_Baseline_NN(config)
 
         # Load Data
         # Note: X_train_input, X_dev_input, X_test_input are tuples consisting of 2 matrices
@@ -223,8 +229,16 @@ def main(debug=True):
         # body representations.
         X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input = read_binaries()
         
+        # Class weights
+        class_count = np.sum(y_train_input, axis = 0)
+        config.class_weights = class_count / np.sum(class_count)
+        model = SNLI_Baseline_NN(config)
+
         # Create Data Lists
         train_examples = [x for x in X_train_input] + [y_train_input]
+
+        print train_examples[0].shape
+
         dev_set = [x for x in X_dev_input] + [y_dev_input]
         test_set = [x for x in X_test_input] + [y_test_input]
 
@@ -251,8 +265,8 @@ def main(debug=True):
                 saver.restore(session, './data/weights/stance.weights')
                 print "Final evaluation on test set",
 
-                preds = model.predict_on_batch(session, *test_set)
-                test_score = report_score(actual, preds)
+                preds = model.predict_on_batch(session, *test_set[:2])
+                test_score = report_score(test_set[2], preds)
 
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"

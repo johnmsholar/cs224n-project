@@ -11,10 +11,10 @@ John Sholar <jmsholar@cs.stanford.edu>
 from enum import Enum
 
 class Labels(Enum):
-    UNRELATED = 0
-    DISCUSS = 1
-    AGREE = 2
-    DISAGREE = 3
+    AGREE = 0
+    DISAGREE = 1
+    DISCUSS = 2
+    UNRELATED = 3
 
 LABEL_MAPPING = {
     'unrelated': Labels.UNRELATED,

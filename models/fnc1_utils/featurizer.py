@@ -190,6 +190,5 @@ def clean(article_body):
 
 
 if __name__ == '__main__':
-    read_binaries()
-    # construct_binaries()
-    # compute_splits()
+    # read_binaries()
+    construct_binaries()
