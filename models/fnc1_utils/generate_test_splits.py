@@ -1,27 +1,71 @@
 import random
 import os
 from collections import defaultdict
+from ../featurizer import TRAIN_BODIES_FNAME
 
+# Train/Test Split as defined by FNC-1 Baseline
 
-def generate_hold_out_split (dataset, training = 0.8, base_dir="splits"):
+ORIG_TRAIN_A_ID_FNAME = '../../splits/training_ids.txt'
+ORIG_TRAIN_H_ID_FNAME = '../../splits/hold_out_ids.txt'
+
+def compute_splits(id_id_stance, training=0.8, random=True):
+    num_articles = len(set([ids[0] for (ids, stance) in id_id_stance]))
+    if (random):
+        training_ids, hold_out_ids = generate_random_hold_out_split(num_articles)
+    else:
+        training_ids, hold_out_ids = generate_original_holdouts()
+    training_ids = set(training_ids)
+    x_train = []
+    y_train = []
+    x_test = []
+    y_test = []
+    for stance_row in id_id_stance:
+        id_pair = stance_row[0]
+        if id_pair[1] in training_ids:
+            x_train.append(id_pair)
+            y_train.append(stance_row[1])
+        else:
+            x_test.append(id_pair)
+            y_test.append(stance_row[1])
+    return x_train, x_test, y_train, y_test
+
+# returns a list of article ids for training and for hold out from original 
+def generate_original_holdouts():
+    training_fnc_ids = read_list_of_ids(TRAINING_FNAME)
+    hold_out_fnc_ids = read_list_of_ids(HOLD_OUT_FNAME)
+    b_id_to_index = {}
+    # Read Article Bodies and get a map of id to index
+    with open(TRAIN_BODIES_FNAME) as bodies_file:
+        bodies_reader = csv.DictReader(bodies_file, delimiter = ',')
+        index = 0
+        for row in bodies_reader:
+            b_id = int(row[body_id_header])
+            b_id_to_index[b_id] = index
+            index+=1
+    # convert from FNC IDs to index IDs
+    training_fnc_ids = [b_id_to_index[a_id] for a_id in training_fnc_ids]
+    hold_out_fnc_ids = [b_id_to_index[a_id] for a_id in training_fnc_ids]
+    return training_fnc_ids, hold_out_fnc_ids
+
+# given a file with an ID on every line, return the list of IDs
+def read_list_of_ids(filename):
+    id_list = []
+    with open(filename, 'rb') as csvfile:
+        id_reader = csv.reader(csvfile, delimiter = ' ', quotechar='|')
+        for l in id_reader:
+            id_list.append(int(l[0]))
+    return id_list
+
+# generate random article split
+# pass in the number of articles
+def generate_random_hold_out_split (num_articles, training = 0.8):
     r = random.Random()
     r.seed(1489215)
-
-    article_ids = list(dataset.articles.keys())  # get a list of article ids
+    article_ids = [i for i in range(0, num_articles)] # article ids are consecutive
     r.shuffle(article_ids)  # and shuffle that list
-
-
     training_ids = article_ids[:int(training * len(article_ids))]
     hold_out_ids = article_ids[int(training * len(article_ids)):]
-
-    # write the split body ids out to files for future use
-    with open(base_dir+ "/"+ "training_ids.txt", "w+") as f:
-        f.write("\n".join([str(id) for id in training_ids]))
-
-    with open(base_dir+ "/"+ "hold_out_ids.txt", "w+") as f:
-        f.write("\n".join([str(id) for id in hold_out_ids]))
-
-
+    return training_ids, hold_out_ids
 
 def read_ids(file,base):
     ids = []

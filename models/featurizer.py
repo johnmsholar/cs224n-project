@@ -26,6 +26,8 @@ SPACE_CHAR = ' '
 NEWLINE_CHAR = '\n'
 DASH_CHAR = '-'
 
+USE_ORIG_FNC = False
+
 # Raw training data from FNC-1 Challenge
 TRAIN_BODIES_FNAME = "../fnc_1/train_bodies.csv"
 TRAIN_STANCES_FNAME = "../fnc_1/train_stances.csv"
@@ -37,10 +39,6 @@ GLOVE_FILENAME = "../../glove.6B/glove.6B.300d.txt"
 BODY_EMBEDDING_FNAME = "../fnc_1/glove_body_matrix"
 HEADLINE_EMBEDDING_FNAME = "../fnc_1/glove_headline_matrix"
 ID_ID_STANCES_FNAME = "../fnc_1/id_id_stance.csv"
-
-# Train/Test Split as defined by FNC-1 Baseline
-TRAINING_FNAME = '../splits/training_ids.txt'
-HOLD_OUT_FNAME = '../splits/hold_out_ids.txt'
 
 # Train/Test Splits as defined by FNC-1 Baseline
 # utilizing our indexing scheme.
@@ -59,12 +57,15 @@ def construct_binaries():
 def read_binaries():
     glove_body_matrix, glove_headline_matrix = read_glove_sums()
     id_map = read_id_id_stance()
-    X_train, X_test, y_train, y_test = test_train_split(id_map, TEST_SIZE)
+    X_train, X_test, y_train, y_test = compute_splits(id_map, TEST_SIZE, USE_ORIG_FNC)
     X_train_input = compute_id_embeddings(X_train, glove_body_matrix, glove_headline_matrix)
     X_test_input = compute_id_embeddings(X_train, glove_body_matrix, glove_headline_matrix)
     y_train_input = compute_stance_embeddings(y_train)
     y_test_input = compute_stance_embeddings(y_train)
     # returns tuples
+    print "hello"
+    print X_train_input
+    print X_test_input
     return X_train_input, X_test_input, y_train_input, y_test_input
 
 def construct_data_set():
@@ -207,34 +208,8 @@ def clean(article_body):
 
     return cleaned_article
 
-def read_fnc1_training_split():
-    training_fnc1_ids = []
-    with open(TRAINING_FNAME, 'rb') as csvfile:
-        training_reader = csv.reader(csvfile, delimiter = ' ', quotechar='|')
-        for l in training_reader:
-            training_fnc1_ids.append(int(l[0]))
-    return training_fnc1_ids
-
-def read_fnc1_hold_out_split():
-    hold_out_fnc1_ids = []
-    with open(HOLD_OUT_FNAME, 'rb') as csvfile:
-        training_reader = csv.reader(csvfile, delimiter = ' ', quotechar='|')
-        for l in training_reader:
-            hold_out_fnc1_ids.append(int(l[0]))
-    return hold_out_fnc1_ids
-
-def compute_splits():
-    id_id_stance = read_id_id_stance()
-    training_fnc1_ids = read_fnc1_training_split()
-    hold_out_fnc1_ids = read_fnc1_hold_out_split()
-
-    print training_fnc1_ids
-    print "----------------"
-    print hold_out_fnc1_ids
-
-def save_splits():
-    pass
 
 if __name__ == '__main__':
-    # construct_binaries()
-    compute_splits()
+    # read_binaries()
+    construct_binaries()
+    # compute_splits()
