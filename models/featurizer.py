@@ -30,26 +30,6 @@ DASH_CHAR = '-'
 
 USE_ORIG_FNC = False
 
-# # Raw training data from FNC-1 Challenge
-# TRAIN_BODIES_FNAME = "../fnc_1/train_bodies.csv"
-# TRAIN_STANCES_FNAME = "../fnc_1/train_stances.csv"
-
-# # Word Vector Representations
-# GLOVE_FILENAMEs = "../../glove.6B/glove.6B.300d.txt"
-
-# # Output embeddings and embedding references
-# BODY_EMBEDDING_FNAME = "../fnc_1/glove_body_matrix"
-# HEADLINE_EMBEDDING_FNAME = "../fnc_1/glove_headline_matrix"
-# ID_ID_STANCES_FNAME = "../fnc_1/id_id_stance.csv"
-
-# # Train/Test Splits as defined by FNC-1 Baseline
-# # utilizing our indexing scheme.
-# TRAINING_SPLIT_FNAME = '../splits/custom_training_ids.txt'
-# TEST_SPLIT_FNAME = '../splits/custom_hold_out_ids.txt'
-
-# ID_ID_STANCES_TRAINING_SPLIT_FNAME = '../splits/id_id_stance_training.csv'
-# ID_ID_STANCES_TEST_SPLIT_FNAME = '../splits/id_id_stance_test.csv'
-
 def construct_binaries():
     b_id_to_body, h_id_to_headline, h_id_b_id_to_stance = construct_data_set()
     glove_vectors = read_glove_set()
@@ -59,13 +39,14 @@ def construct_binaries():
 def read_binaries():
     glove_body_matrix, glove_headline_matrix = read_glove_sums()
     id_map = read_id_id_stance()
-    X_train, X_test, y_train, y_test = compute_splits(id_map, TEST_SIZE, USE_ORIG_FNC)
+    X_train, X_dev, X_test, y_train, y_dev, y_test = compute_splits(id_map, TEST_SIZE, USE_ORIG_FNC)
     X_train_input = compute_id_embeddings(X_train, glove_body_matrix, glove_headline_matrix)
-    X_test_input = compute_id_embeddings(X_train, glove_body_matrix, glove_headline_matrix)
+    X_dev_input = compute_id_embeddings(X_dev, glove_body_matrix, glove_headline_matrix)
+    X_test_input = compute_id_embeddings(X_test, glove_body_matrix, glove_headline_matrix)
     y_train_input = compute_stance_embeddings(y_train)
-    y_test_input = compute_stance_embeddings(y_train)
+    y_dev_input = compute_stance_embeddings(y_dev)
+    y_test_input = compute_stance_embeddings(y_test)
     # returns tuples
-    print "hello"
     print X_train_input
     print X_test_input
     return X_train_input, X_test_input, y_train_input, y_test_input
@@ -212,6 +193,6 @@ def clean(article_body):
 
 
 if __name__ == '__main__':
-    # read_binaries()
-    construct_binaries()
+    read_binaries()
+    # construct_binaries()
     # compute_splits()

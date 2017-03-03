@@ -5,27 +5,41 @@ import filenames
 import csv
 # Train/Test Split as defined by FNC-1 Baseline
 
-
+rgen = random.Random()
+rgen.seed(1489215)
 
 def compute_splits(id_id_stance, training=0.8, random=True):
     num_articles = len(set([ids[0] for (ids, stance) in id_id_stance.items()]))
     if (random):
-        training_ids, hold_out_ids = generate_random_hold_out_split(num_articles)
+        training_ids, hold_out_ids = generate_random_hold_out_split(num_articles, training)
     else:
         training_ids, hold_out_ids = generate_original_holdouts()
-    training_ids = set(training_ids)
+
+    rgen.shuffle(training_ids)
+    train_ids = training_ids[:int(training * len(training_ids))]
+    dev_ids = training_ids[int(training * len(training_ids)):]
+
+
+    train_ids = set(train_ids)
+    dev_ids = set(dev_ids)
+
     x_train = []
     y_train = []
+    x_dev = []
+    y_dev = []
     x_test = []
     y_test = []
     for (id_pair, stance) in id_id_stance.items():
-        if id_pair[1] in training_ids:
+        if id_pair[1] in train_ids:
             x_train.append(id_pair)
             y_train.append(stance)
+        elif id_pair[1] in dev_ids:
+            x_dev.append(id_pair)
+            y_dev.append(stance)
         else:
             x_test.append(id_pair)
             y_test.append(stance)
-    return x_train, x_test, y_train, y_test
+    return x_train, x_dev, x_test, y_train, y_dev, y_test
 
 # returns a list of article ids for training and for hold out from original 
 def generate_original_holdouts():
@@ -57,10 +71,8 @@ def read_list_of_ids(filename):
 # generate random article split
 # pass in the number of articles
 def generate_random_hold_out_split (num_articles, training = 0.8):
-    r = random.Random()
-    r.seed(1489215)
     article_ids = [i for i in range(0, num_articles)] # article ids are consecutive
-    r.shuffle(article_ids)  # and shuffle that list
+    rgen.shuffle(article_ids)  # and shuffle that list
     training_ids = article_ids[:int(training * len(article_ids))]
     hold_out_ids = article_ids[int(training * len(article_ids)):]
     return training_ids, hold_out_ids
