@@ -10,18 +10,19 @@ John Sholar <jmsholar@cs.stanford.edu>
 import tensorflow as tf
 import numpy as np
 
-from fnc1_utils.score import report_score
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
+import time
 import itertools
 import random
 import os
 import sys
 sys.path.insert(0, '../')
 
+from fnc1_utils.score import report_score
 from model import Model
-from featurizer import read_binaries
+from fnc1_utils.featurizer import read_binaries
 
 class Config:
     """Holds model hyperparams and data information.
@@ -76,7 +77,7 @@ class SNLI_Baseline_NN(Model):
     def create_feed_dict(self, articles_batch, headlines_batch, labels_batch=None, dropout=1):
         """Creates the feed_dict for the model.
         """
-        if label_batch is not None:
+        if labels_batch is not None:
             feed_dict = {
                 self.articles_placeholder: articles_batch,
                 self.headlines_placeholder: headlines_batch,
@@ -122,14 +123,14 @@ class SNLI_Baseline_NN(Model):
         )
 
         # Construct joint article + headline embedding
-        init_article_layer = tf.nn.tanh(tf.matmul(articles_placeholder, init_article_weights) + init_article_bias)
-        init_headline_layer = tf.nn.tanh(tf.matmul(headlines_placeholder, init_headline_weights) + init_headline_bias)
+        init_article_layer = tf.nn.tanh(tf.matmul(self.articles_placeholder, init_article_weights) + init_article_bias)
+        init_headline_layer = tf.nn.tanh(tf.matmul(self.headlines_placeholder, init_headline_weights) + init_headline_bias)
         embedding = tf.concat(values=[init_article_layer, init_headline_layer], concat_dim=1)
 
         # Declare tf.Variable weight matrices and bias vectors for 3 tanh layers
         weights = [
             tf.get_variable(n,
-                shape=[self.config.inputs_batch, self.config.input_dim],
+                shape=[self.config.input_dim, self.config.input_dim],
                 initializer=tf.contrib.layers.xavier_initializer()
             )
             for n in self.weight_names
@@ -159,6 +160,8 @@ class SNLI_Baseline_NN(Model):
         layer_2 = tf.nn.tanh(tf.matmul(layer_1, weights[1]) + biases[1])
         layer_3 = tf.nn.tanh(tf.matmul(layer_2, weights[2]) + biases[2])
         final_layer = tf.matmul(layer_3, final_weights) + final_biases
+
+        return final_layer
 
     def add_loss_op(self, final_layer):
         """Adds Ops for the loss function to the computational graph.
@@ -204,23 +207,27 @@ class SNLI_Baseline_NN(Model):
         return loss
 
 def main(debug=True):
-    print 80 * "="
-    print "INITIALIZING"
-    print 80 * "="
-    config = Config()
-
-    # Load Data
-    X_train_input, X_test_input, y_train_input, y_test_input = read_binaries()
-    
-    # Create Data Lists
-    train_examples = [X_train_input, y_train_input]
-    # dev_set = [X_dev_input, y_dev_input]
-    test_set = [X_test_input, y_test_input]
-
     if not os.path.exists('./data/weights/'):
         os.makedirs('./data/weights/')
 
     with tf.Graph().as_default():
+        print 80 * "="
+        print "INITIALIZING"
+        print 80 * "="
+        config = Config()
+        model = SNLI_Baseline_NN(config)
+
+        # Load Data
+        # Note: X_train_input, X_dev_input, X_test_input are tuples consisting of 2 matrices
+        # the first is the matrix of article representations. The second is the matrix of 
+        # body representations.
+        X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input = read_binaries()
+        
+        # Create Data Lists
+        train_examples = [x for x in X_train_input] + [y_train_input]
+        dev_set = [x for x in X_dev_input] + [y_dev_input]
+        test_set = [x for x in X_test_input] + [y_test_input]
+
         print "Building model...",
         start = time.time()
         print "took {:.2f} seconds\n".format(time.time() - start)
@@ -229,7 +236,6 @@ def main(debug=True):
         saver = None if debug else tf.train.Saver()
 
         with tf.Session() as session:
-            parser.session = session
             session.run(init)
 
             print 80 * "="
@@ -245,8 +251,7 @@ def main(debug=True):
                 saver.restore(session, './data/weights/stance.weights')
                 print "Final evaluation on test set",
 
-                # TODO: Fix Call
-                preds = model.predict_on_batch(session, )
+                preds = model.predict_on_batch(session, *test_set)
                 test_score = report_score(actual, preds)
 
                 print "- test Score: {:.2f}".format(test_score)
