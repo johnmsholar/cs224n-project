@@ -1,15 +1,14 @@
 import random
 import os
 from collections import defaultdict
-from ../featurizer import TRAIN_BODIES_FNAME
-
+import filenames
+import csv
 # Train/Test Split as defined by FNC-1 Baseline
 
-ORIG_TRAIN_A_ID_FNAME = '../../splits/training_ids.txt'
-ORIG_TRAIN_H_ID_FNAME = '../../splits/hold_out_ids.txt'
+
 
 def compute_splits(id_id_stance, training=0.8, random=True):
-    num_articles = len(set([ids[0] for (ids, stance) in id_id_stance]))
+    num_articles = len(set([ids[0] for (ids, stance) in id_id_stance.items()]))
     if (random):
         training_ids, hold_out_ids = generate_random_hold_out_split(num_articles)
     else:
@@ -19,32 +18,31 @@ def compute_splits(id_id_stance, training=0.8, random=True):
     y_train = []
     x_test = []
     y_test = []
-    for stance_row in id_id_stance:
-        id_pair = stance_row[0]
+    for (id_pair, stance) in id_id_stance.items():
         if id_pair[1] in training_ids:
             x_train.append(id_pair)
-            y_train.append(stance_row[1])
+            y_train.append(stance)
         else:
             x_test.append(id_pair)
-            y_test.append(stance_row[1])
+            y_test.append(stance)
     return x_train, x_test, y_train, y_test
 
 # returns a list of article ids for training and for hold out from original 
 def generate_original_holdouts():
-    training_fnc_ids = read_list_of_ids(TRAINING_FNAME)
-    hold_out_fnc_ids = read_list_of_ids(HOLD_OUT_FNAME)
+    training_fnc_ids = read_list_of_ids(filenames.ORIG_TRAIN_A_ID_FNAME)
+    hold_out_fnc_ids = read_list_of_ids(filenames.ORIG_TRAIN_H_ID_FNAME)
     b_id_to_index = {}
     # Read Article Bodies and get a map of id to index
-    with open(TRAIN_BODIES_FNAME) as bodies_file:
+    with open(filenames.TRAIN_BODIES_FNAME) as bodies_file:
         bodies_reader = csv.DictReader(bodies_file, delimiter = ',')
         index = 0
         for row in bodies_reader:
-            b_id = int(row[body_id_header])
+            b_id = int(row['Body ID'])
             b_id_to_index[b_id] = index
             index+=1
     # convert from FNC IDs to index IDs
     training_fnc_ids = [b_id_to_index[a_id] for a_id in training_fnc_ids]
-    hold_out_fnc_ids = [b_id_to_index[a_id] for a_id in training_fnc_ids]
+    hold_out_fnc_ids = [b_id_to_index[a_id] for a_id in hold_out_fnc_ids]
     return training_fnc_ids, hold_out_fnc_ids
 
 # given a file with an ID on every line, return the list of IDs
