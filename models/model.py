@@ -116,10 +116,8 @@ class Model(object):
         predictions = sess.run(self.pred, feed_dict=feed)
         return predictions
 
-    # TODO: Determine how to pass articles, labels, and headlines to the 
-    #       model.
     def run_epoch(self, sess, train_examples, dev_set):
-        prog = Progbar(target=1 + len(train_examples) / self.config.batch_size)
+        prog = Progbar(target=1 + len(train_examples[0]) / self.config.batch_size)
         for i, (train_x, train_y) in enumerate(minibatches(train_examples, self.config.batch_size)):
             loss = self.train_on_batch(sess, train_x, train_y)
             prog.update(i + 1, [("train loss", loss)])

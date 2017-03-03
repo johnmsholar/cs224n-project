@@ -30,26 +30,6 @@ DASH_CHAR = '-'
 
 USE_ORIG_FNC = False
 
-# # Raw training data from FNC-1 Challenge
-# TRAIN_BODIES_FNAME = "../fnc_1/train_bodies.csv"
-# TRAIN_STANCES_FNAME = "../fnc_1/train_stances.csv"
-
-# # Word Vector Representations
-# GLOVE_FILENAMEs = "../../glove.6B/glove.6B.300d.txt"
-
-# # Output embeddings and embedding references
-# BODY_EMBEDDING_FNAME = "../fnc_1/glove_body_matrix"
-# HEADLINE_EMBEDDING_FNAME = "../fnc_1/glove_headline_matrix"
-# ID_ID_STANCES_FNAME = "../fnc_1/id_id_stance.csv"
-
-# # Train/Test Splits as defined by FNC-1 Baseline
-# # utilizing our indexing scheme.
-# TRAINING_SPLIT_FNAME = '../splits/custom_training_ids.txt'
-# TEST_SPLIT_FNAME = '../splits/custom_hold_out_ids.txt'
-
-# ID_ID_STANCES_TRAINING_SPLIT_FNAME = '../splits/id_id_stance_training.csv'
-# ID_ID_STANCES_TEST_SPLIT_FNAME = '../splits/id_id_stance_test.csv'
-
 def construct_binaries():
     b_id_to_body, h_id_to_headline, h_id_b_id_to_stance = construct_data_set()
     glove_vectors = read_glove_set()
@@ -64,10 +44,6 @@ def read_binaries():
     X_test_input = compute_id_embeddings(X_train, glove_body_matrix, glove_headline_matrix)
     y_train_input = compute_stance_embeddings(y_train)
     y_test_input = compute_stance_embeddings(y_train)
-    # returns tuples
-    print "hello"
-    print X_train_input
-    print X_test_input
     return X_train_input, X_test_input, y_train_input, y_test_input
 
 def construct_data_set():
@@ -154,7 +130,7 @@ def write_id_id_stance(id_id_stance):
     with open(filenames.ID_ID_STANCES_FNAME, 'w') as csvfile:
         idwriter = csv.writer(csvfile, delimiter=' ')
         for ((h_id, b_id), stance) in id_id_stance.items():
-            row = [h_id, b_id, stance]
+            row = [h_id, b_id, stance.value]
             idwriter.writerow(row)
 
 def read_id_id_stance():

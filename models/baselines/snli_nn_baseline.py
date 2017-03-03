@@ -210,8 +210,13 @@ def main(debug=True):
     config = Config()
 
     # Load Data
-    parser, embeddings, train_examples, dev_set, test_set = load_and_preprocess_data(debug)
+    X_train_input, X_test_input, y_train_input, y_test_input = read_binaries()
     
+    # Create Data Lists
+    train_examples = [X_train_input, y_train_input]
+    # dev_set = [X_dev_input, y_dev_input]
+    test_set = [X_test_input, y_test_input]
+
     if not os.path.exists('./data/weights/'):
         os.makedirs('./data/weights/')
 
