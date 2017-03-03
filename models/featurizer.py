@@ -39,11 +39,13 @@ def construct_binaries():
 def read_binaries():
     glove_body_matrix, glove_headline_matrix = read_glove_sums()
     id_map = read_id_id_stance()
-    X_train, X_test, y_train, y_test = compute_splits(id_map, TEST_SIZE, USE_ORIG_FNC)
+    X_train, X_dev, X_test, y_train, y_dev, y_test = compute_splits(id_map, TEST_SIZE, USE_ORIG_FNC)
     X_train_input = compute_id_embeddings(X_train, glove_body_matrix, glove_headline_matrix)
-    X_test_input = compute_id_embeddings(X_train, glove_body_matrix, glove_headline_matrix)
+    X_dev_input = compute_id_embeddings(X_dev, glove_body_matrix, glove_headline_matrix)
+    X_test_input = compute_id_embeddings(X_test, glove_body_matrix, glove_headline_matrix)
     y_train_input = compute_stance_embeddings(y_train)
-    y_test_input = compute_stance_embeddings(y_train)
+    y_dev_input = compute_stance_embeddings(y_dev)
+    y_test_input = compute_stance_embeddings(y_test)
     return X_train_input, X_test_input, y_train_input, y_test_input
 
 def construct_data_set():
@@ -188,6 +190,6 @@ def clean(article_body):
 
 
 if __name__ == '__main__':
-    # read_binaries()
-    construct_binaries()
+    read_binaries()
+    # construct_binaries()
     # compute_splits()
