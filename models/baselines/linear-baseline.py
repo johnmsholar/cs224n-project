@@ -9,6 +9,7 @@ Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
 
+import argparse
 import sklearn.naive_bayes
 import sklearn.model_selection
 import sklearn
@@ -140,10 +141,13 @@ def join_features_on_key(feature_maps, h_id_b_id_to_stance, h_id_b_id_keys):
         all_keys_aggregated_features_dict.append(aggregated_features_dict)
     return all_keys_aggregated_features_dict
 
-def generate_feature_vectors(feature_matrix_filename, output_class_filename):
+def generate_feature_vectors(feature_matrix_filename, output_class_filename, full=False):
     b_id_to_body, h_id_to_headline, h_id_b_id_to_stance_superset = construct_data_set()
     h_id_to_headline = dict([(k, v.split()) for k, v in h_id_to_headline.items()])
-    h_id_b_id_to_stance = dict(h_id_b_id_to_stance_superset.items()[:1000])
+    if not full:
+        h_id_b_id_to_stance = dict(h_id_b_id_to_stance_superset.items()[:1000])
+    else:
+        h_id_b_id_to_stance = h_id_b_id_to_stance_superset
     h_id_b_id_keys = h_id_b_id_to_stance.keys()
     print('DATASET CONSTRUCTED')
 
@@ -200,10 +204,24 @@ def evaluate_model(clf, X_train, X_test, y_train, y_test):
     print('CROSS VALIDATION F1 SCORE')
     print(score)
 
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Train and Test Linear Model')
+    parser.add_argument('--full', action='store_true')
+    parser.add_argument('--x-output')
+    parser.add_argument('--y-output')
+    parser.add_argument('--x-input')
+    parser.add_argument('--y-input')
+    args = parser.parse_args()
+    return args
+
 if __name__ == '__main__':
+    args = parse_args()
     feature_matrix_filename = 'data/linear-baseline-X.mtx'
     output_class_filename = 'data/linear-baseline-Y.npy'
-    # generate_feature_vectors(feature_matrix_filename, output_class_filename)
-    X_train, X_test, y_train, y_test = retrieve_feature_vectors(feature_matrix_filename, output_class_filename)
-    clf = train_model(X_train, y_train)
-    evaluate_model(clf, X_train, X_test, y_train, y_test)
+    if not (args.x_output is None or args.y_output is None):
+        generate_feature_vectors(args.x_input, args.x_output, full=args.full)
+    if not (args.x_input is None or args.y_input is None):
+        X_train, X_test, y_train, y_test = retrieve_feature_vectors(args.x_input, args.x_input)
+        clf = train_model(X_train, y_train)
+        evaluate_model(clf, X_train, X_test, y_train, y_test)
