@@ -8,17 +8,20 @@ Sahil Chopra <schopra8@cs.stanford.edu>
 Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
-
+import sys
 import argparse
 import sklearn.naive_bayes
 import sklearn.model_selection
 import sklearn
 import nltk
 import itertools
-from models.fnc1_utils.featurizer import construct_data_set
 import numpy as np
 import scipy
+
+sys.path.insert(0, '../../')
 from models.util import plot_confusion_matrix, save_confusion_matrix
+from models.fnc1_utils.featurizer import construct_data_set
+
 
 # Generate modified BLEU scores for each (healdine, article) pair, in which BLEU
 # score is evaluated for a series of overlapping segments of the article.
