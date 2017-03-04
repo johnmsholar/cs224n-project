@@ -1,3 +1,18 @@
+#!/usr/bin/env python2.7
+# -*- coding: utf-8 -*-
+"""
+CS 224N 2016-2017 
+model.py: Model class that abstracts Tensorflow graph for learning tasks.
+Sahil Chopra <schopra8@cs.stanford.edu>
+Saachi Jain <saachi@cs.stanford.edu>
+John Sholar <jmsholar@cs.stanford.edu>
+"""
+
+import numpy as np
+import tensorflow as tf
+from util import minibatches, Progbar, vectorize_stances
+from fnc1_utils.score import report_score
+
 class Model(object):
     """Abstracts a Tensorflow graph for a learning task.
 
@@ -100,8 +115,39 @@ class Model(object):
             predictions: np.ndarray of shape (n_samples, n_classes)
         """
         feed = self.create_feed_dict(articles_batch, headlines_batch)
-        predictions = sess.run(self.pred, feed_dict=feed)
+        predictions = sess.run(tf.argmax(self.pred, axis=1), feed_dict=feed)
         return predictions
+
+    def run_epoch(self, sess, train_examples, dev_set):
+        prog = Progbar(target=1 + train_examples[0].shape[0] / self.config.batch_size)
+        for i, (articles_batch, headlines_batch, labels_batch) in enumerate(minibatches(train_examples, self.config.batch_size)):
+            loss = self.train_on_batch(sess, articles_batch, headlines_batch, labels_batch)
+            prog.update(i + 1, [("train loss", loss)])
+
+        print "Evaluating on dev set"
+        actual = vectorize_stances(dev_set[2])
+        preds = list(self.predict_on_batch(sess, *dev_set[:2]))
+
+        print len(actual)
+        print len(preds)
+
+
+        dev_score = report_score(actual, preds)
+
+        print "- dev Score: {:.2f}".format(dev_score)
+        return dev_score
+
+    def fit(self, sess, saver, train_examples, dev_set):
+        best_dev_score = 0
+        for epoch in range(self.config.n_epochs):
+            print "Epoch {:} out of {:}".format(epoch + 1, self.config.n_epochs)
+            dev_score = self.run_epoch(sess, train_examples, dev_set)
+            if dev_score > best_dev_score:
+                best_dev_score = dev_score
+                if saver:
+                    print "New best dev! Saving model in ./data/weights/stance.weights"
+                    saver.save(sess, './data/weights/stance.weights')
+            print
 
     def build(self):
         self.add_placeholders()

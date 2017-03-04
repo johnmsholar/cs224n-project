@@ -1,12 +1,23 @@
+#!/usr/bin/env python2.7
+# -*- coding: utf-8 -*-
+"""
+CS 224N 2016-2017 
+linear-baseline.py: Linear baseline described in
+                    SNLI Corpus paper (Bowman et. al 2015).
+Sahil Chopra <schopra8@cs.stanford.edu>
+Saachi Jain <saachi@cs.stanford.edu>
+John Sholar <jmsholar@cs.stanford.edu>
+"""
+
 import sklearn.naive_bayes
 import sklearn.model_selection
 import sklearn
 import nltk
 import itertools
-from featurizer import construct_data_set
+from models.fnc1_utils.featurizer import construct_data_set
 import numpy as np
 import scipy
-import util
+from models.util import plot_confusion_matrix, save_confusion_matrix
 
 # Generate modified BLEU scores for each (healdine, article) pair, in which BLEU
 # score is evaluated for a series of overlapping segments of the article.
@@ -181,8 +192,8 @@ def evaluate_model(clf, X_train, X_test, y_train, y_test):
     print('CONFUSION MATRIX')
     print(cm)
     classes = ['UNRELATED', 'DISCUSS', 'AGREE', 'DISAGREE']
-    #util.plot_confusion_matrix(cm, classes, normalize=True)
-    util.save_confusion_matrix(cm, classes, 'cm.png', normalize=True)
+    # plot_confusion_matrix(cm, classes, normalize=True)
+    save_confusion_matrix(cm, classes, 'cm.png', normalize=True)
     # Compute and print 5-Fold Cross Validation F1 Score
     weighted_f1 = sklearn.metrics.make_scorer(sklearn.metrics.f1_score, average='weighted')
     score = sklearn.model_selection.cross_val_score(clf, X_train, y_train, scoring=weighted_f1, cv=5)
@@ -190,9 +201,9 @@ def evaluate_model(clf, X_train, X_test, y_train, y_test):
     print(score)
 
 if __name__ == '__main__':
-    feature_matrix_filename = 'linear-baseline-X.mtx'
-    output_class_filename = 'linear-baseline-Y.npy'
-    generate_feature_vectors(feature_matrix_filename, output_class_filename)
+    feature_matrix_filename = 'data/linear-baseline-X.mtx'
+    output_class_filename = 'data/linear-baseline-Y.npy'
+    # generate_feature_vectors(feature_matrix_filename, output_class_filename)
     X_train, X_test, y_train, y_test = retrieve_feature_vectors(feature_matrix_filename, output_class_filename)
     clf = train_model(X_train, y_train)
     evaluate_model(clf, X_train, X_test, y_train, y_test)

@@ -1,3 +1,13 @@
+#!/usr/bin/env python2.7
+# -*- coding: utf-8 -*-
+"""
+CS 224N 2016-2017 
+featurizer.py: Constructs feature representations of articles and headlines.
+Sahil Chopra <schopra8@cs.stanford.edu>
+Saachi Jain <saachi@cs.stanford.edu>
+John Sholar <jmsholar@cs.stanford.edu>
+"""
+
 from sklearn.model_selection import train_test_split
 import numpy as np
 from collections import defaultdict
@@ -7,6 +17,8 @@ from enum import Enum
 import csv
 import re
 import string
+import filenames
+from generate_test_splits import compute_splits
 
 RANDOM_STATE = 42
 TEST_SIZE = .20
@@ -16,13 +28,7 @@ SPACE_CHAR = ' '
 NEWLINE_CHAR = '\n'
 DASH_CHAR = '-'
 
-TRAIN_BODIES_FNAME = "../fnc_1/train_bodies.csv"
-TRAIN_STANCES_FNAME = "../fnc_1/train_stances.csv"
-GLOVE_FILENAME = "../../glove.6B/glove.6B.300d.txt"
-
-BODY_EMBEDDING_FNAME = "../fnc_1/glove_body_matrix"
-HEADLINE_EMBEDDING_FNAME = "../fnc_1/glove_headline_matrix"
-ID_ID_STANCES_FNAME = "../fnc_1/id_id_stance.csv"
+USE_ORIG_FNC = False
 
 def construct_binaries():
     b_id_to_body, h_id_to_headline, h_id_b_id_to_stance = construct_data_set()
@@ -33,13 +39,14 @@ def construct_binaries():
 def read_binaries():
     glove_body_matrix, glove_headline_matrix = read_glove_sums()
     id_map = read_id_id_stance()
-    X_train, X_test, y_train, y_test = test_train_split(id_map, TEST_SIZE)
+    X_train, X_dev, X_test, y_train, y_dev, y_test = compute_splits(id_map, TEST_SIZE, USE_ORIG_FNC)
     X_train_input = compute_id_embeddings(X_train, glove_body_matrix, glove_headline_matrix)
-    X_test_input = compute_id_embeddings(X_train, glove_body_matrix, glove_headline_matrix)
+    X_dev_input = compute_id_embeddings(X_dev, glove_body_matrix, glove_headline_matrix)
+    X_test_input = compute_id_embeddings(X_test, glove_body_matrix, glove_headline_matrix)
     y_train_input = compute_stance_embeddings(y_train)
-    y_test_input = compute_stance_embeddings(y_train)
-    # returns tuples
-    return X_train_input, X_test_input, y_train_input, y_test_input
+    y_dev_input = compute_stance_embeddings(y_dev)
+    y_test_input = compute_stance_embeddings(y_test)
+    return X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input
 
 def construct_data_set():
     # File Headers
@@ -55,7 +62,7 @@ def construct_data_set():
     h_id_b_id_to_stance = {}
 
     # Read Article Bodies
-    with open(TRAIN_BODIES_FNAME) as bodies_file:
+    with open(filenames.TRAIN_BODIES_FNAME) as bodies_file:
         bodies_reader = csv.DictReader(bodies_file, delimiter = ',')
         index = 0
         for row in bodies_reader:
@@ -67,7 +74,7 @@ def construct_data_set():
             index+=1
 
     # Read Headline, ID -> Stance Mappings
-    with open(TRAIN_STANCES_FNAME) as stances_file:
+    with open(filenames.TRAIN_STANCES_FNAME) as stances_file:
         stances_reader = csv.DictReader(stances_file, delimiter = ',')
         for h_id, row in enumerate(stances_reader):
             headline = row[headline_header]
@@ -84,7 +91,7 @@ def read_glove_set():
     default = np.zeros(GLOVE_SIZE)
     glove_vectors = defaultdict(lambda: default)
     id_to_glove_body = {}
-    with open(GLOVE_FILENAME) as glove_files:
+    with open(filenames.GLOVE_FILENAME) as glove_files:
         glove_reader = csv.reader(glove_files, delimiter = ' ', quotechar=None)
         index =0
         for row in glove_reader:
@@ -117,12 +124,12 @@ def save_glove_sums_matrix(id_to_body, id_to_headline, glove_vectors):
             headline_sum += glove_vectors[word]
         glove_headline_matrix[headline_id] = headline_sum
     # saves as np binaries glove_body | glove_headline
-    np.save(BODY_EMBEDDING_FNAME, glove_body_matrix)
-    np.save(HEADLINE_EMBEDDING_FNAME, glove_headline_matrix)
+    np.save(filenames.BODY_EMBEDDING_FNAME, glove_body_matrix)
+    np.save(filenames.HEADLINE_EMBEDDING_FNAME, glove_headline_matrix)
 
 # given a dict of (id, id) -> stance
 def write_id_id_stance(id_id_stance):
-    with open(ID_ID_STANCES_FNAME, 'w') as csvfile:
+    with open(filenames.ID_ID_STANCES_FNAME, 'w') as csvfile:
         idwriter = csv.writer(csvfile, delimiter=' ')
         for ((h_id, b_id), stance) in id_id_stance.items():
             row = [h_id, b_id, stance.value]
@@ -130,7 +137,7 @@ def write_id_id_stance(id_id_stance):
 
 def read_id_id_stance():
     id_map = {}
-    with open(ID_ID_STANCES_FNAME) as csvfile:
+    with open(filenames.ID_ID_STANCES_FNAME) as csvfile:
             id_reader = csv.reader(csvfile, delimiter = ' ', quotechar='|')
             for row in id_reader:
                 h_id = int(row[0])
@@ -141,8 +148,8 @@ def read_id_id_stance():
 
 # Load the glove body + headline binaries into numpy matrices
 def read_glove_sums():
-    glove_body_matrix = np.load(BODY_EMBEDDING_FNAME+".npy")
-    glove_headline_matrix = np.load(HEADLINE_EMBEDDING_FNAME+".npy")
+    glove_body_matrix = np.load(filenames.BODY_EMBEDDING_FNAME+".npy")
+    glove_headline_matrix = np.load(filenames.HEADLINE_EMBEDDING_FNAME+".npy")
     return glove_body_matrix, glove_headline_matrix
 
 # id_id_list is [(h_id, b_id)]
@@ -171,7 +178,6 @@ def clean(article_body):
     def clean_word(word):
         w = word.lower()
         tokens = re.findall(r"[\w']+|[.,!?;]", w)
-        # w = w.translate(None, string.punctuation)
         return [t.strip() for t in tokens if (t.isalnum() or t in string.punctuation) and t.strip() != '']
 
     cleaned_article = []
@@ -182,12 +188,7 @@ def clean(article_body):
 
     return cleaned_article
 
-def test_train_split(data, test_size):
-    # Data is a dict of (headline_id, body_id) -> stance 
-    X  = data.keys()
-    y = [data[x] for x in X]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=RANDOM_STATE)
-    return X_train, X_test, y_train, y_test
 
 if __name__ == '__main__':
+    # read_binaries()
     construct_binaries()
