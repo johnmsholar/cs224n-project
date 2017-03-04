@@ -38,7 +38,7 @@ class Config:
 
     dropout = 0.5
     batch_size = 1000
-    lr = .01
+    lr = .001
     n_epochs = 100
 
     class_weights = None
