@@ -217,8 +217,6 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    feature_matrix_filename = 'data/linear-baseline-X.mtx'
-    output_class_filename = 'data/linear-baseline-Y.npy'
     if not (args.x_output is None or args.y_output is None):
         generate_feature_vectors(args.x_input, args.x_output, full=args.full)
     if not (args.x_input is None or args.y_input is None):
