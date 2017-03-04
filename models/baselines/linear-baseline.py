@@ -221,7 +221,7 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     if not (args.x_output is None or args.y_output is None):
-        generate_feature_vectors(args.x_input, args.x_output, full=args.full)
+        generate_feature_vectors(args.x_output, args.y_output, full=args.full)
     if not (args.x_input is None or args.y_input is None):
         X_train, X_test, y_train, y_test = retrieve_feature_vectors(args.x_input, args.x_input)
         clf = train_model(X_train, y_train)
