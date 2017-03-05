@@ -20,7 +20,6 @@ def compute_splits(id_id_stance, training=0.8, random=True):
     train_ids = training_ids[:int(training * len(training_ids))]
     dev_ids = training_ids[int(training * len(training_ids)):]
 
-
     train_ids = set(train_ids)
     dev_ids = set(dev_ids)
     # train pairs are (headline, body)

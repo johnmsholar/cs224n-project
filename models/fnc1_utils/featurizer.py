@@ -21,7 +21,7 @@ import filenames
 from generate_test_splits import compute_splits
 
 RANDOM_STATE = 42
-TEST_SIZE = .20
+TRAINING_SIZE = .80
 GLOVE_SIZE = 300
 MAX_BODY_LENGTH = 900
 
@@ -29,12 +29,12 @@ SPACE_CHAR = ' '
 NEWLINE_CHAR = '\n'
 DASH_CHAR = '-'
 UNK_TOKEN = "PLACEHOLDER_UNK"
-USE_ORIG_FNC = False
+USE_RANDOM_FNC = True
 
 def create_inputs_by_glove(truncate=True):
     b_id_to_body, h_id_to_headline, h_id_b_id_to_stance = construct_data_set()
     # X is [(headline id, body id)]
-    X_train, X_dev, X_test, y_train, y_dev, y_test = compute_splits(h_id_b_id_to_stance, TEST_SIZE, USE_ORIG_FNC)
+    X_train, X_dev, X_test, y_train, y_dev, y_test = compute_splits(h_id_b_id_to_stance, TRAINING_SIZE, USE_RANDOM_FNC)
 
     # read glove
     glove_vectors = read_glove_set() # word to numpy array
@@ -102,7 +102,7 @@ def construct_glove_sum_binaries():
 def read_glove_sum_binaries():
     glove_body_matrix, glove_headline_matrix = read_glove_sums()
     id_map = read_id_id_stance()
-    X_train, X_dev, X_test, y_train, y_dev, y_test = compute_splits(id_map, TEST_SIZE, USE_ORIG_FNC)
+    X_train, X_dev, X_test, y_train, y_dev, y_test = compute_splits(id_map, TRAINING_SIZE, USE_RANDOM_FNC)
     X_train_input = compute_id_embeddings(X_train, glove_body_matrix, glove_headline_matrix)
     X_dev_input = compute_id_embeddings(X_dev, glove_body_matrix, glove_headline_matrix)
     X_test_input = compute_id_embeddings(X_test, glove_body_matrix, glove_headline_matrix)
