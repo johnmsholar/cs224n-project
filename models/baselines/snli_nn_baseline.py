@@ -236,7 +236,7 @@ def main(debug=True):
         # Note: X_train_input, X_dev_input, X_test_input are tuples consisting of 2 matrices
         # the first is the matrix of article representations. The second is the matrix of 
         # body representations.
-        X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input = read_binaries()
+        X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input = read_glove_sum_binaries()
         
         # Class weights
         class_count = np.sum(y_train_input, axis = 0)
