@@ -199,7 +199,7 @@ def evaluate_model(clf, X_train, X_test, y_train, y_test):
     cm = sklearn.metrics.confusion_matrix(y_test, y_predicted)
     print('CONFUSION MATRIX')
     print(cm)
-    classes = ['UNRELATED', 'DISCUSS', 'AGREE', 'DISAGREE']
+    classes = ['AGREE', 'DISAGREE', 'DISCUSS', 'UNRELATED']
     # plot_confusion_matrix(cm, classes, normalize=True)
     save_confusion_matrix(cm, classes, 'cm.png', normalize=True)
     # Compute and print 5-Fold Cross Validation F1 Score
