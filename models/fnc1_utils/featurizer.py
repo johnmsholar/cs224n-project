@@ -23,6 +23,7 @@ from generate_test_splits import compute_splits
 RANDOM_STATE = 42
 TEST_SIZE = .20
 GLOVE_SIZE = 300
+MAX_BODY_LENGTH = 900
 
 SPACE_CHAR = ' '
 NEWLINE_CHAR = '\n'
@@ -30,14 +31,11 @@ DASH_CHAR = '-'
 UNK_TOKEN = "PLACEHOLDER_UNK"
 USE_ORIG_FNC = False
 
-def create_inputs_by_glove():
+def create_inputs_by_glove(truncate=True):
     b_id_to_body, h_id_to_headline, h_id_b_id_to_stance = construct_data_set()
     # X is [(headline id, body id)]
     X_train, X_dev, X_test, y_train, y_dev, y_test = compute_splits(h_id_b_id_to_stance, TEST_SIZE, USE_ORIG_FNC)
 
-    max_body_length = max([len(text) for (b_id, text) in b_id_to_body.items()])
-    max_headline_length = max([len(text) for (b_id, text) in h_id_to_headline.items()])
-    max_input_length = max_body_length + max_headline_length
     # read glove
     glove_vectors = read_glove_set() # word to numpy array
     glove_vectors[UNK_TOKEN] = np.random.normal(size=GLOVE_SIZE)
@@ -50,8 +48,11 @@ def create_inputs_by_glove():
 
     # compute glove index vector for every headline
     # sample id -> computed glove indices
-    h_id_to_glove_index_vector = compute_glove_index_vector(h_id_to_headline, word_to_glove_index)
-    b_id_to_glove_index_vector = compute_glove_index_vector(b_id_to_body, word_to_glove_index)
+    h_id_to_glove_index_vector = compute_glove_index_vector(h_id_to_headline, word_to_glove_index, truncate)
+    b_id_to_glove_index_vector = compute_glove_index_vector(b_id_to_body, word_to_glove_index, truncate)
+    max_body_length = max([len(index_vec) for (b_id, index_vec) in b_id_to_glove_index_vector.items()])
+    max_headline_length = max([len(index_vec) for (h_id, index_vec) in h_id_to_glove_index_vector.items()])
+    max_input_length = max_body_length + max_headline_length
 
     X_train_input = compute_glove_id_embeddings(X_train, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_length)
     X_dev_input = compute_glove_id_embeddings(X_dev, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_length)
@@ -64,11 +65,15 @@ def create_inputs_by_glove():
 
 # id_to_text should be {id -> text} for either headline or body
 # word_to_glove_index should be {word -> word's index in glove}
-def compute_glove_index_vector (id_to_text, word_to_glove_index):
+def compute_glove_index_vector (id_to_text, word_to_glove_index, truncate = True):
     sample_id_to_glove_index_vector = {}
     for (sample_id, text) in id_to_text.items():
-        index_vector = np.zeros(len(text))
-        for i, word in enumerate(text):
+        if truncate:
+            trunc_text = text[:MAX_BODY_LENGTH]
+        else:
+            trunc_text = text
+        index_vector = np.zeros(len(trunc_text))
+        for i, word in enumerate(trunc_text):
             if word not in word_to_glove_index:
                 word = UNK_TOKEN
             index_vector[i] = word_to_glove_index[word]

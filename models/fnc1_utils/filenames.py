@@ -3,7 +3,7 @@ TRAIN_BODIES_FNAME = "../../fnc_1/train_bodies.csv"
 TRAIN_STANCES_FNAME = "../../fnc_1/train_stances.csv"
 
 # Word Vector Representations
-GLOVE_FILENAME = "../../../glove.6B/glove.6B.300d.short.txt"
+GLOVE_FILENAME = "../../../glove.6B/glove.6B.300d.txt"
 
 # Output embeddings and embedding references
 BODY_EMBEDDING_FNAME = "../../fnc_1/glove_body_matrix"

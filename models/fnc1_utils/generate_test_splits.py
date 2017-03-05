@@ -8,8 +8,9 @@ import csv
 rgen = random.Random()
 rgen.seed(1489215)
 
+# id_id_stance should be (h_id b_id)-> stance
 def compute_splits(id_id_stance, training=0.8, random=True):
-    num_articles = len(set([ids[0] for (ids, stance) in id_id_stance.items()]))
+    num_articles = len(set([ids[1] for (ids, stance) in id_id_stance.items()]))
     if (random):
         training_ids, hold_out_ids = generate_random_hold_out_split(num_articles, training)
     else:
