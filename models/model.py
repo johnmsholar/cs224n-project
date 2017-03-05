@@ -115,8 +115,9 @@ class Model(object):
             predictions: np.ndarray of shape (n_samples, n_classes)
         """
         feed = self.create_feed_dict(articles_batch, headlines_batch)
-        predictions = sess.run(tf.argmax(self.pred, axis=1), feed_dict=feed)
-        return predictions
+        predictions = sess.run(self.pred, feed_dict=feed)
+        preds = tf.argmax(predictions, axis=1).eval()
+        return preds
 
     def run_epoch(self, sess, train_examples, dev_set):
         prog = Progbar(target=1 + train_examples[0].shape[0] / self.config.batch_size)
@@ -127,11 +128,6 @@ class Model(object):
         print "Evaluating on dev set"
         actual = vectorize_stances(dev_set[2])
         preds = list(self.predict_on_batch(sess, *dev_set[:2]))
-
-        print len(actual)
-        print len(preds)
-
-
         dev_score = report_score(actual, preds)
 
         print "- dev Score: {:.2f}".format(dev_score)

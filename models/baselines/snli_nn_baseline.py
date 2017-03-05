@@ -13,6 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
+import cPickle
 import time
 import itertools
 import random
@@ -23,6 +24,7 @@ sys.path.insert(0, '../')
 from fnc1_utils.score import report_score
 from model import Model
 from fnc1_utils.featurizer import read_binaries
+from util import vectorize_stances
 
 class Config:
     """Holds model hyperparams and data information.
@@ -37,8 +39,8 @@ class Config:
     num_classes = 4
 
     dropout = 0.5
-    batch_size = 1000
-    lr = .01
+    batch_size = 500
+    lr = .001
     n_epochs = 100
 
     class_weights = None
@@ -177,13 +179,20 @@ class SNLI_Baseline_NN(Model):
         Returns:
             loss: A 0-d tensor (scalar)
         """
-        weighted_logits = tf.mul(self.class_weights, final_layer)
+        weighted_logits = final_layer
 
         loss = tf.reduce_mean(
             tf.nn.softmax_cross_entropy_with_logits(
                 labels=self.labels_placeholder,
                 logits=weighted_logits)
         )
+
+        # loss = tf.reduce_mean(
+        #     tf.nn.weighted_cross_entropy_with_logits(
+        #         self.labels_placeholder,
+        #         weighted_logits, 0.7)
+        # )
+
         return loss
 
     def add_training_op(self, loss):
@@ -236,9 +245,6 @@ def main(debug=True):
 
         # Create Data Lists
         train_examples = [x for x in X_train_input] + [y_train_input]
-
-        print train_examples[0].shape
-
         dev_set = [x for x in X_dev_input] + [y_dev_input]
         test_set = [x for x in X_test_input] + [y_test_input]
 
@@ -265,8 +271,9 @@ def main(debug=True):
                 saver.restore(session, './data/weights/stance.weights')
                 print "Final evaluation on test set",
 
-                preds = model.predict_on_batch(session, *test_set[:2])
-                test_score = report_score(test_set[2], preds)
+                actual = vectorize_stances(test_set[2])
+                preds = list(model.predict_on_batch(session, *test_set[:2]))
+                test_score = report_score(actual, preds)
 
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"
