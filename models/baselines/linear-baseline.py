@@ -21,6 +21,7 @@ import scipy
 sys.path.insert(0, '../../')
 from models.util import plot_confusion_matrix, save_confusion_matrix
 from models.fnc1_utils.featurizer import construct_data_set
+from models.fnc1_utils.score import report_score
 
 
 # Generate modified BLEU scores for each (healdine, article) pair, in which BLEU
@@ -206,6 +207,8 @@ def evaluate_model(clf, X_train, X_test, y_train, y_test):
     score = sklearn.model_selection.cross_val_score(clf, X_train, y_train, scoring=weighted_f1, cv=5)
     print('CROSS VALIDATION F1 SCORE')
     print(score)
+    print('FNC1 Official Score:')
+    report_score(y_test, y_predicted)
 
 
 def parse_args():
