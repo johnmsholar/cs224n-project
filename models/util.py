@@ -13,7 +13,9 @@ import time
 import numpy as np
 import itertools
 import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib import pyplot as plt
 
 def vectorize_stances(stances):
     v_stances = []
