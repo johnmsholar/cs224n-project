@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 """
 CS 224N 2016-2017 
-conditional_lstm.py: Conditional LSTM Implementation
+conditional_lstm.py: LSTM Implementation
 Sahil Chopra <schopra8@cs.stanford.edu>
 Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
 
-mport tensorflow as tf
+import tensorflow as tf
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -24,8 +24,8 @@ sys.path.insert(0, '../')
 
 from fnc1_utils.score import report_score
 from model import Model
-from fnc1_utils.featurizer import read_binaries
-from util import vectorize_stances
+from fnc1_utils.featurizer import create_inputs_by_glove
+from util import Progbar, vectorize_stances, minibatches
 
 class Config:
     """Holds model hyperparams and data information.
@@ -37,11 +37,15 @@ class Config:
     embed_size = 300 # Size of Glove Vectors
 
     # Hyper Parameters
-    hidden_size = 300 # Hidden State Size
+    max_length = 100
+    hidden_size = 400 # Hidden State Size
     batch_size = 100
     n_epochs = 40
     lr = 0.2
     max_grad_norm = 5.
+
+    # Other params
+    pretrained_embeddings = None
 
 class BasicLSTM(Model):
     """ Simple LSTM concatenating the article and headline.
@@ -53,6 +57,7 @@ class BasicLSTM(Model):
         self.config = config
 
         # Defining placeholders.
+        self.sequence_lengths_placeholder = None
         self.inputs_placeholder = None
         self.labels_placeholder = None
         self.dropout_placeholder = None
@@ -62,24 +67,28 @@ class BasicLSTM(Model):
     def add_placeholders(self):
         """ Generates placeholder variables to represent the input tensors.
         """
-        self.inputs_placeholder = tf.placeholder(tf.int32, (None, self.max_length))
-        self.labels_placeholder = tf.placeholder(tf.float32, (None, self.config.num_classes))
-        self.dropout_placeholder = tf.placeholder(tf.float32)
+        self.sequence_lengths_placeholder = tf.placeholder(tf.int32, (None), name="seq_lengths")
 
-    def create_feed_dict(self, inputs_placeholder, labels_batch=None, dropout=1):
+        self.inputs_placeholder = tf.placeholder(tf.int32, shape=(None, self.config.max_length), name="inputs")
+        self.labels_placeholder = tf.placeholder(tf.float32, (None, self.config.num_classes), name="labels")
+        self.dropout_placeholder = tf.placeholder(tf.float32, name="dropout")
+
+    def create_feed_dict(self, inputs_batch, labels_batch=None, dropout=1, sequence_lengths=[]):
         """Creates the feed_dict for the model.
         """
         if labels_batch is not None:
             feed_dict = {
-                self.inputs_placeholder: inputs_placeholder,
+                self.inputs_placeholder: inputs_batch,
                 self.dropout_placeholder: dropout,
                 self.labels_placeholder: labels_batch,
+                self.sequence_lengths_placeholder: sequence_lengths,
             }
 
         else:
              feed_dict = {
-                self.inputs_placeholder: inputs_placeholder,
+                self.inputs_placeholder: inputs_batch,
                 self.dropout_placeholder: dropout,
+                self.sequence_lengths_placeholder: sequence_lengths,
               }
 
         return feed_dict
@@ -91,9 +100,9 @@ class BasicLSTM(Model):
         Returns:
             embeddings: tf.Tensor of shape (None, max_length, embed_size)
         """
-        pretrained_embeddings_tensor = tf.Variable(self.pretrained_embeddings)
-        e = tf.nn.embedding_lookup_sparse(pretrained_embeddings_tensor, self.input_placeholder)
-        embeddings = tf.reshape(e, shape=[-1, self.max_length, self.config.embed_size])          
+        pretrained_embeddings_tensor = tf.Variable(self.config.pretrained_embeddings, dtype=tf.float32)
+        e = tf.nn.embedding_lookup(pretrained_embeddings_tensor, self.inputs_placeholder)
+        embeddings = tf.reshape(e, shape=[-1, self.config.max_length, self.config.embed_size], name="embeddings")          
         return embeddings
 
     def add_prediction_op(self): 
@@ -115,11 +124,14 @@ class BasicLSTM(Model):
 
         # Compute the output at the end of the LSTM (automatically unrolled)
         cell = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
-        output, _ = tf.nn.dynamic_rnn(cell, x, dtype=tf.float32, sequence_length = self.sequence_lengths)
+        output, _ = tf.nn.dynamic_rnn(cell, x, dtype=tf.float32, sequence_length = self.sequence_lengths_placeholder)
 
         # Compute predictions
         output_dropout = tf.nn.dropout(output, dropout_rate)
-        preds = tf.matmul(U, output_dropout) + b
+        output_dropout_collapsed = tf.reshape(output_dropout, shape=[-1, self.config.hidden_size])
+        preds_unpacked = tf.matmul(output_dropout_collapsed, U) + b
+        preds = tf.reshape(preds_unpacked, [tf.shape(output_dropout)[0], self.config.max_length, self.config.num_classes])
+        assert preds.get_shape().as_list() == [None, self.config.max_length, self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.max_length, self.config.num_classes], preds.get_shape().as_list())
         return preds
 
 
@@ -164,9 +176,11 @@ class BasicLSTM(Model):
         Returns:
             loss: loss over the batch (a scalar)
         """
-        self.sequence_lengths = [len(input_arr) for input_arr in inputs_batch]
-        self.max_length = max(sequence_lengths)
-        feed = self.create_feed_dict(inputs_batch, labels_batch=labels_batch)
+        sequence_lengths = [len(input_arr) for input_arr in inputs_batch]
+
+        print len(sequence_lengths)
+
+        feed = self.create_feed_dict(inputs_batch, labels_batch=labels_batch, sequence_lengths=sequence_lengths)
         _, loss = sess.run([self.train_op, self.loss], feed_dict=feed)
         return loss
 
@@ -178,16 +192,14 @@ class BasicLSTM(Model):
         Returns:
             predictions: np.ndarray of shape (n_samples, n_classes)
         """
-        self.sequence_lengths = [len(input_arr) for input_arr in inputs_batch]
-        self.max_length = max(sequence_lengths)
-
-        feed = self.create_feed_dict(inputs_batch)
+        sequence_lengths = [len(input_arr) for input_arr in inputs_batch]
+        feed = self.create_feed_dict(inputs_batch, sequence_lengths=sequence_lengths)
         predictions = sess.run(self.pred, feed_dict=feed)
         preds = tf.argmax(predictions, axis=1).eval()
         return preds
 
     def run_epoch(self, sess, train_examples, dev_set):
-        prog = Progbar(target=1 + train_examples[0].shape[0] / self.config.batch_size)
+        prog = Progbar(target=1 + len(train_examples[0])/ self.config.batch_size)
         for i, (inputs_batch, labels_batch) in enumerate(minibatches(train_examples, self.config.batch_size)):
             loss = self.train_on_batch(sess, inputs_batch, labels_batch)
             prog.update(i + 1, [("train loss", loss)])
@@ -227,9 +239,11 @@ def main(debug=True):
         # Each example is a sparse representation of a headline + article, where the text 
         # is encoded as a series of indices into the glove-vectors.
         # y_train_input, y_dev_input, y_test_input are matrices (num_examples, num_classes)
-        X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input = read_binaries()
+        X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_length= create_inputs_by_glove()
 
         # Create Basic LSTM Model
+        config.max_length = max_length
+        config.pretrained_embeddings = glove_matrix
         model = BasicLSTM(config)
         
         # Create Data Lists

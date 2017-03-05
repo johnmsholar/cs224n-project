@@ -35,6 +35,9 @@ def create_inputs_by_glove():
     # X is [(headline id, body id)]
     X_train, X_dev, X_test, y_train, y_dev, y_test = compute_splits(h_id_b_id_to_stance, TEST_SIZE, USE_ORIG_FNC)
 
+    max_body_length = max([len(text) for (b_id, text) in b_id_to_body.items()])
+    max_headline_length = max([len(text) for (b_id, text) in h_id_to_headline.items()])
+    max_input_length = max_body_length + max_headline_length
     # read glove
     glove_vectors = read_glove_set() # word to numpy array
     glove_vectors[UNK_TOKEN] = np.random.normal(size=GLOVE_SIZE)
@@ -50,13 +53,13 @@ def create_inputs_by_glove():
     h_id_to_glove_index_vector = compute_glove_index_vector(h_id_to_headline, word_to_glove_index)
     b_id_to_glove_index_vector = compute_glove_index_vector(b_id_to_body, word_to_glove_index)
 
-    X_train_input = compute_glove_id_embeddings(X_train, h_id_to_glove_index_vector, b_id_to_glove_index_vector)
-    X_dev_input = compute_glove_id_embeddings(X_dev, h_id_to_glove_index_vector, b_id_to_glove_index_vector)
-    X_test_input = compute_glove_id_embeddings(X_test, h_id_to_glove_index_vector, b_id_to_glove_index_vector)
+    X_train_input = compute_glove_id_embeddings(X_train, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_length)
+    X_dev_input = compute_glove_id_embeddings(X_dev, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_length)
+    X_test_input = compute_glove_id_embeddings(X_test, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_length)
     y_train_input = compute_stance_embeddings(y_train)
     y_dev_input = compute_stance_embeddings(y_dev)
     y_test_input = compute_stance_embeddings(y_test)
-    return X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix
+    return X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_input_length
 
 
 # id_to_text should be {id -> text} for either headline or body
@@ -74,12 +77,13 @@ def compute_glove_index_vector (id_to_text, word_to_glove_index):
 
 # return a list where each sample is an element
 # for each sample concatenate the index vectors of the headline and the body (headline + body)
-def compute_glove_id_embeddings (id_list, h_id_to_glove_index_vector, b_id_to_glove_index_vector):
-    input_list = []
-    for (h_id, b_id) in id_list:
+def compute_glove_id_embeddings (id_list, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_length):
+    input_list = np.zeros((len(id_list), max_input_length))
+    for index, (h_id, b_id) in enumerate(id_list):
         h_index_vector = h_id_to_glove_index_vector[h_id]
         b_index_vector = b_id_to_glove_index_vector[b_id]
-        input_list.append(np.concatenate((h_index_vector, b_index_vector)))
+        headline_body_vec = np.concatenate((h_index_vector, b_index_vector))
+        input_list[index][:len(headline_body_vec)] = headline_body_vec
     return input_list
 
 # construct binaries where each text is represented as the sum of the glove vectors for the words
