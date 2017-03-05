@@ -21,6 +21,7 @@ import scipy
 sys.path.insert(0, '../../')
 from models.util import plot_confusion_matrix, save_confusion_matrix
 from models.fnc1_utils.featurizer import construct_data_set
+from models.fnc1_utils.score import report_score
 
 
 # Generate modified BLEU scores for each (healdine, article) pair, in which BLEU
@@ -198,7 +199,7 @@ def evaluate_model(clf, X_train, X_test, y_train, y_test):
     cm = sklearn.metrics.confusion_matrix(y_test, y_predicted)
     print('CONFUSION MATRIX')
     print(cm)
-    classes = ['UNRELATED', 'DISCUSS', 'AGREE', 'DISAGREE']
+    classes = ['AGREE', 'DISAGREE', 'DISCUSS', 'UNRELATED']
     # plot_confusion_matrix(cm, classes, normalize=True)
     save_confusion_matrix(cm, classes, 'cm.png', normalize=True)
     # Compute and print 5-Fold Cross Validation F1 Score
@@ -206,6 +207,8 @@ def evaluate_model(clf, X_train, X_test, y_train, y_test):
     score = sklearn.model_selection.cross_val_score(clf, X_train, y_train, scoring=weighted_f1, cv=5)
     print('CROSS VALIDATION F1 SCORE')
     print(score)
+    print('FNC1 Official Score:')
+    report_score(y_test, y_predicted)
 
 
 def parse_args():
@@ -223,6 +226,6 @@ if __name__ == '__main__':
     if not (args.x_output is None or args.y_output is None):
         generate_feature_vectors(args.x_output, args.y_output, full=args.full)
     if not (args.x_input is None or args.y_input is None):
-        X_train, X_test, y_train, y_test = retrieve_feature_vectors(args.x_input, args.x_input)
+        X_train, X_test, y_train, y_test = retrieve_feature_vectors(args.x_input, args.y_input)
         clf = train_model(X_train, y_train)
         evaluate_model(clf, X_train, X_test, y_train, y_test)
