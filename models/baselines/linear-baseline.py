@@ -122,6 +122,7 @@ def generate_bleu_score_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_st
 def generate_overlap_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance):
     pass
 
+
 # Generates indicator features for all unigrams and bigrams in the headline
 def generate_headline_gram_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance):
     HEADLINE_GRAM_FEATURE_NAME = 'headline_gram'
@@ -239,7 +240,7 @@ def retrieve_feature_vectors(feature_matrix_filename, output_class_filename):
     h_id_b_id_stance_dict = dict(h_id_b_id_stance)
     ids_to_indices = dict([(id_id_stance[0], index) for index, id_id_stance in enumerate(h_id_b_id_stance)])
     h_id_b_id_keys = [elem[0] for elem in h_id_b_id_stance]
-    y = np.array([elem[1].value for elem in h_id_b_id_stance])
+    y = np.array([elem[1] for elem in h_id_b_id_stance])
     x_train_ids, x_dev_ids, x_test_ids, y_train_list, y_dev_list, y_test_list = compute_splits(h_id_b_id_stance_dict)
 
     x_train_indices = [ids_to_indices[ids] for ids in x_train_ids]
