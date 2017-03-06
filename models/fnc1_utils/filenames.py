@@ -16,5 +16,5 @@ TRAINING_SPLIT_FNAME = '../../splits/custom_training_ids.txt'
 TEST_SPLIT_FNAME = '../../splits/custom_hold_out_ids.txt'
 
 # location of original baseline splits
-ORIG_TRAIN_A_ID_FNAME = '../../splits/training_ids.txt'
-ORIG_TRAIN_H_ID_FNAME = '../../splits/hold_out_ids.txt'
+ORIG_TRAIN_BODY_ID_FNAME = '../../splits/training_ids.txt'
+ORIG_HOLDOUT_BODY_ID_FNAME = '../../splits/hold_out_ids.txt'

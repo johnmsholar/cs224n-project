@@ -39,12 +39,13 @@ def compute_splits(id_id_stance, training=0.8, random=True):
         else:
             x_test.append(id_pair)
             y_test.append(stance)
+    print "Train: {}, Dev: {}, Test: {}".format(len(x_train), len(x_dev), len(x_test))
     return x_train, x_dev, x_test, y_train, y_dev, y_test
 
 # returns a list of article ids for training and for hold out from original 
 def generate_original_holdouts():
-    training_fnc_ids = read_list_of_ids(filenames.ORIG_TRAIN_A_ID_FNAME)
-    hold_out_fnc_ids = read_list_of_ids(filenames.ORIG_TRAIN_H_ID_FNAME)
+    training_fnc_ids = read_list_of_ids(filenames.ORIG_TRAIN_BODY_ID_FNAME)
+    hold_out_fnc_ids = read_list_of_ids(filenames.ORIG_HOLDOUT_BODY_ID_FNAME)
     b_id_to_index = {}
     # Read Article Bodies and get a map of id to index
     with open(filenames.TRAIN_BODIES_FNAME) as bodies_file:

@@ -254,5 +254,5 @@ def clean(article_body):
 
 if __name__ == '__main__':
     # read_binaries()
-    construct_glove_sum_binaries
+    construct_glove_sum_binaries()
     # create_inputs_by_glove()
