@@ -9,9 +9,16 @@ John Sholar <jmsholar@cs.stanford.edu>
 """
 
 from enum import Enum
+
+class Labels(Enum):
+    AGREE = 0
+    DISAGREE = 1
+    DISCUSS = 2
+    UNRELATED = 3
+
 LABEL_MAPPING = {
-    'unrelated': 0,
-    'discuss': 1,
-    'agree': 2,
-    'disagree': 3,
+    'agree': 0,
+    'disagree': 1,
+    'dicuss': 2,
+    'unrelated': 3,
 }
