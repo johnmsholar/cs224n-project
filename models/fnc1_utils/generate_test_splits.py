@@ -32,13 +32,13 @@ def compute_splits(id_id_stance, training=0.8, random=True):
     for (id_pair, stance) in id_id_stance.items():
         if id_pair[1] in train_ids:
             x_train.append(id_pair)
-            y_train.append(stance.value)
+            y_train.append(stance)
         elif id_pair[1] in dev_ids:
             x_dev.append(id_pair)
-            y_dev.append(stance.value)
+            y_dev.append(stance)
         else:
             x_test.append(id_pair)
-            y_test.append(stance.value)
+            y_test.append(stance)
     return x_train, x_dev, x_test, y_train, y_dev, y_test
 
 # returns a list of article ids for training and for hold out from original 

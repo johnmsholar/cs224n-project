@@ -23,7 +23,7 @@ from generate_test_splits import compute_splits
 RANDOM_STATE = 42
 TRAINING_SIZE = .80
 GLOVE_SIZE = 300
-MAX_BODY_LENGTH = 900
+MAX_BODY_LENGTH = 500
 
 SPACE_CHAR = ' '
 NEWLINE_CHAR = '\n'
@@ -195,7 +195,7 @@ def write_id_id_stance(id_id_stance):
     with open(filenames.ID_ID_STANCES_FNAME, 'w') as csvfile:
         idwriter = csv.writer(csvfile, delimiter=' ')
         for ((h_id, b_id), stance) in id_id_stance.items():
-            row = [h_id, b_id, stance.value]
+            row = [h_id, b_id, stance]
             idwriter.writerow(row)
 
 def read_id_id_stance():
@@ -254,5 +254,5 @@ def clean(article_body):
 
 if __name__ == '__main__':
     # read_binaries()
-    # construct_binaries()
-    create_inputs_by_glove()
+    construct_glove_sum_binaries
+    # create_inputs_by_glove()

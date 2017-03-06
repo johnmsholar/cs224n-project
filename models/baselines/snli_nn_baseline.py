@@ -23,7 +23,7 @@ sys.path.insert(0, '../')
 
 from fnc1_utils.score import report_score
 from model import Model
-from fnc1_utils.featurizer import read_binaries
+from fnc1_utils.featurizer import read_glove_sum_binaries
 from util import vectorize_stances
 
 class Config:
