@@ -29,7 +29,7 @@ SPACE_CHAR = ' '
 NEWLINE_CHAR = '\n'
 DASH_CHAR = '-'
 UNK_TOKEN = "PLACEHOLDER_UNK"
-USE_RANDOM_FNC = True
+USE_RANDOM_FNC = False
 
 def create_inputs_by_glove(truncate=True):
     b_id_to_body, h_id_to_headline, h_id_b_id_to_stance = construct_data_set()

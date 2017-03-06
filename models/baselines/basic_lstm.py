@@ -38,10 +38,9 @@ class Config:
 
     # Hyper Parameters
     max_length = 1000
-    hidden_size = 200 # Hidden State Size
+    hidden_size = 400 # Hidden State Size
     batch_size = 100
-    # n_epochs = 40
-    n_epochs = 1
+    n_epochs = 5
     lr = 0.02
     max_grad_norm = 5.
 
