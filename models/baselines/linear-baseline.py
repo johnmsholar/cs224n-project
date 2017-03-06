@@ -17,11 +17,58 @@ import nltk
 import itertools
 import numpy as np
 import scipy
+import random
 
 sys.path.insert(0, '../../')
 from models.util import plot_confusion_matrix, save_confusion_matrix
 from models.fnc1_utils.featurizer import construct_data_set
 from models.fnc1_utils.score import report_score
+
+rgen = random.Random()
+rgen.seed(1489215)
+
+
+# Compute train-test-dev split in a sanitary way
+def compute_splits(id_id_stance, training=0.8):
+    training_ids, hold_out_ids = generate_random_hold_out_split(id_id_stance, training)
+
+    rgen.shuffle(training_ids)
+    train_ids = training_ids[:int(training * len(training_ids))]
+    dev_ids = training_ids[int(training * len(training_ids)):]
+
+
+    train_ids = set(train_ids)
+    dev_ids = set(dev_ids)
+    # train pairs are (headline, body)
+    x_train = []
+    y_train = []
+    x_dev = []
+    y_dev = []
+    x_test = []
+    y_test = []
+    for (id_pair, stance) in id_id_stance.items():
+        if id_pair[1] in train_ids:
+            x_train.append(id_pair)
+            y_train.append(stance.value)
+        elif id_pair[1] in dev_ids:
+            x_dev.append(id_pair)
+            y_dev.append(stance.value)
+        else:
+            x_test.append(id_pair)
+            y_test.append(stance.value)
+    return x_train, x_dev, x_test, y_train, y_dev, y_test
+
+
+# generate random article split
+# pass in the number of articles
+def generate_random_hold_out_split (id_id_stance, training = 0.8):
+    unique_article_ids = set([ids[1] for ids in id_id_stance])
+    num_articles = len(unique_article_ids)
+    article_ids = list(unique_article_ids)
+    rgen.shuffle(article_ids)  # and shuffle that list
+    training_ids = article_ids[:int(training * num_articles)]
+    hold_out_ids = article_ids[int(training * num_articles):]
+    return training_ids, hold_out_ids
 
 
 # Generate modified BLEU scores for each (healdine, article) pair, in which BLEU
@@ -149,7 +196,7 @@ def generate_feature_vectors(feature_matrix_filename, output_class_filename, ful
     b_id_to_body, h_id_to_headline, h_id_b_id_to_stance_superset = construct_data_set()
     h_id_to_headline = dict([(k, v.split()) for k, v in h_id_to_headline.items()])
     if not full:
-        h_id_b_id_to_stance = dict(h_id_b_id_to_stance_superset.items()[:1000])
+        h_id_b_id_to_stance = dict(h_id_b_id_to_stance_superset.items()[:200])
     else:
         h_id_b_id_to_stance = h_id_b_id_to_stance_superset
     h_id_b_id_keys = h_id_b_id_to_stance.keys()
@@ -169,7 +216,8 @@ def generate_feature_vectors(feature_matrix_filename, output_class_filename, ful
 
     v = sklearn.feature_extraction.DictVectorizer(sparse=True)
     X = v.fit_transform(all_keys_aggregated_features_dict)
-    Y = np.array([h_id_b_id_to_stance[key].value for key in h_id_b_id_keys])
+    Y = np.array([(key, h_id_b_id_to_stance[key]) for key in h_id_b_id_keys])
+    #Y = np.array(h_id_b_id_keys.items())
     scipy.io.mmwrite(feature_matrix_filename, X)
     np.save(output_class_filename, Y)
     print('FEATURE MATRIX SAVED TO {0}'.format(feature_matrix_filename))
@@ -186,11 +234,29 @@ def train_model(X_train, y_train, model=None):
 
 
 def retrieve_feature_vectors(feature_matrix_filename, output_class_filename):
-    X = scipy.io.mmread(feature_matrix_filename)
-    y = np.load(output_class_filename)
-    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(
-        X, y, test_size = 0.20, random_state = 42)
-    return (X_train, X_test, y_train, y_test)
+    X = scipy.io.mmread(feature_matrix_filename).tocsr()
+    h_id_b_id_stance = np.load(output_class_filename)
+    h_id_b_id_stance_dict = dict(h_id_b_id_stance)
+    ids_to_indices = dict([(id_id_stance[0], index) for index, id_id_stance in enumerate(h_id_b_id_stance)])
+    h_id_b_id_keys = [elem[0] for elem in h_id_b_id_stance]
+    y = np.array([elem[1].value for elem in h_id_b_id_stance])
+    x_train_ids, x_dev_ids, x_test_ids, y_train_list, y_dev_list, y_test_list = compute_splits(h_id_b_id_stance_dict)
+
+    x_train_indices = [ids_to_indices[ids] for ids in x_train_ids]
+    x_dev_indices = [ids_to_indices[ids] for ids in x_dev_ids]
+    x_test_indices = [ids_to_indices[ids] for ids in x_test_ids]
+    #y_train_indices = [ids_to_indices[ids] for ids in y_train_ids]
+    #y_dev_indices = [ids_to_indices[ids] for ids in y_dev_ids]
+    #y_test_indices = [ids_to_indices[ids] for ids in y_test_ids]
+
+    X_train = X[x_train_indices, :]
+    X_dev = X[x_dev_indices, :]
+    X_test = X[x_test_indices, :]
+    y_train = y[x_train_indices]
+    y_dev = y[x_dev_indices]
+    y_test = y[x_test_indices]
+
+    return X_train, X_dev, X_test, y_train, y_dev, y_test
 
 
 def evaluate_model(clf, X_train, X_test, y_train, y_test):
@@ -226,6 +292,6 @@ if __name__ == '__main__':
     if not (args.x_output is None or args.y_output is None):
         generate_feature_vectors(args.x_output, args.y_output, full=args.full)
     if not (args.x_input is None or args.y_input is None):
-        X_train, X_test, y_train, y_test = retrieve_feature_vectors(args.x_input, args.y_input)
+        X_train, X_dev, X_test, y_train, y_dev, y_test = retrieve_feature_vectors(args.x_input, args.y_input)
         clf = train_model(X_train, y_train)
         evaluate_model(clf, X_train, X_test, y_train, y_test)
