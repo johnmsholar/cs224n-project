@@ -37,11 +37,11 @@ class Config:
     embed_size = 300 # Size of Glove Vectors
 
     # Hyper Parameters
-    max_length = 100
+    max_length = 1000
     hidden_size = 400 # Hidden State Size
     batch_size = 100
-    n_epochs = 40
-    lr = 0.2
+    n_epochs = 5
+    lr = 0.02
     max_grad_norm = 5.
 
     # Other params
@@ -100,9 +100,12 @@ class BasicLSTM(Model):
         Returns:
             embeddings: tf.Tensor of shape (None, max_length, embed_size)
         """
+        start_time = time.time()
         pretrained_embeddings_tensor = tf.Variable(self.config.pretrained_embeddings, dtype=tf.float32)
         e = tf.nn.embedding_lookup(pretrained_embeddings_tensor, self.inputs_placeholder)
-        embeddings = tf.reshape(e, shape=[-1, self.config.max_length, self.config.embed_size], name="embeddings")          
+        embeddings = tf.reshape(e, shape=[-1, self.config.max_length, self.config.embed_size], name="embeddings")
+        end_time = time.time()
+        print "Adding embeddings took {}".format(end_time - start_time)          
         return embeddings
 
     def add_prediction_op(self): 
@@ -123,15 +126,23 @@ class BasicLSTM(Model):
             initializer=tf.constant_initializer(0))
 
         # Compute the output at the end of the LSTM (automatically unrolled)
+        start_time = time.time()
         cell = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
-        output, _ = tf.nn.dynamic_rnn(cell, x, dtype=tf.float32, sequence_length = self.sequence_lengths_placeholder)
+        outputs, _ = tf.nn.dynamic_rnn(cell, x, dtype=tf.float32, sequence_length = self.sequence_lengths_placeholder)
+        end_time = time.time()
+        print "Feed forward LSTM took {}".format(end_time - start_time)
+
+        output = outputs[:,-1,:]
+        print output.get_shape()
+        assert output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.max_length, self.config.hidden_size], output.get_shape().as_list())
+
 
         # Compute predictions
         output_dropout = tf.nn.dropout(output, dropout_rate)
-        output_dropout_collapsed = tf.reshape(output_dropout, shape=[-1, self.config.hidden_size])
-        preds_unpacked = tf.matmul(output_dropout_collapsed, U) + b
-        preds = tf.reshape(preds_unpacked, [tf.shape(output_dropout)[0], self.config.max_length, self.config.num_classes])
-        assert preds.get_shape().as_list() == [None, self.config.max_length, self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.max_length, self.config.num_classes], preds.get_shape().as_list())
+        # output_dropout_collapsed = tf.reshape(output_dropout, shape=[-1, self.config.hidden_size])
+        preds = tf.matmul(output_dropout, U) + b
+        # preds = tf.reshape(preds_unpacked, [tf.shape(output_dropout)[0], self.config.max_length, self.config.num_classes])
+        assert preds.get_shape().as_list() == [None, self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.num_classes], preds.get_shape().as_list())
         return preds
 
 
@@ -144,7 +155,10 @@ class BasicLSTM(Model):
         Returns:
             loss: A 0-d tensor (scalar)
         """
+        start_time = time.time()
         loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.labels_placeholder, logits=preds))
+        end_time = time.time()
+        print "Computing Loss took {}".format(end_time - start_time)        
         return loss
 
 
@@ -160,8 +174,11 @@ class BasicLSTM(Model):
         Returns:
             train_op: The Op for training.
         """
+        start_time = time.time()
         optimizer = tf.train.AdamOptimizer(self.config.lr)
         train_op = optimizer.minimize(loss)
+        end_time = time.time()
+        print "AdamOptimizer Minimize took {}".format(end_time - start_time)
         return train_op    
 
 
@@ -240,7 +257,7 @@ def main(debug=True):
         # is encoded as a series of indices into the glove-vectors.
         # y_train_input, y_dev_input, y_test_input are matrices (num_examples, num_classes)
         X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_length= create_inputs_by_glove()
-
+        print "Max Length is {}".format(max_length)
         # Create Basic LSTM Model
         config.max_length = max_length
         config.pretrained_embeddings = glove_matrix

@@ -1,6 +1,10 @@
 #Adapted from https://github.com/FakeNewsChallenge/fnc-1/blob/master/scorer.py
 #Original credit - @bgalbraith
 
+import sklearn
+import sys
+sys.path.insert(0, '../')
+from util import plot_confusion_matrix, save_confusion_matrix
 LABELS = [0,1,2,3]
 LABELS_HEADER = ['agree', 'disagree', 'discuss', 'unrelated']
 LABELS_RELATED = [0,1]
@@ -45,6 +49,13 @@ def print_confusion_matrix(cm):
                                                                    *row))
         lines.append("-"*line_len)
     print('\n'.join(lines))
+
+def pretty_report_score(actual, preds, filename):
+    cm = sklearn.metrics.confusion_matrix(actual, preds)
+    classes = ['AGREE', 'DISAGREE', 'DISCUSS', 'UNRELATED']
+    save_confusion_matrix(cm, classes, filename, normalize=True)
+    test_score = report_score(actual, preds)
+    return test_score
 
 
 def report_score(actual,predicted):

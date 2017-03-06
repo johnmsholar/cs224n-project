@@ -8,8 +8,9 @@ import csv
 rgen = random.Random()
 rgen.seed(1489215)
 
+# id_id_stance should be (h_id b_id)-> stance
 def compute_splits(id_id_stance, training=0.8, random=True):
-    num_articles = len(set([ids[0] for (ids, stance) in id_id_stance.items()]))
+    num_articles = len(set([ids[1] for (ids, stance) in id_id_stance.items()]))
     if (random):
         training_ids, hold_out_ids = generate_random_hold_out_split(num_articles, training)
     else:
@@ -18,7 +19,6 @@ def compute_splits(id_id_stance, training=0.8, random=True):
     rgen.shuffle(training_ids)
     train_ids = training_ids[:int(training * len(training_ids))]
     dev_ids = training_ids[int(training * len(training_ids)):]
-
 
     train_ids = set(train_ids)
     dev_ids = set(dev_ids)
@@ -32,19 +32,20 @@ def compute_splits(id_id_stance, training=0.8, random=True):
     for (id_pair, stance) in id_id_stance.items():
         if id_pair[1] in train_ids:
             x_train.append(id_pair)
-            y_train.append(stance.value)
+            y_train.append(stance)
         elif id_pair[1] in dev_ids:
             x_dev.append(id_pair)
-            y_dev.append(stance.value)
+            y_dev.append(stance)
         else:
             x_test.append(id_pair)
-            y_test.append(stance.value)
+            y_test.append(stance)
+    print "Train: {}, Dev: {}, Test: {}".format(len(x_train), len(x_dev), len(x_test))
     return x_train, x_dev, x_test, y_train, y_dev, y_test
 
 # returns a list of article ids for training and for hold out from original 
 def generate_original_holdouts():
-    training_fnc_ids = read_list_of_ids(filenames.ORIG_TRAIN_A_ID_FNAME)
-    hold_out_fnc_ids = read_list_of_ids(filenames.ORIG_TRAIN_H_ID_FNAME)
+    training_fnc_ids = read_list_of_ids(filenames.ORIG_TRAIN_BODY_ID_FNAME)
+    hold_out_fnc_ids = read_list_of_ids(filenames.ORIG_HOLDOUT_BODY_ID_FNAME)
     b_id_to_index = {}
     # Read Article Bodies and get a map of id to index
     with open(filenames.TRAIN_BODIES_FNAME) as bodies_file:

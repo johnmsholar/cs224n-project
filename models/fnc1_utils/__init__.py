@@ -10,15 +10,9 @@ John Sholar <jmsholar@cs.stanford.edu>
 
 from enum import Enum
 
-class Labels(Enum):
-    AGREE = 0
-    DISAGREE = 1
-    DISCUSS = 2
-    UNRELATED = 3
-
 LABEL_MAPPING = {
-    'unrelated': Labels.UNRELATED,
-    'discuss': Labels.DISCUSS,
-    'agree': Labels.AGREE,
-    'disagree': Labels.DISAGREE,
+    'agree': 0,
+    'disagree': 1,
+    'discuss': 2,
+    'unrelated': 3,
 }
