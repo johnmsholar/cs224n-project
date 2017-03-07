@@ -56,11 +56,13 @@ class BasicLSTM(Model):
     def __init__(self, config):
         self.config = config
 
+
         # Defining placeholders.
         self.sequence_lengths_placeholder = None
         self.inputs_placeholder = None
         self.labels_placeholder = None
         self.dropout_placeholder = None
+        self.embedding_matrix = tf.Variable(self.config.pretrained_embeddings, dtype=tf.float32)
 
         self.build()
 
@@ -101,8 +103,7 @@ class BasicLSTM(Model):
             embeddings: tf.Tensor of shape (None, max_length, embed_size)
         """
         start_time = time.time()
-        pretrained_embeddings_tensor = tf.Variable(self.config.pretrained_embeddings, dtype=tf.float32)
-        e = tf.nn.embedding_lookup(pretrained_embeddings_tensor, self.inputs_placeholder)
+        e = tf.nn.embedding_lookup(self.embedding_matrix, self.inputs_placeholder)
         embeddings = tf.reshape(e, shape=[-1, self.config.max_length, self.config.embed_size], name="embeddings")
         end_time = time.time()
         print "Adding embeddings took {}".format(end_time - start_time)          
@@ -267,7 +268,6 @@ def main(debug=True):
         train_examples = [X_train_input, y_train_input]
         dev_set = [X_dev_input, y_dev_input]
         test_set = [X_test_input, y_test_input]
-
         print "Building model...",
         start = time.time()
         print "took {:.2f} seconds\n".format(time.time() - start)
@@ -277,6 +277,7 @@ def main(debug=True):
 
         with tf.Session() as session:
             session.run(init)
+            session.graph.finalize()
 
             print 80 * "="
             print "TRAINING"
