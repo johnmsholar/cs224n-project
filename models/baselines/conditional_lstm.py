@@ -138,23 +138,22 @@ class BasicLSTM(Model):
         b = tf.get_variable("b", shape=[self.config.num_classes],
             initializer=tf.constant_initializer(0))
 
-        # Compute the output at the end of the LSTM (automatically unrolled)
-        cell_headline = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
-        cell_body = tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size)
-
         # run first headline LSTM
-        _, headline_state = tf.nn.dynamic_rnn(cell_headline, headline_x, dtype=tf.float32, sequence_length = self.h_sequence_lengths_placeholder)
-        outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.b_sequence_lengths_placeholder)
+        with tf.variable_scope("headline_cell"):
+            cell_headline = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
+            _, headline_state = tf.nn.dynamic_rnn(cell_headline, headline_x, dtype=tf.float32, sequence_length = self.h_sequence_lengths_placeholder)
+        # run second LSTM that accept state from first LSTM
+        with tf.variable_scope("body_cell"):
+            cell_body = tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size)
+            outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.b_sequence_lengths_placeholder)
 
         output = outputs[:,-1,:]
-        assert output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.max_length, self.config.hidden_size], output.get_shape().as_list())
+        assert output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], output.get_shape().as_list())
 
 
         # Compute predictions
         output_dropout = tf.nn.dropout(output, dropout_rate)
-        # output_dropout_collapsed = tf.reshape(output_dropout, shape=[-1, self.config.hidden_size])
         preds = tf.matmul(output_dropout, U) + b
-        # preds = tf.reshape(preds_unpacked, [tf.shape(output_dropout)[0], self.config.max_length, self.config.num_classes])
         assert preds.get_shape().as_list() == [None, self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.num_classes], preds.get_shape().as_list())
         return preds
 
@@ -265,8 +264,8 @@ def main(debug=True):
         # is encoded as a series of indices into the glove-vectors.
         # y_train_input, y_dev_input, y_test_input are matrices (num_examples, num_classes)
         X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths= create_inputs_by_glove(concatenate=False)
-        config.max_length = max_lengths[0] + max_lengths[1]
-        print "Max Length is {}".format(config.max_length)
+        config.h_max_length = max_lengths[0]
+        config.b_max_length = max_lengths[1]
         # Create Basic LSTM Model
         config.pretrained_embeddings = glove_matrix
         model = BasicLSTM(config)

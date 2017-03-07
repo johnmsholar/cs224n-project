@@ -179,7 +179,6 @@ def read_glove_set():
         index =0
         for row in glove_reader:
             word = row[0]
-            # print (word, index)
             vec = np.array([float(i) for i in row[1:]])
             glove_vectors[word] = vec
             index+=1
