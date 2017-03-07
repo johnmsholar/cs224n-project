@@ -54,7 +54,7 @@ def create_inputs_by_glove(concatenate=True, truncate=True):
     b_id_to_glove_index_vector = compute_glove_index_vector(b_id_to_body, word_to_glove_index, truncate)
     max_body_length = max([len(index_vec) for (b_id, index_vec) in b_id_to_glove_index_vector.items()])
     max_headline_length = max([len(index_vec) for (h_id, index_vec) in h_id_to_glove_index_vector.items()])
-    max_input_lengths = (max_body_length, max_headline_length)
+    max_input_lengths = (max_headline_length, max_body_length)
 
     X_train_input = compute_glove_id_embeddings(X_train, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_lengths, concatenate)
     X_dev_input = compute_glove_id_embeddings(X_dev, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_lengths, concatenate)

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 CS 224N 2016-2017 
-basic_lstm.py: Basic LSTM Implementation
+conditional_lstm.py: LSTM Implementation
 Sahil Chopra <schopra8@cs.stanford.edu>
 Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
@@ -36,8 +36,11 @@ class Config:
     num_classes = 4 # Number of classses for classification task.
     embed_size = 300 # Size of Glove Vectors
 
+    h_max_length = None # set when configuring inputs, headline max length
+    b_max_length = None # set when configuring inputs, body max length
+
     # Hyper Parameters
-    max_length = 1000
+ 
     hidden_size = 400 # Hidden State Size
     batch_size = 100
     n_epochs = 5
@@ -58,8 +61,12 @@ class BasicLSTM(Model):
 
 
         # Defining placeholders.
-        self.sequence_lengths_placeholder = None
-        self.inputs_placeholder = None
+        self.h_sequence_lengths_placeholder = None
+        self.headline_placeholder = None
+
+        self.b_sequence_lengths_placeholder = None
+        self.body_placeholder = None
+
         self.labels_placeholder = None
         self.dropout_placeholder = None
         self.embedding_matrix = tf.Variable(self.config.pretrained_embeddings, dtype=tf.float32)
@@ -69,42 +76,46 @@ class BasicLSTM(Model):
     def add_placeholders(self):
         """ Generates placeholder variables to represent the input tensors.
         """
-        self.sequence_lengths_placeholder = tf.placeholder(tf.int32, (None), name="seq_lengths")
+        # Sequence Lengths
+        self.h_sequence_lengths_placeholder = tf.placeholder(tf.int32, (None), name="h_seq_lengths")
+        self.b_sequence_lengths_placeholder = tf.placeholder(tf.int32, (None), name="b_seq_lengths")
 
-        self.inputs_placeholder = tf.placeholder(tf.int32, shape=(None, self.config.max_length), name="inputs")
+        #inputs
+        self.headline_placeholder = tf.placeholder(tf.int32, shape=(None, self.config.h_max_length), name="headline_input")
+        self.body_placeholder = tf.placeholder(tf.int32, shape=(None, self.config.b_max_length), name="body_input")
+
         self.labels_placeholder = tf.placeholder(tf.float32, (None, self.config.num_classes), name="labels")
         self.dropout_placeholder = tf.placeholder(tf.float32, name="dropout")
 
-    def create_feed_dict(self, inputs_batch, labels_batch=None, dropout=1, sequence_lengths=[]):
+    def create_feed_dict(self, headline_batch, body_batch, labels_batch=None, dropout=1, h_sequence_lengths=[], b_sequence_lengths=[]):
         """Creates the feed_dict for the model.
         """
+        feed_dict = {
+            self.headline_placeholder: headline_batch,
+            self.body_placeholder: body_batch,
+            self.dropout_placeholder: dropout,
+            self.h_sequence_lengths_placeholder: h_sequence_lengths,
+            self.b_sequence_lengths_placeholder: b_sequence_lengths,
+        }
         if labels_batch is not None:
-            feed_dict = {
-                self.inputs_placeholder: inputs_batch,
-                self.dropout_placeholder: dropout,
-                self.labels_placeholder: labels_batch,
-                self.sequence_lengths_placeholder: sequence_lengths,
-            }
-
-        else:
-             feed_dict = {
-                self.inputs_placeholder: inputs_batch,
-                self.dropout_placeholder: dropout,
-                self.sequence_lengths_placeholder: sequence_lengths,
-              }
-
+            feed_dict[self.labels_placeholder]= labels_batch
         return feed_dict
 
-    def add_embedding(self):
+    def add_embedding(self, isHeadline):
         """Adds an embedding layer that maps from input tokens (integers) to vectors and then
         concatenates those vectors:
-
+        Parms:
+            isHeadline: true if we want embeddings for headline, false if we want embeddings for body
         Returns:
             embeddings: tf.Tensor of shape (None, max_length, embed_size)
         """
         start_time = time.time()
-        e = tf.nn.embedding_lookup(self.embedding_matrix, self.inputs_placeholder)
-        embeddings = tf.reshape(e, shape=[-1, self.config.max_length, self.config.embed_size], name="embeddings")
+        if isHeadline:
+            e = tf.nn.embedding_lookup(self.embedding_matrix, self.headline_placeholder)
+            embeddings = tf.reshape(e, shape=[-1, self.config.h_max_length, self.config.embed_size], name="embeddings")
+        else:
+            e = tf.nn.embedding_lookup(self.embedding_matrix, self.body_placeholder)
+            embeddings = tf.reshape(e, shape=[-1, self.config.b_max_length, self.config.embed_size], name="embeddings")
         end_time = time.time()
         print "Adding embeddings took {}".format(end_time - start_time)          
         return embeddings
@@ -115,8 +126,9 @@ class BasicLSTM(Model):
         Returns:
             preds: tf.Tensor of shape (batch_size, self.config.hidden_size)
         """
-        # Lookup Glove Embeddings for the input words (e.g. one at each time step)
-        x = self.add_embedding()
+        # Lookup Glove Embeddings for the headline words (e.g. one at each time step)
+        headline_x = self.add_embedding(True)
+        body_x = self.add_embedding(False)
         dropout_rate = self.dropout_placeholder
 
         # Create final layer to project the output from th RNN onto
@@ -127,14 +139,14 @@ class BasicLSTM(Model):
             initializer=tf.constant_initializer(0))
 
         # Compute the output at the end of the LSTM (automatically unrolled)
-        start_time = time.time()
-        cell = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
-        outputs, _ = tf.nn.dynamic_rnn(cell, x, dtype=tf.float32, sequence_length = self.sequence_lengths_placeholder)
-        end_time = time.time()
-        print "Feed forward LSTM took {}".format(end_time - start_time)
+        cell_headline = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
+        cell_body = tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size)
+
+        # run first headline LSTM
+        _, headline_state = tf.nn.dynamic_rnn(cell_headline, headline_x, dtype=tf.float32, sequence_length = self.h_sequence_lengths_placeholder)
+        outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.b_sequence_lengths_placeholder)
 
         output = outputs[:,-1,:]
-        print output.get_shape()
         assert output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.max_length, self.config.hidden_size], output.get_shape().as_list())
 
 
@@ -156,10 +168,7 @@ class BasicLSTM(Model):
         Returns:
             loss: A 0-d tensor (scalar)
         """
-        start_time = time.time()
         loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.labels_placeholder, logits=preds))
-        end_time = time.time()
-        print "Computing Loss took {}".format(end_time - start_time)        
         return loss
 
 
@@ -175,15 +184,12 @@ class BasicLSTM(Model):
         Returns:
             train_op: The Op for training.
         """
-        start_time = time.time()
         optimizer = tf.train.AdamOptimizer(self.config.lr)
         train_op = optimizer.minimize(loss)
-        end_time = time.time()
-        print "AdamOptimizer Minimize took {}".format(end_time - start_time)
         return train_op    
 
 
-    def train_on_batch(self, sess, inputs_batch, labels_batch):
+    def train_on_batch(self, sess, headline_batch, body_batch, labels_batch):
         """Perform one step of gradient descent on the provided batch of data.
 
         Args:
@@ -194,15 +200,14 @@ class BasicLSTM(Model):
         Returns:
             loss: loss over the batch (a scalar)
         """
-        sequence_lengths = [len(input_arr) for input_arr in inputs_batch]
+        h_sequence_lengths = [len(input_arr) for input_arr in headline_batch]
+        b_sequence_lengths = [len(input_arr) for input_arr in body_batch]
 
-        print len(sequence_lengths)
-
-        feed = self.create_feed_dict(inputs_batch, labels_batch=labels_batch, sequence_lengths=sequence_lengths)
+        feed = self.create_feed_dict(headline_batch, body_batch, labels_batch=labels_batch, h_sequence_lengths=h_sequence_lengths, b_sequence_lengths = b_sequence_lengths)
         _, loss = sess.run([self.train_op, self.loss], feed_dict=feed)
         return loss
 
-    def predict_on_batch(self, sess, inputs_batch):
+    def predict_on_batch(self, sess, headline_batch, body_batch):
         """Make predictions for the provided batch of data
 
         Args:
@@ -210,21 +215,23 @@ class BasicLSTM(Model):
         Returns:
             predictions: np.ndarray of shape (n_samples, n_classes)
         """
-        sequence_lengths = [len(input_arr) for input_arr in inputs_batch]
-        feed = self.create_feed_dict(inputs_batch, sequence_lengths=sequence_lengths)
+        h_sequence_lengths = [len(input_arr) for input_arr in headline_batch]
+        b_sequence_lengths = [len(input_arr) for input_arr in body_batch]
+        feed = self.create_feed_dict(headline_batch, body_batch, h_sequence_lengths=h_sequence_lengths, b_sequence_lengths = b_sequence_lengths)
         predictions = sess.run(self.pred, feed_dict=feed)
         preds = tf.argmax(predictions, axis=1).eval()
         return preds
 
+    # train_examples should be (headline_matrix, body_matrix, labels_match)
     def run_epoch(self, sess, train_examples, dev_set):
         prog = Progbar(target=1 + len(train_examples[0])/ self.config.batch_size)
-        for i, (inputs_batch, labels_batch) in enumerate(minibatches(train_examples, self.config.batch_size)):
-            loss = self.train_on_batch(sess, inputs_batch, labels_batch)
+        for i, (headline_batch, article_batch, labels_batch) in enumerate(minibatches(train_examples, self.config.batch_size)):
+            loss = self.train_on_batch(sess, headline_batch, article_batch, labels_batch)
             prog.update(i + 1, [("train loss", loss)])
 
         print "Evaluating on dev set"
-        actual = vectorize_stances(dev_set[1])
-        preds = list(self.predict_on_batch(sess, *dev_set[:1]))
+        actual = vectorize_stances(dev_set[2])
+        preds = list(self.predict_on_batch(sess, *dev_set[:2]))
         dev_score = report_score(actual, preds)
 
         print "- dev Score: {:.2f}".format(dev_score)
@@ -254,10 +261,10 @@ def main(debug=True):
 
         # Load Data
         # Note: X_train_input, X_dev_input, X_test_input are lists where each item is an example.
-        # Each example is a sparse representation of a headline + article, where the text 
+        # Each example is a dense representation of a (headline, article), where the text 
         # is encoded as a series of indices into the glove-vectors.
         # y_train_input, y_dev_input, y_test_input are matrices (num_examples, num_classes)
-        X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths= create_inputs_by_glove()
+        X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths= create_inputs_by_glove(concatenate=False)
         config.max_length = max_lengths[0] + max_lengths[1]
         print "Max Length is {}".format(config.max_length)
         # Create Basic LSTM Model
@@ -265,9 +272,9 @@ def main(debug=True):
         model = BasicLSTM(config)
         
         # Create Data Lists
-        train_examples = [X_train_input, y_train_input]
-        dev_set = [X_dev_input, y_dev_input]
-        test_set = [X_test_input, y_test_input]
+        train_examples = [X_train_input[0], X_train_input[1], y_train_input]
+        dev_set = [X_dev_input[0], X_dev_input[1], y_dev_input]
+        test_set = [X_test_input[0], X_test_input[1], y_test_input]
         print "Building model...",
         start = time.time()
         print "took {:.2f} seconds\n".format(time.time() - start)
@@ -292,8 +299,8 @@ def main(debug=True):
                 saver.restore(session, './data/weights/stance.weights')
                 print "Final evaluation on test set",
 
-                actual = vectorize_stances(test_set[1])
-                preds = list(model.predict_on_batch(session, *test_set[:1]))
+                actual = vectorize_stances(test_set[2])
+                preds = list(model.predict_on_batch(session, *test_set[:2]))
                 test_score = report_score(actual, preds)
 
                 print "- test Score: {:.2f}".format(test_score)
