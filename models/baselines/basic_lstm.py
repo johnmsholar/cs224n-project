@@ -257,10 +257,10 @@ def main(debug=True):
         # Each example is a sparse representation of a headline + article, where the text 
         # is encoded as a series of indices into the glove-vectors.
         # y_train_input, y_dev_input, y_test_input are matrices (num_examples, num_classes)
-        X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_length= create_inputs_by_glove()
-        print "Max Length is {}".format(max_length)
+        X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths= create_inputs_by_glove()
+        config.max_length = max_lengths[0] + max_lengths[1]
+        print "Max Length is {}".format(config.max_length)
         # Create Basic LSTM Model
-        config.max_length = max_length
         config.pretrained_embeddings = glove_matrix
         model = BasicLSTM(config)
         
