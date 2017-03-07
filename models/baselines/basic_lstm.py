@@ -222,8 +222,8 @@ class BasicLSTM(Model):
             prog.update(i + 1, [("train loss", loss)])
 
         print "Evaluating on dev set"
-        actual = vectorize_stances(dev_set[2])
-        preds = list(self.predict_on_batch(sess, *dev_set[:2]))
+        actual = vectorize_stances(dev_set[1])
+        preds = list(self.predict_on_batch(sess, *dev_set[:1]))
         dev_score = report_score(actual, preds)
 
         print "- dev Score: {:.2f}".format(dev_score)
@@ -291,13 +291,13 @@ def main(debug=True):
                 saver.restore(session, './data/weights/stance.weights')
                 print "Final evaluation on test set",
 
-                actual = vectorize_stances(test_set[2])
-                preds = list(model.predict_on_batch(session, *test_set[:2]))
+                actual = vectorize_stances(test_set[1])
+                preds = list(model.predict_on_batch(session, *test_set[:1]))
                 test_score = report_score(actual, preds)
 
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"
-                with open('snli_nn_baseline_test_predicted.pkl', 'w') as f:
+                with open('snli_basic_lstm_predicted.pkl', 'w') as f:
                     cPickle.dump(preds, f, -1)
                 print "Done!"
 
