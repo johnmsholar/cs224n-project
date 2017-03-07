@@ -38,8 +38,8 @@ class Config:
 
     # Hyper Parameters
     max_length = 1000
-    hidden_size = 400 # Hidden State Size
-    batch_size = 100
+    hidden_size = 300 # Hidden State Size
+    batch_size = 50
     n_epochs = 5
     lr = 0.02
     max_grad_norm = 5.
@@ -65,6 +65,7 @@ class BasicLSTM(Model):
         self.embedding_matrix = tf.Variable(self.config.pretrained_embeddings, dtype=tf.float32)
 
         self.build()
+        self.argmax = tf.argmax(self.pred, axis=1)
 
     def add_placeholders(self):
         """ Generates placeholder variables to represent the input tensors.
@@ -212,9 +213,8 @@ class BasicLSTM(Model):
         """
         sequence_lengths = [len(input_arr) for input_arr in inputs_batch]
         feed = self.create_feed_dict(inputs_batch, sequence_lengths=sequence_lengths)
-        predictions = sess.run(self.pred, feed_dict=feed)
-        preds = tf.argmax(predictions, axis=1).eval()
-        return preds
+        predictions = sess.run(self.argmax, feed_dict=feed)
+        return predictions
 
     def run_epoch(self, sess, train_examples, dev_set):
         prog = Progbar(target=1 + len(train_examples[0])/ self.config.batch_size)
@@ -231,6 +231,7 @@ class BasicLSTM(Model):
         return dev_score
 
     def fit(self, sess, saver, train_examples, dev_set):
+        assert (saver == None)
         best_dev_score = 0
         for epoch in range(self.config.n_epochs):
             print "Epoch {:} out of {:}".format(epoch + 1, self.config.n_epochs)
@@ -273,7 +274,8 @@ def main(debug=True):
         print "took {:.2f} seconds\n".format(time.time() - start)
 
         init = tf.global_variables_initializer()
-        saver = None if debug else tf.train.Saver()
+        saver = None
+        # saver = None if debug else tf.train.Saver()
 
         with tf.Session() as session:
             session.run(init)
@@ -284,7 +286,7 @@ def main(debug=True):
             print 80 * "="
             model.fit(session, saver, train_examples, dev_set)
 
-            if not debug:
+            if saver:
                 print 80 * "="
                 print "TESTING"
                 print 80 * "="
