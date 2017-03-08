@@ -296,6 +296,10 @@ def main(debug=True):
             if args.restore:
                 saver.restore(session, './data/weights/basic_lstm_curr_stance.weights')
                 print "Restored weights from ./data/weights/basic_lstm_curr_stance.weights"
+                all_vars = tf.get_collection('vars')
+                for v in all_vars:
+                    v_ = sess.run(v)
+                    print(v_)
                 print "-------------------------------------------"
             session.graph.finalize()
 
