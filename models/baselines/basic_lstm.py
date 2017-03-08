@@ -295,6 +295,8 @@ def main(debug=True):
             saver = create_tensorflow_saver(exclude_names)
             if args.restore:
                 saver.restore(session, './data/weights/basic_lstm_curr_stance.weights')
+                print "Restored weights from ./data/weights/basic_lstm_curr_stance.weights"
+                print "-------------------------------------------"
             session.graph.finalize()
 
             print 80 * "="
