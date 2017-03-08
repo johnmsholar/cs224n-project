@@ -8,22 +8,28 @@ Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
 
-from sklearn.model_selection import train_test_split
-import numpy as np
-from collections import defaultdict
-
 from __init__ import LABEL_MAPPING
 from enum import Enum
 import csv
 import re
 import string
 import filenames
+
+import numpy as np
+from sklearn.model_selection import train_test_split
+from collections import defaultdict
+
 from generate_test_splits import compute_splits
+
+import sys
+sys.path.insert(0, '../')
+from util import Progbar
 
 RANDOM_STATE = 42
 TRAINING_SIZE = .80
 GLOVE_SIZE = 300
 MAX_BODY_LENGTH = 500
+NUM_GLOVE_WORDS = 400000.0
 
 SPACE_CHAR = ' '
 NEWLINE_CHAR = '\n'
@@ -166,24 +172,24 @@ def construct_data_set():
             h_id_b_id_to_stance[(h_id, b_id_to_index[b_id])] = LABEL_MAPPING[row[stance_header]]
 
     return b_id_to_body, h_id_to_headline, h_id_b_id_to_stance
-    # X_train, X_test, y_train, y_test = test_train_split(h_id_b_id_to_stance, TEST_SIZE)
-    # return b_id_to_body, h_id_to_headline, h_id_b_id_to_stance, X_train, X_test, y_train, y_test
 
 # Read the glove data set and return as a dict from word to numpy array
 def read_glove_set():
+    print "STARTED READING GLOVE VECTORS INTO MEMORY"
     default = np.zeros(GLOVE_SIZE)
     glove_vectors = defaultdict(lambda: default)
     id_to_glove_body = {}
     with open(filenames.GLOVE_FILENAME) as glove_files:
         glove_reader = csv.reader(glove_files, delimiter = ' ', quotechar=None)
-        index =0
-        for row in glove_reader:
+        prog = Progbar(target=len(list(glove_reader)))
+        for index, row in enumerate(glove_reader):
             word = row[0]
             vec = np.array([float(i) for i in row[1:]])
             glove_vectors[word] = vec
-            index+=1
-            if index % 1000 == 0:
-                print str(index/400000.0)
+            prog.update(index)
+    print ""
+    print "FINISHED READING GLOVE VECTORS INTO MEMORY"
+    print "------------------------------------------"
     return glove_vectors
 
 # Read the dicts id to body and id to headline

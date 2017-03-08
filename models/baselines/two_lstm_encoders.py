@@ -46,14 +46,14 @@ class Config:
     embed_size = 300 # Size of Glove Vectors
 
     # Hyper Parameters
-    headline_max_length = 1000
-    article_max_length = 1000
+    headline_max_length = 1000 # Should be overriden in main
+    article_max_length = 1000  # Should be overriden in main
     hidden_size = 400
 
-    batch_size = 100
+    batch_size = 30
     n_epochs = 5
     lr = 0.02
-    max_grad_norm = 5.
+    dropout_rate = 0.5
 
     # Other params
     pretrained_embeddings = None
@@ -80,8 +80,10 @@ class Two_LSTM_Encoders_Model(Model):
 
         # Construct single embedding matrix
         self.embedding_matrix = tf.Variable(self.config.pretrained_embeddings, dtype=tf.float32)
-
         self.build()
+
+        # Compute max over the prediction logits
+        self.argmax_preds = tf.argmax(self.pred, axis=1)
 
     def add_placeholders(self):
         """ Generates placeholder variables to represent the input tensors.
@@ -89,8 +91,8 @@ class Two_LSTM_Encoders_Model(Model):
         self.headline_seq_lengths = tf.placeholder(tf.int32, (None), name="headline_seq_lengths")
         self.article_seq_lengths = tf.placeholder(tf.int32, (None), name="article_seq_lengths")
 
-        self.headline_inputs_placeholder = tf.placeholder(tf.int32, shape=(None, self.config))
-        self.article_inputs_placeholder = tf.placeholder(tf.int32, shape=(None, self.config))
+        self.headline_inputs_placeholder = tf.placeholder(tf.int32, shape=(None, self.config.headline_max_length))
+        self.article_inputs_placeholder = tf.placeholder(tf.int32, shape=(None, self.config.article_max_length))
 
         self.labels_placeholder = tf.placeholder(tf.float32, (None, self.config.num_classes), name="labels")
         self.dropout_placeholder = tf.placeholder(tf.float32, name="dropout")
@@ -100,14 +102,14 @@ class Two_LSTM_Encoders_Model(Model):
         """
         feed_dict = {
             self.headline_inputs_placeholder: headlines_batch,
-            self.articles_inputs_placeholder: articles_batch,
+            self.article_inputs_placeholder: articles_batch,
             self.headline_seq_lengths: headline_seq_lengths,
             self.article_seq_lengths: article_seq_lengths,
             self.dropout_placeholder: dropout,
         }
 
         if labels_batch is not None:
-            feed_dict[self.labels_placeholder] = labels_placeholder 
+            feed_dict[self.labels_placeholder] = labels_batch 
 
         return feed_dict
 
@@ -148,23 +150,25 @@ class Two_LSTM_Encoders_Model(Model):
             initializer=tf.constant_initializer(0))
 
         # Headlines -- Compute the output at the end of the LSTM (automatically unrolled)
-        headline_cell = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
-        headline_outputs, _ = tf.nn.dynamic_rnn(cell, headlines_x, dtype=tf.float32, sequence_length = self.headline_seq_lengths)
-        headline_output = headline_outputs[:, -1, ;]
-        assert headline_output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], headline_output.get_shape().as_list())
+        with tf.variable_scope("headline_cell"):
+            headline_cell = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
+            headline_outputs, _ = tf.nn.dynamic_rnn(headline_cell, headlines_x, dtype=tf.float32, sequence_length = self.headline_seq_lengths)
+            headline_output = headline_outputs[:, -1, :]
+            assert headline_output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], headline_output.get_shape().as_list())
 
         # Articles -- Compute the output at the end of the LSTM (automatically unrolled)
-        article_cell = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
-        article_outputs, _ = tf.nn.dynamic_rnn(cell, articles_x, dtype=tf.float32, sequence_length = self.article_seq_lengths)
-        article_output = article_outputs[:, -1, ;]
-        assert article_output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], article_output.get_shape().as_list())
+        with tf.variable_scope("article_cell"):
+            article_cell = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
+            article_outputs, _ = tf.nn.dynamic_rnn(article_cell, articles_x, dtype=tf.float32, sequence_length = self.article_seq_lengths)
+            article_output = article_outputs[:, -1, :]
+            assert article_output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], article_output.get_shape().as_list())
 
         # Compute dropout on both headlines and articles
         headline_output_dropout = tf.nn.dropout(headline_output, dropout_rate)
         article_output_dropout = tf.nn.dropout(article_output, dropout_rate)
 
         # Concatenate headline and article outputs
-        output = tf.concat([headline_output_dropout, article_output_dropout], axis=1)
+        output = tf.concat(1, [headline_output_dropout, article_output_dropout])
         preds = tf.matmul(output, U) + b
         assert preds.get_shape().as_list() == [None, self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.num_classes], preds.get_shape().as_list())
         return preds
@@ -222,12 +226,12 @@ class Two_LSTM_Encoders_Model(Model):
             labels_batch=labels_batch,
             headline_seq_lengths=headline_seq_lengths,
             article_seq_lengths=article_seq_lengths,
-            dropout=
+            dropout=self.config.dropout_rate
         )
         _, loss = sess.run([self.train_op, self.loss], feed_dict=feed)
         return loss
 
-    def predict_on_batch(self, sess, inputs_batch):
+    def predict_on_batch(self, sess, headlines_batch, articles_batch):
         """Make predictions for the provided batch of data
 
         Args:
@@ -235,12 +239,15 @@ class Two_LSTM_Encoders_Model(Model):
         Returns:
             predictions: np.ndarray of shape (n_samples, n_classes)
         """
-        sequence_lengths = [len(input_arr) for input_arr in inputs_batch]
-        feed = self.create_feed_dict(inputs_batch, sequence_lengths=sequence_lengths)
-        predictions = sess.run(self.pred, feed_dict=feed)
-
-        # TODO: FIX MEMORY LEAK
-        preds = tf.argmax(predictions, axis=1).eval()
+        headline_seq_lengths = [len(input_arr) for input_arr in headlines_batch]
+        article_seq_lengths = [len(input_arr) for input_arr in articles_batch]
+        feed = self.create_feed_dict(
+            headlines_batch,
+            articles_batch,
+            headline_seq_lengths=headline_seq_lengths,
+            article_seq_lengths=article_seq_lengths,
+        )
+        preds = sess.run(self.argmax_preds, feed_dict=feed)
         return preds
 
     # Note here that train_examples and dev_set are lists of three elements
@@ -292,6 +299,7 @@ def main(debug=True):
         config.article_max_length = max_lengths[1]
         print "Headline Max Length is {}".format(config.headline_max_length)
         print "Article Max Length is {}".format(config.article_max_length)
+        print "------------------------------------------"
 
         # Create Basic LSTM Model
         config.pretrained_embeddings = glove_matrix
@@ -301,12 +309,14 @@ def main(debug=True):
         train_examples = [X_train_input[0], X_train_input[1], y_train_input]
         dev_set = [X_dev_input[0], X_dev_input[1], y_dev_input]
         test_set = [X_test_input[0], X_test_input[1], y_test_input]
+
         print "Building model...",
         start = time.time()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
         init = tf.global_variables_initializer()
-        saver = None if debug else tf.train.Saver()
+        # saver = None if debug else tf.train.Saver()
+        saver = None
 
         with tf.Session() as session:
             session.run(init)
@@ -317,23 +327,23 @@ def main(debug=True):
             print 80 * "="
             model.fit(session, saver, train_examples, dev_set)
 
-            if not debug:
-                print 80 * "="
-                print "TESTING"
-                print 80 * "="
-                print "Restoring the best model weights found on the dev set"
-                saver.restore(session, './data/weights/stance.weights')
-                print "Final evaluation on test set",
+            # if not debug:
+            #     print 80 * "="
+            #     print "TESTING"
+            #     print 80 * "="
+            #     print "Restoring the best model weights found on the dev set"
+            #     saver.restore(session, './data/weights/stance.weights')
+            #     print "Final evaluation on test set",
 
-                actual = vectorize_stances(test_set[2])
-                preds = list(model.predict_on_batch(session, *test_set[:2]))
-                test_score = report_score(actual, preds)
+            #     actual = vectorize_stances(test_set[2])
+            #     preds = list(model.predict_on_batch(session, *test_set[:2]))
+            #     test_score = report_score(actual, preds)
 
-                print "- test Score: {:.2f}".format(test_score)
-                print "Writing predictions"
-                with open('snli_basic_lstm_predicted.pkl', 'w') as f:
-                    cPickle.dump(preds, f, -1)
-                print "Done!"
+            #     print "- test Score: {:.2f}".format(test_score)
+            #     print "Writing predictions"
+            #     with open('snli_basic_lstm_predicted.pkl', 'w') as f:
+            #         cPickle.dump(preds, f, -1)
+            #     print "Done!"
 
 if __name__ == '__main__':
     main(False)
