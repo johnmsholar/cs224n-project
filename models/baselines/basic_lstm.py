@@ -239,8 +239,10 @@ class BasicLSTM(Model):
             if dev_score > best_dev_score:
                 best_dev_score = dev_score
                 if saver:
-                    print "New best dev! Saving model in ./data/weights/stance.weights"
-                    saver.save(sess, './data/weights/stance.weights')
+                    print "New best dev! Saving model in ./data/weights/best_stance.weights"
+                    saver.save(sess, './data/weights/best_stance.weights')
+                if saver:
+                    saver.save(sess, './data/weights/curr_stance.weights')
             print
 
 def main(debug=True):
@@ -286,6 +288,8 @@ def main(debug=True):
             session.run(init)
             exclude_names = set(["embedding_matrix:0"])
             saver = create_tensorflow_saver(exclude_names)
+            if args.restore:
+                saver.restore(session, './data/weights/curr_stance.weights')
             session.graph.finalize()
 
             print 80 * "="
@@ -298,7 +302,7 @@ def main(debug=True):
                 print "TESTING"
                 print 80 * "="
                 print "Restoring the best model weights found on the dev set"
-                saver.restore(session, './data/weights/stance.weights')
+                saver.restore(session, './data/weights/best_stance.weights')
                 print "Final evaluation on test set",
 
                 actual = vectorize_stances(test_set[1])
