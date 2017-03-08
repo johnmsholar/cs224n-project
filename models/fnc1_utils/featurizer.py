@@ -8,22 +8,28 @@ Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
 
-from sklearn.model_selection import train_test_split
-import numpy as np
-from collections import defaultdict
-
 from __init__ import LABEL_MAPPING
 from enum import Enum
 import csv
 import re
 import string
 import filenames
+
+import numpy as np
+from sklearn.model_selection import train_test_split
+from collections import defaultdict
+
 from generate_test_splits import compute_splits
+
+import sys
+sys.path.insert(0, '../')
+from util import Progbar
 
 RANDOM_STATE = 42
 TRAINING_SIZE = .80
 GLOVE_SIZE = 300
 MAX_BODY_LENGTH = 500
+NUM_GLOVE_WORDS = 400000.0
 
 SPACE_CHAR = ' '
 NEWLINE_CHAR = '\n'
@@ -31,7 +37,9 @@ DASH_CHAR = '-'
 UNK_TOKEN = "PLACEHOLDER_UNK"
 USE_RANDOM_FNC = False
 
-def create_inputs_by_glove(truncate=True):
+# if concatenate is true then X's are one input matrix which have article and headline concatenated
+# otherwise return tuple of input matrices for each input x
+def create_inputs_by_glove(concatenate=True, truncate=True):
     b_id_to_body, h_id_to_headline, h_id_b_id_to_stance = construct_data_set()
     # X is [(headline id, body id)]
     X_train, X_dev, X_test, y_train, y_dev, y_test = compute_splits(h_id_b_id_to_stance, TRAINING_SIZE, USE_RANDOM_FNC)
@@ -52,15 +60,18 @@ def create_inputs_by_glove(truncate=True):
     b_id_to_glove_index_vector = compute_glove_index_vector(b_id_to_body, word_to_glove_index, truncate)
     max_body_length = max([len(index_vec) for (b_id, index_vec) in b_id_to_glove_index_vector.items()])
     max_headline_length = max([len(index_vec) for (h_id, index_vec) in h_id_to_glove_index_vector.items()])
-    max_input_length = max_body_length + max_headline_length
+    max_input_lengths = (max_headline_length, max_body_length)
 
-    X_train_input = compute_glove_id_embeddings(X_train, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_length)
-    X_dev_input = compute_glove_id_embeddings(X_dev, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_length)
-    X_test_input = compute_glove_id_embeddings(X_test, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_length)
+    X_train_input = compute_glove_id_embeddings(X_train, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_lengths, concatenate)
+    X_dev_input = compute_glove_id_embeddings(X_dev, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_lengths, concatenate)
+    X_test_input = compute_glove_id_embeddings(X_test, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_lengths, concatenate)
+
+
     y_train_input = compute_stance_embeddings(y_train)
     y_dev_input = compute_stance_embeddings(y_dev)
     y_test_input = compute_stance_embeddings(y_test)
-    return X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_input_length
+
+    return X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_input_lengths
 
 
 # id_to_text should be {id -> text} for either headline or body
@@ -80,16 +91,31 @@ def compute_glove_index_vector (id_to_text, word_to_glove_index, truncate = True
         sample_id_to_glove_index_vector[sample_id] = index_vector
     return sample_id_to_glove_index_vector
 
-# return a list where each sample is an element
-# for each sample concatenate the index vectors of the headline and the body (headline + body)
-def compute_glove_id_embeddings (id_list, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_length):
-    input_list = np.zeros((len(id_list), max_input_length))
-    for index, (h_id, b_id) in enumerate(id_list):
-        h_index_vector = h_id_to_glove_index_vector[h_id]
-        b_index_vector = b_id_to_glove_index_vector[b_id]
-        headline_body_vec = np.concatenate((h_index_vector, b_index_vector))
-        input_list[index][:len(headline_body_vec)] = headline_body_vec
-    return input_list
+# return a matrix/es where each row is an element
+# @max_input_lengths is headline length, body length
+# if concanatenate is true:
+#   for each sample concatenate the index vectors of the headline and the body (headline + body)
+# otherwise return a tuple (headline_input_matrix, body_input_matrix)
+
+def compute_glove_id_embeddings (id_list, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_lengths, concatenate):
+    if concatenate:
+        max_input_length = sum(max_input_lengths)
+        input_list = np.zeros((len(id_list), max_input_length))
+        for index, (h_id, b_id) in enumerate(id_list):
+            h_index_vector = h_id_to_glove_index_vector[h_id]
+            b_index_vector = b_id_to_glove_index_vector[b_id]
+            headline_body_vec = np.concatenate((h_index_vector, b_index_vector))
+            input_list[index][:len(headline_body_vec)] = headline_body_vec
+        return input_list
+    else:
+        headline_list = np.zeros((len(id_list), max_input_lengths[0]))
+        body_list = np.zeros((len(id_list), max_input_lengths[1]))
+        for index, (h_id, b_id) in enumerate(id_list):
+            h_index_vector = h_id_to_glove_index_vector[h_id]
+            b_index_vector = b_id_to_glove_index_vector[b_id]
+            headline_list[index][:len(h_index_vector)] = h_index_vector
+            body_list[index][:len(b_index_vector)] = b_index_vector
+        return (headline_list, body_list)
 
 # construct binaries where each text is represented as the sum of the glove vectors for the words
 def construct_glove_sum_binaries():
@@ -146,25 +172,24 @@ def construct_data_set():
             h_id_b_id_to_stance[(h_id, b_id_to_index[b_id])] = LABEL_MAPPING[row[stance_header]]
 
     return b_id_to_body, h_id_to_headline, h_id_b_id_to_stance
-    # X_train, X_test, y_train, y_test = test_train_split(h_id_b_id_to_stance, TEST_SIZE)
-    # return b_id_to_body, h_id_to_headline, h_id_b_id_to_stance, X_train, X_test, y_train, y_test
 
 # Read the glove data set and return as a dict from word to numpy array
 def read_glove_set():
+    print "STARTED READING GLOVE VECTORS INTO MEMORY"
     default = np.zeros(GLOVE_SIZE)
     glove_vectors = defaultdict(lambda: default)
     id_to_glove_body = {}
     with open(filenames.GLOVE_FILENAME) as glove_files:
         glove_reader = csv.reader(glove_files, delimiter = ' ', quotechar=None)
-        index =0
-        for row in glove_reader:
+        prog = Progbar(target=len(list(glove_reader)))
+        for index, row in enumerate(glove_reader):
             word = row[0]
-            # print (word, index)
             vec = np.array([float(i) for i in row[1:]])
             glove_vectors[word] = vec
-            index+=1
-            if index % 1000 == 0:
-                print str(index/400000.0)
+            prog.update(index)
+    print ""
+    print "FINISHED READING GLOVE VECTORS INTO MEMORY"
+    print "------------------------------------------"
     return glove_vectors
 
 # Read the dicts id to body and id to headline

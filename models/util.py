@@ -16,6 +16,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
+import tensorflow as tf
 
 def vectorize_stances(stances):
     v_stances = []
@@ -228,3 +229,7 @@ def confusion_matrix_backend(cm, classes,
     plt.tight_layout()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
+
+def create_tensorflow_saver(exclude_names):
+    train_vars = [var for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if var.name not in exclude_names]
+    return tf.train.Saver(train_vars)
