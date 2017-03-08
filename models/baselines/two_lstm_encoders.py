@@ -95,22 +95,19 @@ class Two_LSTM_Encoders_Model(Model):
         self.labels_placeholder = tf.placeholder(tf.float32, (None, self.config.num_classes), name="labels")
         self.dropout_placeholder = tf.placeholder(tf.float32, name="dropout")
 
-    def create_feed_dict(self, inputs_batch, labels_batch=None, dropout=1, sequence_lengths=[], headline_model=True):
+    def create_feed_dict(self, headlines_batch, articles_batch, labels_batch=None, dropout=1, headline_seq_lengths=[], article_seq_lengths=[]):
         """Creates the feed_dict for the model.
         """
         feed_dict = {
+            self.headline_inputs_placeholder: headlines_batch,
+            self.articles_inputs_placeholder: articles_batch,
+            self.headline_seq_lengths: headline_seq_lengths,
+            self.article_seq_lengths: article_seq_lengths,
             self.dropout_placeholder: dropout,
-            self.sequence_lengths_placeholder: sequence_lengths,
         }
 
         if labels_batch is not None:
             feed_dict[self.labels_placeholder] = labels_placeholder 
-
-        # Determine whether inputs_batch is fod headlines or articles LSTM
-        if headline_model:
-            feed_dict[self.headline_inputs_placeholder] = inputs_batch
-        else:
-            feed_dict[self.article_inputs_placeholder] = inputs_batch
 
         return feed_dict
 
@@ -123,9 +120,11 @@ class Two_LSTM_Encoders_Model(Model):
         """
         if headline_model:
             e = tf.nn.embedding_lookup(self.embedding_matrix, self.headline_inputs_placeholder)
+            embeddings = tf.reshape(e, shape=[-1, self.config.headline_max_length, self.config.embed_size], name="headline_embeddings")
         else:
             e = tf.nn.embedding_lookup(self.embedding_matrix, self.article_inputs_placeholder)
-        embeddings = tf.reshape(e, shape=[-1, self.config.max_length, self.config.embed_size], name="embeddings")
+            embeddings = tf.reshape(e, shape=[-1, self.config.article_max_length, self.config.embed_size], name="article_embeddings")
+
         return embeddings
 
     def add_prediction_op(self): 
@@ -200,22 +199,31 @@ class Two_LSTM_Encoders_Model(Model):
         return train_op    
 
 
-    def train_on_batch(self, sess, inputs_batch, labels_batch):
+    def train_on_batch(self, sess, headlines_batch, articles_batch, labels_batch):
         """Perform one step of gradient descent on the provided batch of data.
 
         Args:
             sess: tf.Session()
-            inputs_batch: list of ndarrays (1 per example)
+            headines_batch: list of ndarrays (1 per example)
                           each array consists of the glove-indices of the words
-                          in the given article-headline pairing
+                          in the given headline
+            articles_batch: list of ndarrays (1 per example)
+                          each array consists of the glove-indices of the words
+                          in the given article                          
         Returns:
             loss: loss over the batch (a scalar)
         """
-        sequence_lengths = [len(input_arr) for input_arr in inputs_batch]
+        headline_seq_lengths = [len(input_arr) for input_arr in headlines_batch]
+        article_seq_lengths = [len(input_arr) for input_arr in articles_batch]
 
-        print len(sequence_lengths)
-
-        feed = self.create_feed_dict(inputs_batch, labels_batch=labels_batch, sequence_lengths=sequence_lengths)
+        feed = self.create_feed_dict(
+            headlines_batch,
+            articles_batch,
+            labels_batch=labels_batch,
+            headline_seq_lengths=headline_seq_lengths,
+            article_seq_lengths=article_seq_lengths,
+            dropout=
+        )
         _, loss = sess.run([self.train_op, self.loss], feed_dict=feed)
         return loss
 
@@ -230,18 +238,22 @@ class Two_LSTM_Encoders_Model(Model):
         sequence_lengths = [len(input_arr) for input_arr in inputs_batch]
         feed = self.create_feed_dict(inputs_batch, sequence_lengths=sequence_lengths)
         predictions = sess.run(self.pred, feed_dict=feed)
+
+        # TODO: FIX MEMORY LEAK
         preds = tf.argmax(predictions, axis=1).eval()
         return preds
 
+    # Note here that train_examples and dev_set are lists of three elements
+    # headlines, articles, labels.
     def run_epoch(self, sess, train_examples, dev_set):
         prog = Progbar(target=1 + len(train_examples[0])/ self.config.batch_size)
-        for i, (inputs_batch, labels_batch) in enumerate(minibatches(train_examples, self.config.batch_size)):
-            loss = self.train_on_batch(sess, inputs_batch, labels_batch)
+        for i, (headlines_batch, articles_batch, labels_batch) in enumerate(minibatches(train_examples, self.config.batch_size)):
+            loss = self.train_on_batch(sess, headlines_batch, articles_batch, labels_batch)
             prog.update(i + 1, [("train loss", loss)])
 
         print "Evaluating on dev set"
-        actual = vectorize_stances(dev_set[1])
-        preds = list(self.predict_on_batch(sess, *dev_set[:1]))
+        actual = vectorize_stances(dev_set[2])
+        preds = list(self.predict_on_batch(sess, *dev_set[:2]))
         dev_score = report_score(actual, preds)
 
         print "- dev Score: {:.2f}".format(dev_score)
@@ -280,15 +292,15 @@ def main(debug=True):
         config.article_max_length = max_lengths[1]
         print "Headline Max Length is {}".format(config.headline_max_length)
         print "Article Max Length is {}".format(config.article_max_length)
-        
+
         # Create Basic LSTM Model
         config.pretrained_embeddings = glove_matrix
         model = Two_LSTM_Encoders_Model(config)
         
         # Create Data Lists
-        train_examples = [X_train_input, y_train_input]
-        dev_set = [X_dev_input, y_dev_input]
-        test_set = [X_test_input, y_test_input]
+        train_examples = [X_train_input[0], X_train_input[1], y_train_input]
+        dev_set = [X_dev_input[0], X_dev_input[1], y_dev_input]
+        test_set = [X_test_input[0], X_test_input[1], y_test_input]
         print "Building model...",
         start = time.time()
         print "took {:.2f} seconds\n".format(time.time() - start)
@@ -313,8 +325,8 @@ def main(debug=True):
                 saver.restore(session, './data/weights/stance.weights')
                 print "Final evaluation on test set",
 
-                actual = vectorize_stances(test_set[1])
-                preds = list(model.predict_on_batch(session, *test_set[:1]))
+                actual = vectorize_stances(test_set[2])
+                preds = list(model.predict_on_batch(session, *test_set[:2]))
                 test_score = report_score(actual, preds)
 
                 print "- test Score: {:.2f}".format(test_score)
