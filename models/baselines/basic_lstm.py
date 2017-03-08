@@ -281,7 +281,6 @@ def main(debug=True):
         print "took {:.2f} seconds\n".format(time.time() - start)
 
         init = tf.global_variables_initializer()
-        # saver = None
         with tf.Session() as session:
             session.run(init)
             exclude_names = set(["embedding_matrix:0"])

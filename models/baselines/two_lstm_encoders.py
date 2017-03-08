@@ -315,11 +315,10 @@ def main(debug=True):
         print "took {:.2f} seconds\n".format(time.time() - start)
 
         init = tf.global_variables_initializer()
-        # saver = None if debug else tf.train.Saver()
-        saver = None
-
         with tf.Session() as session:
             session.run(init)
+            exclude_names = set(["embedding_matrix:0"])
+            saver = create_tensorflow_saver(exclude_names)
             session.graph.finalize()
 
             print 80 * "="
@@ -327,23 +326,23 @@ def main(debug=True):
             print 80 * "="
             model.fit(session, saver, train_examples, dev_set)
 
-            # if not debug:
-            #     print 80 * "="
-            #     print "TESTING"
-            #     print 80 * "="
-            #     print "Restoring the best model weights found on the dev set"
-            #     saver.restore(session, './data/weights/stance.weights')
-            #     print "Final evaluation on test set",
+            if saver:
+                print 80 * "="
+                print "TESTING"
+                print 80 * "="
+                print "Restoring the best model weights found on the dev set"
+                saver.restore(session, './data/weights/stance.weights')
+                print "Final evaluation on test set",
 
-            #     actual = vectorize_stances(test_set[2])
-            #     preds = list(model.predict_on_batch(session, *test_set[:2]))
-            #     test_score = report_score(actual, preds)
+                actual = vectorize_stances(test_set[2])
+                preds = list(model.predict_on_batch(session, *test_set[:2]))
+                test_score = report_score(actual, preds)
 
-            #     print "- test Score: {:.2f}".format(test_score)
-            #     print "Writing predictions"
-            #     with open('snli_basic_lstm_predicted.pkl', 'w') as f:
-            #         cPickle.dump(preds, f, -1)
-            #     print "Done!"
+                print "- test Score: {:.2f}".format(test_score)
+                print "Writing predictions"
+                with open('two_lstm_encoders_predicted.pkl', 'w') as f:
+                    cPickle.dump(preds, f, -1)
+                print "Done!"
 
 if __name__ == '__main__':
     main(False)
