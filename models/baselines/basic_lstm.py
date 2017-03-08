@@ -255,7 +255,7 @@ def main(debug=True):
     if not os.path.exists('./data/weights/'):
         os.makedirs('./data/weights/')
 
-    if not os.path.exists('./data/preditions/'):
+    if not os.path.exists('./data/predictions/'):
         os.makedirs('./data/predictions/')
 
     with tf.Graph().as_default():
