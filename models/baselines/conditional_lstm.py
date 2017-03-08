@@ -8,6 +8,7 @@ Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
 
+import argparse
 import tensorflow as tf
 import numpy as np
 
@@ -25,7 +26,7 @@ sys.path.insert(0, '../')
 from fnc1_utils.score import report_score
 from model import Model
 from fnc1_utils.featurizer import create_inputs_by_glove
-from util import Progbar, vectorize_stances, minibatches
+from util import Progbar, vectorize_stances, minibatches, create_tensorflow_saver
 
 class Config:
     """Holds model hyperparams and data information.
