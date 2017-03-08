@@ -39,8 +39,8 @@ class Config:
 
     # Hyper Parameters
     max_length = 1000
-    hidden_size = 300 # Hidden State Size
-    batch_size = 50
+    hidden_size = 400 # Hidden State Size
+    batch_size = 30
     n_epochs = 5
     lr = 0.02
     max_grad_norm = 5.
@@ -197,9 +197,6 @@ class BasicLSTM(Model):
             loss: loss over the batch (a scalar)
         """
         sequence_lengths = [len(input_arr) for input_arr in inputs_batch]
-
-        print len(sequence_lengths)
-
         feed = self.create_feed_dict(inputs_batch, labels_batch=labels_batch, sequence_lengths=sequence_lengths, dropout = self.config.dropout_rate)
         _, loss = sess.run([self.train_op, self.loss], feed_dict=feed)
         return loss
@@ -224,8 +221,14 @@ class BasicLSTM(Model):
             prog.update(i + 1, [("train loss", loss)])
 
         print "Evaluating on dev set"
+        prog = Progbar(target=1 + len(train_examples[0])/ self.config.batch_size)
         actual = vectorize_stances(dev_set[1])
-        preds = list(self.predict_on_batch(sess, *dev_set[:1]))
+        preds = []
+        for i, (inputs_batch, labels_batch) in enumerate(minibatches(dev_set, self.config.batch_size)):
+            predictions_batch = list(self.predict_on_batch(sess, inputs_batch))
+            preds.extend(predictions_batch)
+            prog.update(i + 1)       
+
         dev_score = report_score(actual, preds)
 
         print "- dev Score: {:.2f}".format(dev_score)
@@ -239,10 +242,10 @@ class BasicLSTM(Model):
             if dev_score > best_dev_score:
                 best_dev_score = dev_score
                 if saver:
-                    print "New best dev! Saving model in ./data/weights/best_stance.weights"
-                    saver.save(sess, './data/weights/best_stance.weights')
+                    print "New best dev! Saving model in ./data/weights/basic_lstm_best_stance.weights"
+                    saver.save(sess, './data/weights/basic_lstm_best_stance.weights')
                 if saver:
-                    saver.save(sess, './data/weights/curr_stance.weights')
+                    saver.save(sess, './data/weights/basic_lstm_curr_stance.weights')
             print
 
 def main(debug=True):
@@ -253,6 +256,9 @@ def main(debug=True):
 
     if not os.path.exists('./data/weights/'):
         os.makedirs('./data/weights/')
+
+    if not os.path.exists('./data/preditions/'):
+        os.makedirs('./data/predictions/')
 
     with tf.Graph().as_default():
         print 80 * "="
@@ -289,7 +295,7 @@ def main(debug=True):
             exclude_names = set(["embedding_matrix:0"])
             saver = create_tensorflow_saver(exclude_names)
             if args.restore:
-                saver.restore(session, './data/weights/curr_stance.weights')
+                saver.restore(session, './data/weights/basic_lstm_curr_stance.weights')
             session.graph.finalize()
 
             print 80 * "="
@@ -311,7 +317,7 @@ def main(debug=True):
 
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"
-                with open('snli_basic_lstm_predicted.pkl', 'w') as f:
+                with open('./data/predictions/basic_lstm_predicted.pkl', 'w') as f:
                     cPickle.dump(preds, f, -1)
                 print "Done!"
 
