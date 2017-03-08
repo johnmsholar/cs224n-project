@@ -31,6 +31,8 @@ GLOVE_SIZE = 300
 MAX_BODY_LENGTH = 500
 NUM_GLOVE_WORDS = 400000.0
 
+NUM_GLOVE_WORDS_42B = 1.9e7
+
 SPACE_CHAR = ' '
 NEWLINE_CHAR = '\n'
 DASH_CHAR = '-'
@@ -181,12 +183,13 @@ def read_glove_set():
     id_to_glove_body = {}
     with open(filenames.GLOVE_FILENAME) as glove_files:
         glove_reader = csv.reader(glove_files, delimiter = ' ', quotechar=None)
-        prog = Progbar(target=len(list(glove_reader)))
+        prog = Progbar(target=NUM_GLOVE_WORDS)
         for index, row in enumerate(glove_reader):
             word = row[0]
             vec = np.array([float(i) for i in row[1:]])
             glove_vectors[word] = vec
-            prog.update(index)
+            if index % 10000 == 0:
+                prog.update(index)
     print ""
     print "FINISHED READING GLOVE VECTORS INTO MEMORY"
     print "------------------------------------------"
