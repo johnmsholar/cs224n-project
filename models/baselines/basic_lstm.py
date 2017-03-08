@@ -58,7 +58,6 @@ class BasicLSTM(Model):
     def __init__(self, config):
         self.config = config
 
-
         # Defining placeholders.
         self.sequence_lengths_placeholder = None
         self.inputs_placeholder = None
@@ -130,7 +129,9 @@ class BasicLSTM(Model):
 
         # Compute the output at the end of the LSTM (automatically unrolled)
         start_time = time.time()
-        cell = tf.contrib.rnn.LSTMCell(num_units=self.config.hidden_size)
+        cell = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
+        # Tensor Flow 1.0 Code:
+        # cell = tf.contrib.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
         outputs, _ = tf.nn.dynamic_rnn(cell, x, dtype=tf.float32, sequence_length = self.sequence_lengths_placeholder)
         end_time = time.time()
         print "Feed forward LSTM took {}".format(end_time - start_time)
@@ -139,12 +140,9 @@ class BasicLSTM(Model):
         print output.get_shape()
         assert output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.max_length, self.config.hidden_size], output.get_shape().as_list())
 
-
         # Compute predictions
         output_dropout = tf.nn.dropout(output, dropout_rate)
-        # output_dropout_collapsed = tf.reshape(output_dropout, shape=[-1, self.config.hidden_size])
         preds = tf.matmul(output_dropout, U) + b
-        # preds = tf.reshape(preds_unpacked, [tf.shape(output_dropout)[0], self.config.max_length, self.config.num_classes])
         assert preds.get_shape().as_list() == [None, self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.num_classes], preds.get_shape().as_list())
         return preds
 
@@ -221,7 +219,7 @@ class BasicLSTM(Model):
             prog.update(i + 1, [("train loss", loss)])
 
         print "Evaluating on dev set"
-        prog = Progbar(target=1 + len(train_examples[0])/ self.config.batch_size)
+        prog = Progbar(target=1 + len(dev_set[0])/ self.config.batch_size)
         actual = vectorize_stances(dev_set[1])
         preds = []
         for i, (inputs_batch, labels_batch) in enumerate(minibatches(dev_set, self.config.batch_size)):
@@ -244,8 +242,8 @@ class BasicLSTM(Model):
                 if saver:
                     print "New best dev! Saving model in ./data/weights/basic_lstm_best_stance.weights"
                     saver.save(sess, './data/weights/basic_lstm_best_stance.weights')
-                if saver:
-                    saver.save(sess, './data/weights/basic_lstm_curr_stance.weights')
+            if saver:
+                saver.save(sess, './data/weights/basic_lstm_curr_stance.weights')
             print
 
 def main(debug=True):
@@ -277,6 +275,7 @@ def main(debug=True):
         X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths= create_inputs_by_glove()
         config.max_length = max_lengths[0] + max_lengths[1]
         print "Max Length is {}".format(config.max_length)
+
         # Create Basic LSTM Model
         config.pretrained_embeddings = glove_matrix
         model = BasicLSTM(config)

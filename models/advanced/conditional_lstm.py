@@ -53,7 +53,7 @@ class Config:
     pretrained_embeddings = None
 
 class Conditonal_Encoding_LSTM_Model(Model):
-    """ 
+    """
     """
 
     def __init__(self, config):
@@ -109,7 +109,6 @@ class Conditonal_Encoding_LSTM_Model(Model):
         Returns:
             embeddings: tf.Tensor of shape (None, max_length, embed_size)
         """
-        start_time = time.time()
         if isHeadline:
             e = tf.nn.embedding_lookup(self.embedding_matrix, self.headline_placeholder)
             embeddings = tf.reshape(e, shape=[-1, self.config.h_max_length, self.config.embed_size], name="embeddings_matrix_h")
@@ -117,7 +116,6 @@ class Conditonal_Encoding_LSTM_Model(Model):
             e = tf.nn.embedding_lookup(self.embedding_matrix, self.body_placeholder)
             embeddings = tf.reshape(e, shape=[-1, self.config.b_max_length, self.config.embed_size], name="embeddings_matrix_b")
         end_time = time.time()
-        print "Adding embeddings took {}".format(end_time - start_time)          
         return embeddings
 
     def add_prediction_op(self): 
@@ -150,7 +148,6 @@ class Conditonal_Encoding_LSTM_Model(Model):
 
         output = outputs[:,-1,:]
         assert output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], output.get_shape().as_list())
-
 
         # Compute predictions
         output_dropout = tf.nn.dropout(output, dropout_rate)
@@ -230,9 +227,12 @@ class Conditonal_Encoding_LSTM_Model(Model):
 
         print "Evaluating on dev set"
         actual = vectorize_stances(dev_set[2])
-        preds = list(self.predict_on_batch(sess, *dev_set[:2]))
-        dev_score = report_score(actual, preds)
+        preds = []
+        for i, (headline_batch, article_batch, labels_batch) in enumerate(minibatches(dev_set, self.config.batch_size)):
+            predictions_batch = list(self.predict_on_batch(sess, headline_batch, article_batch))
+            preds.extend(predictions_batch)
 
+        dev_score = report_score(actual, preds)
         print "- dev Score: {:.2f}".format(dev_score)
         return dev_score
 
@@ -244,10 +244,10 @@ class Conditonal_Encoding_LSTM_Model(Model):
             if dev_score > best_dev_score:
                 best_dev_score = dev_score
                 if saver:
-                    print "New best dev! Saving model in ./data/weights/best_stance.weights"
-                    saver.save(sess, './data/weights/best_stance.weights')
+                    print "New best dev! Saving model in ./data/weights/conditional_lstm_best_stance.weights"
+                    saver.save(sess, './data/weights/conditional_lstm_best_stance.weights')
             if saver:
-                saver.save(sess, './data/weights/curr_stance.weights')
+                saver.save(sess, './data/weights/conditional_lstm_curr_stance.weights')
             print
 
 def main(debug=True):
@@ -259,6 +259,9 @@ def main(debug=True):
 
     if not os.path.exists('./data/weights/'):
         os.makedirs('./data/weights/')
+
+    if not os.path.exists('./data/predictions/'):
+        os.makedirs('./data/predictions/')
 
     with tf.Graph().as_default():
         print 80 * "="
@@ -296,7 +299,7 @@ def main(debug=True):
             exclude_names = set(["embeddings_matrix:0", "embeddings_matrix_h:0", "embeddings_matrix_b:0"])
             saver = create_tensorflow_saver(exclude_names)
             if args.restore:
-                saver.restore(session, './data/weights/curr_stance.weights')
+                saver.restore(session, './data/weights/conditional_lstm_curr_stance.weights')
             session.graph.finalize()
 
             print 80 * "="
@@ -309,7 +312,7 @@ def main(debug=True):
                 print "TESTING"
                 print 80 * "="
                 print "Restoring the best model weights found on the dev set"
-                saver.restore(session, './data/weights/best_stance.weights')
+                saver.restore(session, './data/weights/conditional_lstm_best_stance.weights')
                 print "Final evaluation on test set",
 
                 actual = vectorize_stances(test_set[2])
@@ -318,7 +321,7 @@ def main(debug=True):
 
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"
-                with open('conditional_encoding_lstm_predicted.pkl', 'w') as f:
+                with open('./data/predictions/conditional_encoding_lstm_predicted.pkl', 'w') as f:
                     cPickle.dump(preds, f, -1)
                 print "Done!"
 
