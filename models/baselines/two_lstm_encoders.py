@@ -34,7 +34,7 @@ sys.path.insert(0, '../')
 from fnc1_utils.score import report_score
 from model import Model
 from fnc1_utils.featurizer import create_inputs_by_glove
-from util import Progbar, vectorize_stances, minibatches
+from util import Progbar, vectorize_stances, minibatches, create_tensorflow_saver
 
 class Config:
     """Holds model hyperparams and data information.
@@ -79,7 +79,7 @@ class Two_LSTM_Encoders_Model(Model):
         self.dropout_placeholder = None
 
         # Construct single embedding matrix
-        self.embedding_matrix = tf.Variable(self.config.pretrained_embeddings, dtype=tf.float32)
+        self.embedding_matrix = tf.Variable(self.config.pretrained_embeddings, dtype=tf.float32, name="embedding_matrix")
         self.build()
 
         # Compute max over the prediction logits
@@ -91,8 +91,8 @@ class Two_LSTM_Encoders_Model(Model):
         self.headline_seq_lengths = tf.placeholder(tf.int32, (None), name="headline_seq_lengths")
         self.article_seq_lengths = tf.placeholder(tf.int32, (None), name="article_seq_lengths")
 
-        self.headline_inputs_placeholder = tf.placeholder(tf.int32, shape=(None, self.config.headline_max_length))
-        self.article_inputs_placeholder = tf.placeholder(tf.int32, shape=(None, self.config.article_max_length))
+        self.headline_inputs_placeholder = tf.placeholder(tf.int32, shape=(None, self.config.headline_max_length), name="headline_inputs_placeholder")
+        self.article_inputs_placeholder = tf.placeholder(tf.int32, shape=(None, self.config.article_max_length), name="article_inputs_placeholder")
 
         self.labels_placeholder = tf.placeholder(tf.float32, (None, self.config.num_classes), name="labels")
         self.dropout_placeholder = tf.placeholder(tf.float32, name="dropout")
