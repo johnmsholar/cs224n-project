@@ -44,6 +44,7 @@ class Config:
     n_epochs = 5
     lr = 0.02
     max_grad_norm = 5.
+    dropout_rate = 0.5
 
     # Other params
     pretrained_embeddings = None
@@ -199,7 +200,7 @@ class BasicLSTM(Model):
 
         print len(sequence_lengths)
 
-        feed = self.create_feed_dict(inputs_batch, labels_batch=labels_batch, sequence_lengths=sequence_lengths)
+        feed = self.create_feed_dict(inputs_batch, labels_batch=labels_batch, sequence_lengths=sequence_lengths, dropout = self.config.dropout_rate)
         _, loss = sess.run([self.train_op, self.loss], feed_dict=feed)
         return loss
 

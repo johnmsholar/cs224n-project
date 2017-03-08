@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 CS 224N 2016-2017 
-conditional_lstm.py: LSTM Implementation
+conditional_lstm.py: Conditional LSTM Implementation
 Sahil Chopra <schopra8@cs.stanford.edu>
 Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
@@ -47,19 +47,17 @@ class Config:
     n_epochs = 5
     lr = 0.02
     max_grad_norm = 5.
+    dropout_rate = 0.5
 
     # Other params
     pretrained_embeddings = None
 
-class BasicLSTM(Model):
-    """ Simple LSTM concatenating the article and headline.
-        Encode the article and headline as one dense vector.
-        Compute classification by taking softmax ove this dense vector.
+class Conditonal_Encoding_LSTM_Model(Model):
+    """ 
     """
 
     def __init__(self, config):
         self.config = config
-
 
         # Defining placeholders.
         self.h_sequence_lengths_placeholder = None
@@ -114,10 +112,10 @@ class BasicLSTM(Model):
         start_time = time.time()
         if isHeadline:
             e = tf.nn.embedding_lookup(self.embedding_matrix, self.headline_placeholder)
-            embeddings = tf.reshape(e, shape=[-1, self.config.h_max_length, self.config.embed_size], name="embeddings")
+            embeddings = tf.reshape(e, shape=[-1, self.config.h_max_length, self.config.embed_size], name="embeddings_matrix_h")
         else:
             e = tf.nn.embedding_lookup(self.embedding_matrix, self.body_placeholder)
-            embeddings = tf.reshape(e, shape=[-1, self.config.b_max_length, self.config.embed_size], name="embeddings")
+            embeddings = tf.reshape(e, shape=[-1, self.config.b_max_length, self.config.embed_size], name="embeddings_matrix_b")
         end_time = time.time()
         print "Adding embeddings took {}".format(end_time - start_time)          
         return embeddings
@@ -144,6 +142,7 @@ class BasicLSTM(Model):
         with tf.variable_scope("headline_cell"):
             cell_headline = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
             _, headline_state = tf.nn.dynamic_rnn(cell_headline, headline_x, dtype=tf.float32, sequence_length = self.h_sequence_lengths_placeholder)
+
         # run second LSTM that accept state from first LSTM
         with tf.variable_scope("body_cell"):
             cell_body = tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size)
@@ -204,7 +203,7 @@ class BasicLSTM(Model):
         h_sequence_lengths = [len(input_arr) for input_arr in headline_batch]
         b_sequence_lengths = [len(input_arr) for input_arr in body_batch]
 
-        feed = self.create_feed_dict(headline_batch, body_batch, labels_batch=labels_batch, h_sequence_lengths=h_sequence_lengths, b_sequence_lengths = b_sequence_lengths)
+        feed = self.create_feed_dict(headline_batch, body_batch, labels_batch=labels_batch, h_sequence_lengths=h_sequence_lengths, b_sequence_lengths = b_sequence_lengths, dropout = self.config.dropout_rate)
         _, loss = sess.run([self.train_op, self.loss], feed_dict=feed)
         return loss
 
@@ -219,7 +218,6 @@ class BasicLSTM(Model):
         h_sequence_lengths = [len(input_arr) for input_arr in headline_batch]
         b_sequence_lengths = [len(input_arr) for input_arr in body_batch]
         feed = self.create_feed_dict(headline_batch, body_batch, h_sequence_lengths=h_sequence_lengths, b_sequence_lengths = b_sequence_lengths)
-        predictions = sess.run(self.pred, feed_dict=feed)
         predictions = sess.run(self.argmax, feed_dict=feed)
         return predictions
 
@@ -246,8 +244,10 @@ class BasicLSTM(Model):
             if dev_score > best_dev_score:
                 best_dev_score = dev_score
                 if saver:
-                    print "New best dev! Saving model in ./data/weights/stance.weights"
-                    saver.save(sess, './data/weights/stance.weights')
+                    print "New best dev! Saving model in ./data/weights/best_stance.weights"
+                    saver.save(sess, './data/weights/best_stance.weights')
+            if saver:
+                saver.save(sess, './data/weights/curr_stance.weights')
             print
 
 def main(debug=True):
@@ -265,6 +265,8 @@ def main(debug=True):
         print "INITIALIZING"
         print 80 * "="
         config = Config()
+        if args.epoch:
+            config.n_epochs = args.epoch
 
         # Load Data
         # Note: X_train_input, X_dev_input, X_test_input are lists where each item is an example.
@@ -274,9 +276,9 @@ def main(debug=True):
         X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths= create_inputs_by_glove(concatenate=False)
         config.h_max_length = max_lengths[0]
         config.b_max_length = max_lengths[1]
-        # Create Basic LSTM Model
+        # Create Conditional Encoding LSTM Model
         config.pretrained_embeddings = glove_matrix
-        model = BasicLSTM(config)
+        model = Conditonal_Encoding_LSTM_Model(config)
         
         # Create Data Lists
         train_examples = [X_train_input[0], X_train_input[1], y_train_input]
@@ -291,6 +293,8 @@ def main(debug=True):
 
         with tf.Session() as session:
             session.run(init)
+            if args.restore:
+                saver.restore(session, './data/wweights/curr_stance.weights')
             exclude_names = set(["embedding_matrix:0"])
             saver = create_tensorflow_saver(exclude_names)
             session.graph.finalize()
@@ -305,7 +309,7 @@ def main(debug=True):
                 print "TESTING"
                 print 80 * "="
                 print "Restoring the best model weights found on the dev set"
-                saver.restore(session, './data/weights/stance.weights')
+                saver.restore(session, './data/weights/best_stance.weights')
                 print "Final evaluation on test set",
 
                 actual = vectorize_stances(test_set[2])
@@ -314,7 +318,7 @@ def main(debug=True):
 
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"
-                with open('snli_basic_lstm_predicted.pkl', 'w') as f:
+                with open('conditional_encoding_lstm_predicted.pkl', 'w') as f:
                     cPickle.dump(preds, f, -1)
                 print "Done!"
 
