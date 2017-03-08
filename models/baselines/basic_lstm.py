@@ -8,6 +8,7 @@ Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
 
+import argparse
 import tensorflow as tf
 import numpy as np
 
@@ -25,7 +26,7 @@ sys.path.insert(0, '../')
 from fnc1_utils.score import report_score
 from model import Model
 from fnc1_utils.featurizer import create_inputs_by_glove
-from util import Progbar, vectorize_stances, minibatches
+from util import Progbar, vectorize_stances, minibatches, create_tensorflow_saver
 
 class Config:
     """Holds model hyperparams and data information.
@@ -62,8 +63,7 @@ class BasicLSTM(Model):
         self.inputs_placeholder = None
         self.labels_placeholder = None
         self.dropout_placeholder = None
-        self.embedding_matrix = tf.Variable(self.config.pretrained_embeddings, dtype=tf.float32)
-
+        self.embedding_matrix = tf.Variable(self.config.pretrained_embeddings, dtype=tf.float32, name="embedding_matrix")
         self.build()
         self.argmax = tf.argmax(self.pred, axis=1)
 
@@ -231,7 +231,6 @@ class BasicLSTM(Model):
         return dev_score
 
     def fit(self, sess, saver, train_examples, dev_set):
-        assert (saver == None)
         best_dev_score = 0
         for epoch in range(self.config.n_epochs):
             print "Epoch {:} out of {:}".format(epoch + 1, self.config.n_epochs)
@@ -244,6 +243,11 @@ class BasicLSTM(Model):
             print
 
 def main(debug=True):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--epoch', type=int, default=5)
+    parser.add_argument('--restore', action='store_true')
+    args = parser.parse_args()
+
     if not os.path.exists('./data/weights/'):
         os.makedirs('./data/weights/')
 
@@ -252,6 +256,9 @@ def main(debug=True):
         print "INITIALIZING"
         print 80 * "="
         config = Config()
+
+        if args.epoch:
+            config.n_epochs = args.epoch
 
         # Load Data
         # Note: X_train_input, X_dev_input, X_test_input are lists where each item is an example.
@@ -274,11 +281,11 @@ def main(debug=True):
         print "took {:.2f} seconds\n".format(time.time() - start)
 
         init = tf.global_variables_initializer()
-        saver = None
-        # saver = None if debug else tf.train.Saver()
-
+        # saver = None
         with tf.Session() as session:
             session.run(init)
+            exclude_names = set(["embedding_matrix:0"])
+            saver = create_tensorflow_saver(exclude_names)
             session.graph.finalize()
 
             print 80 * "="

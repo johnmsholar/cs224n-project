@@ -41,8 +41,8 @@ class Config:
 
     # Hyper Parameters
  
-    hidden_size = 400 # Hidden State Size
-    batch_size = 100
+    hidden_size = 300 # Hidden State Size
+    batch_size = 50
     n_epochs = 5
     lr = 0.02
     max_grad_norm = 5.
@@ -72,6 +72,7 @@ class BasicLSTM(Model):
         self.embedding_matrix = tf.Variable(self.config.pretrained_embeddings, dtype=tf.float32)
 
         self.build()
+        self.argmax = tf.argmax(self.pred, axis=1)
 
     def add_placeholders(self):
         """ Generates placeholder variables to represent the input tensors.
@@ -218,8 +219,8 @@ class BasicLSTM(Model):
         b_sequence_lengths = [len(input_arr) for input_arr in body_batch]
         feed = self.create_feed_dict(headline_batch, body_batch, h_sequence_lengths=h_sequence_lengths, b_sequence_lengths = b_sequence_lengths)
         predictions = sess.run(self.pred, feed_dict=feed)
-        preds = tf.argmax(predictions, axis=1).eval()
-        return preds
+        predictions = sess.run(self.argmax, feed_dict=feed)
+        return predictions
 
     # train_examples should be (headline_matrix, body_matrix, labels_match)
     def run_epoch(self, sess, train_examples, dev_set):
@@ -249,6 +250,12 @@ class BasicLSTM(Model):
             print
 
 def main(debug=True):
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--epoch', type=int, default=5)
+    parser.add_argument('--restore', action='store_true')
+    args = parser.parse_args()
+
     if not os.path.exists('./data/weights/'):
         os.makedirs('./data/weights/')
 
@@ -283,6 +290,8 @@ def main(debug=True):
 
         with tf.Session() as session:
             session.run(init)
+            exclude_names = set(["embedding_matrix:0"])
+            saver = create_tensorflow_saver(exclude_names)
             session.graph.finalize()
 
             print 80 * "="
