@@ -47,14 +47,14 @@ def compute_splits(id_id_stance, training=0.8, random=True):
 # cut the unrelated samples until there are < perc_unrelated samples in the whole set
 def underRepresent(id_pairs, stances, perc_unrelated):
     by_stance = distribute_by_stance(id_pairs, stances)
-    rgen.shuffle(by_stance[0])
+    rgen.shuffle(by_stance[LABEL_MAPPING["unrelated"]])
     curr_num_unrelated = len(by_stance[LABEL_MAPPING["unrelated"]])
     num_total = len(id_pairs)
     needed_num_unrelated = int(perc_unrelated * num_total)
     if (needed_num_unrelated < curr_num_unrelated):
-        by_stance[0] = by_stance[0][:needed_num_unrelated]
+        by_stance[LABEL_MAPPING["unrelated"]] = by_stance[LABEL_MAPPING["unrelated"]][:needed_num_unrelated]
     # (id_pair, stance)
-    new_num_unrelated = len(by_stance[0])
+    new_num_unrelated = len(by_stance[LABEL_MAPPING["unrelated"]])
     new_id_pairs_stance = []
     for (stance, stance_id_pair_list) in by_stance.items():
         new_id_pairs_stance += [(id_pair, stance) for id_pair in stance_id_pair_list]

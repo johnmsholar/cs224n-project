@@ -38,7 +38,7 @@ NEWLINE_CHAR = '\n'
 DASH_CHAR = '-'
 UNK_TOKEN = "PLACEHOLDER_UNK"
 USE_RANDOM_FNC = False
-UNDER_REPRESENT = False
+UNDER_REPRESENT = True
 PERC_UNRELATED = 0.5
 
 # if concatenate is true then X's are one input matrix which have article and headline concatenated

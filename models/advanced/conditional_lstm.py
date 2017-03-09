@@ -44,10 +44,11 @@ class Config:
  
     hidden_size = 300 # Hidden State Size
     batch_size = 50
-    n_epochs = 5
+    n_epochs = None
     lr = 0.02
     max_grad_norm = 5.
     dropout_rate = 0.5
+    beta = 0.02
 
     # Other params
     pretrained_embeddings = None
@@ -166,6 +167,11 @@ class Conditonal_Encoding_LSTM_Model(Model):
             loss: A 0-d tensor (scalar)
         """
         loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.labels_placeholder, logits=preds))
+        reg = 0
+        for var in tf.trainable_variables():
+            reg += tf.reduce_mean(tf.nn.l2_loss(var))
+        reg *= self.config.beta
+        loss += reg
         return loss
 
 
@@ -321,9 +327,10 @@ def main(debug=True):
                 actual = vectorize_stances(test_set[2])
                 preds = []
                 for i, (headline_batch, article_batch, labels_batch) in enumerate(minibatches(test_set, config.batch_size)):
-                    predictions_batch = list(model.predict_on_batch(sess, headline_batch, article_batch))
+                    predictions_batch = list(model.predict_on_batch(session, headline_batch, article_batch))
                     preds.extend(predictions_batch)
-                test_score = pretty_report_score(actual, preds, "./data/plots/conditional_lstm_confusion_matrix.png")
+                test_score = report_score(actual, preds)
+                # test_score = pretty_report_score(actual, preds, "./data/plots/conditional_lstm_confusion_matrix.png")
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"
                 with open('./data/predictions/conditional_encoding_lstm_predicted.pkl', 'w') as f:

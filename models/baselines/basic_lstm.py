@@ -303,7 +303,7 @@ def main(debug=True):
                 actual = vectorize_stances(test_set[1])
                 preds = []
                 for i, (inputs_batch, labels_batch) in enumerate(minibatches(test_set, config.batch_size)):
-                    predictions_batch = list(model.predict_on_batch(sess, inputs_batch))
+                    predictions_batch = list(model.predict_on_batch(session, inputs_batch))
                     preds.extend(predictions_batch)
                     prog.update(i + 1)       
                 test_score = pretty_report_score(actual, preds, "./data/plots/basic_lstm.png")
