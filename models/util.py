@@ -231,5 +231,5 @@ def confusion_matrix_backend(cm, classes,
     plt.xlabel('Predicted label')
 
 def create_tensorflow_saver(exclude_names):
-    train_vars = [var for var in tf.get_collection(tf.GraphKeys.global_variables()) if var.name not in exclude_names]
+    train_vars = [var for var in tf.get_collection(tf.global_variables()) if var.name not in exclude_names]
     return tf.train.Saver(train_vars)
