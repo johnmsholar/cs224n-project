@@ -309,7 +309,7 @@ def main(debug=True):
                 print "TESTING"
                 print 80 * "="
                 print "Restoring the best model weights found on the dev set"
-                saver.restore(session, './data/weights/best_stance.weights')
+                saver.restore(session, './data/weights/basic_lstm_best_stance.weights')
                 print "Final evaluation on test set",
 
                 actual = vectorize_stances(test_set[1])

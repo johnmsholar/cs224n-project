@@ -6,7 +6,7 @@ lr = 0.02
 max_grad_norm = 5.
 dropout_rate = 0.5
 
-Number of Epochs Already Run: 1
+Number of Epochs Already Run: 3
 Currenntly Running:
 
 2) 
