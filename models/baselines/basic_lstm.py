@@ -129,7 +129,7 @@ class BasicLSTM(Model):
 
         # Compute the output at the end of the LSTM (automatically unrolled)
         # Tensor Flow 1.0 Code:
-        cell = tf.contrib.rnn.LSTMCell(num_units=self.config.hidden_size)
+        cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
         outputs, _ = tf.nn.dynamic_rnn(cell, x, dtype=tf.float32, sequence_length = self.sequence_lengths_placeholder)
         end_time = time.time()
         print "Feed forward LSTM took {}".format(end_time - start_time)
