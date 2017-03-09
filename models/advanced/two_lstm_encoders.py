@@ -79,7 +79,7 @@ class Two_LSTM_Encoders_Model(Model):
         self.dropout_placeholder = None
 
         # Construct single embedding matrix
-        self.embedding_matrix = tf.Variable(self.config.pretrained_embeddings, dtype=tf.float32, name="embedding_matrix")
+        self.embedding_matrix = tf.constant(self.config.pretrained_embeddings, dtype=tf.float32, name="embedding_matrix")
         self.build()
 
         # Compute max over the prediction logits
@@ -151,14 +151,14 @@ class Two_LSTM_Encoders_Model(Model):
 
         # Headlines -- Compute the output at the end of the LSTM (automatically unrolled)
         with tf.variable_scope("headline_cell"):
-            headline_cell = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
+            headline_cell = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.config.hidden_size)
             headline_outputs, _ = tf.nn.dynamic_rnn(headline_cell, headlines_x, dtype=tf.float32, sequence_length = self.headline_seq_lengths)
             headline_output = headline_outputs[:, -1, :]
             assert headline_output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], headline_output.get_shape().as_list())
 
         # Articles -- Compute the output at the end of the LSTM (automatically unrolled)
         with tf.variable_scope("article_cell"):
-            article_cell = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
+            article_cell = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.config.hidden_size)
             article_outputs, _ = tf.nn.dynamic_rnn(article_cell, articles_x, dtype=tf.float32, sequence_length = self.article_seq_lengths)
             article_output = article_outputs[:, -1, :]
             assert article_output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], article_output.get_shape().as_list())
@@ -259,10 +259,14 @@ class Two_LSTM_Encoders_Model(Model):
             prog.update(i + 1, [("train loss", loss)])
 
         print "Evaluating on dev set"
+        prog = Progbar(target=1 + len(dev_set[0])/ self.config.batch_size)
         actual = vectorize_stances(dev_set[2])
-        preds = list(self.predict_on_batch(sess, *dev_set[:2]))
+        preds = []
+        for i, (headlines_batch, articles_batch, labels_batch) in enumerate(minibatches(dev_set, self.config.batch_size)):
+            predictions_batch = list(self.predict_on_batch(sess, headlines_batch, articles_batch))
+            preds.extend(predictions_batch)
+            prog.update(i + 1)     
         dev_score = report_score(actual, preds)
-
         print "- dev Score: {:.2f}".format(dev_score)
         return dev_score
 
@@ -274,13 +278,24 @@ class Two_LSTM_Encoders_Model(Model):
             if dev_score > best_dev_score:
                 best_dev_score = dev_score
                 if saver:
-                    print "New best dev! Saving model in ./data/weights/stance.weights"
-                    saver.save(sess, './data/weights/stance.weights')
-            print
+                    print "New best dev! Saving model in ./data/weights/two_lstm_encoders_best_stance.weights"
+                    saver.save(sess, './data/weights/two_lstm_encoders_best_stance.weights')
+            if saver:
+                print "Finished Epoch ... Saving model in ./data/weights/two_lstm_encoders_curr_stance.weights"
+                saver.save(sess, './data/weights/two_lstm_encoders_curr_stance.weights')
+        print
 
 def main(debug=True):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--epoch', type=int, default=5)
+    parser.add_argument('--restore', action='store_true')
+    args = parser.parse_args()
+
     if not os.path.exists('./data/weights/'):
         os.makedirs('./data/weights/')
+
+    if not os.path.exists('./data/predictions/'):
+        os.makedirs('./data/predictions/')
 
     with tf.Graph().as_default():
         print 80 * "="
@@ -317,8 +332,13 @@ def main(debug=True):
         init = tf.global_variables_initializer()
         with tf.Session() as session:
             session.run(init)
-            exclude_names = set(["embedding_matrix:0"])
+            session.run(init)
+            exclude_names = set(["embedding_matrix:0", "embedding_matrix/Adam:0", "embedding_matrix/Adam_1:0"])
             saver = create_tensorflow_saver(exclude_names)
+            if args.restore:
+                saver.restore(session, './data/weights/two_lstm_encoders_curr_stance.weights')
+                print "Restored weights from ./data/weights/two_lstm_encoders_curr_stance.weights"
+                print "-------------------------------------------"
             session.graph.finalize()
 
             print 80 * "="
@@ -331,7 +351,7 @@ def main(debug=True):
                 print "TESTING"
                 print 80 * "="
                 print "Restoring the best model weights found on the dev set"
-                saver.restore(session, './data/weights/stance.weights')
+                saver.restore(session, './data/weights/two_lstm_encoders_best_stance.weights')
                 print "Final evaluation on test set",
 
                 actual = vectorize_stances(test_set[2])
@@ -340,7 +360,7 @@ def main(debug=True):
 
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"
-                with open('two_lstm_encoders_predicted.pkl', 'w') as f:
+                with open('./data/predictions/two_lstm_encoders_predicted.pkl', 'w') as f:
                     cPickle.dump(preds, f, -1)
                 print "Done!"
 
