@@ -41,7 +41,7 @@ class Config:
     max_length = 1000
     hidden_size = 400 # Hidden State Size
     batch_size = 30
-    n_epochs = 5
+    n_epochs = None
     lr = 0.02
     max_grad_norm = 5.
     dropout_rate = 0.5
@@ -210,7 +210,6 @@ class BasicLSTM(Model):
             predictions_batch = list(self.predict_on_batch(sess, inputs_batch))
             preds.extend(predictions_batch)
             prog.update(i + 1)       
-
         dev_score = report_score(actual, preds)
 
         print "- dev Score: {:.2f}".format(dev_score)
@@ -297,8 +296,13 @@ def main(debug=True):
                 saver.restore(session, './data/weights/basic_lstm_best_stance.weights')
                 print "Final evaluation on test set",
 
+                prog = Progbar(target=1 + len(test_set[0])/ self.config.batch_size)
                 actual = vectorize_stances(test_set[1])
-                preds = list(model.predict_on_batch(session, *test_set[:1]))
+                preds = []
+                for i, (inputs_batch, labels_batch) in enumerate(minibatches(test_set, self.config.batch_size)):
+                    predictions_batch = list(self.predict_on_batch(sess, inputs_batch))
+                    preds.extend(predictions_batch)
+                    prog.update(i + 1)       
                 test_score = report_score(actual, preds)
 
                 print "- test Score: {:.2f}".format(test_score)
