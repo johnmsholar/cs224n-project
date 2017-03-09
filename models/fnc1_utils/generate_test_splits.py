@@ -3,6 +3,7 @@ import os
 from collections import defaultdict
 import filenames
 import csv
+from __init__ import LABEL_MAPPING
 # Train/Test Split as defined by FNC-1 Baseline
 
 rgen = random.Random()
@@ -41,6 +42,37 @@ def compute_splits(id_id_stance, training=0.8, random=True):
             y_test.append(stance)
     print "Train: {}, Dev: {}, Test: {}".format(len(x_train), len(x_dev), len(x_test))
     return x_train, x_dev, x_test, y_train, y_dev, y_test
+
+# id_pairs are h_id, b_id
+# cut the unrelated samples until there are < perc_unrelated samples in the whole set
+def underRepresent(id_pairs, stances, perc_unrelated):
+    by_stance = distribute_by_stance(id_pairs, stances)
+    rgen.shuffle(by_stance[0])
+    curr_num_unrelated = len(by_stance[LABEL_MAPPING["unrelated"]])
+    num_total = len(id_pairs)
+    needed_num_unrelated = int(perc_unrelated * num_total)
+    if (needed_num_unrelated < curr_num_unrelated):
+        by_stance[0] = by_stance[0][:needed_num_unrelated]
+    # (id_pair, stance)
+    new_num_unrelated = len(by_stance[0])
+    new_id_pairs_stance = []
+    for (stance, stance_id_pair_list) in by_stance.items():
+        new_id_pairs_stance += [(id_pair, stance) for id_pair in stance_id_pair_list]
+    rgen.shuffle(new_id_pairs_stance)
+    id_pairs = [sample[0] for sample in new_id_pairs_stance]
+    stances = [sample[1] for sample in new_id_pairs_stance]
+    print "Under-representing, so now {} samples from {}".format(new_num_unrelated, curr_num_unrelated)
+    return id_pairs, stances
+
+# return a dict with {stance -> (h_id, b_id)}
+def distribute_by_stance(id_pairs, stances):
+    by_stance = {i: [] for i in range(0, 4)}
+    assert len(id_pairs) == len(stances)
+    for (i, id_pair) in enumerate(id_pairs):
+        stance = stances[i]
+        by_stance[stance].append(id_pair)
+    return by_stance
+
 
 # returns a list of article ids for training and for hold out from original 
 def generate_original_holdouts():

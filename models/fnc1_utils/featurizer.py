@@ -19,7 +19,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from collections import defaultdict
 
-from generate_test_splits import compute_splits
+from generate_test_splits import compute_splits, underRepresent
 
 import sys
 sys.path.insert(0, '../')
@@ -38,6 +38,8 @@ NEWLINE_CHAR = '\n'
 DASH_CHAR = '-'
 UNK_TOKEN = "PLACEHOLDER_UNK"
 USE_RANDOM_FNC = False
+UNDER_REPRESENT = False
+PERC_UNRELATED = 0.5
 
 # if concatenate is true then X's are one input matrix which have article and headline concatenated
 # otherwise return tuple of input matrices for each input x
@@ -45,7 +47,8 @@ def create_inputs_by_glove(concatenate=True, truncate=True):
     b_id_to_body, h_id_to_headline, h_id_b_id_to_stance = construct_data_set()
     # X is [(headline id, body id)]
     X_train, X_dev, X_test, y_train, y_dev, y_test = compute_splits(h_id_b_id_to_stance, TRAINING_SIZE, USE_RANDOM_FNC)
-
+    if (UNDER_REPRESENT):
+        X_train, y_train = underRepresent(X_train, y_train, PERC_UNRELATED)
     # read glove
     glove_vectors = read_glove_set() # word to numpy array
     glove_vectors[UNK_TOKEN] = np.random.normal(size=GLOVE_SIZE)
@@ -281,6 +284,7 @@ def clean(article_body):
 
 
 if __name__ == '__main__':
+    create_inputs_by_glove(concatenate=False)
     # read_binaries()
-    construct_glove_sum_binaries()
+    # construct_glove_sum_binaries()
     # create_inputs_by_glove()
