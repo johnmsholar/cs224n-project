@@ -138,12 +138,12 @@ class Conditonal_Encoding_LSTM_Model(Model):
 
         # run first headline LSTM
         with tf.variable_scope("headline_cell"):
-            cell_headline = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.config.hidden_size)
+            cell_headline = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
             _, headline_state = tf.nn.dynamic_rnn(cell_headline, headline_x, dtype=tf.float32, sequence_length = self.h_sequence_lengths_placeholder)
 
         # run second LSTM that accept state from first LSTM
         with tf.variable_scope("body_cell"):
-            cell_body = tf.contrib.rnn.LSTMBlockFusedCell(num_units = self.config.hidden_size)
+            cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
             outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.b_sequence_lengths_placeholder)
 
         output = outputs[:,-1,:]
