@@ -48,6 +48,7 @@ class Config:
     lr = 0.02
     max_grad_norm = 5.
     dropout_rate = 0.5
+    beta = 0.2
 
     # Other params
     pretrained_embeddings = None
@@ -166,6 +167,11 @@ class Conditonal_Encoding_LSTM_Model(Model):
             loss: A 0-d tensor (scalar)
         """
         loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.labels_placeholder, logits=preds))
+        reg = 0
+        for var in tf.trainable_variables():
+            reg += tf.reduce_mean(tf.nn.l2_loss(var))
+        reg *= self.config.beta
+        loss += reg
         return loss
 
 
