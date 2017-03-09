@@ -68,7 +68,7 @@ class Conditonal_Encoding_LSTM_Model(Model):
 
         self.labels_placeholder = None
         self.dropout_placeholder = None
-        self.embedding_matrix = tf.Variable(self.config.pretrained_embeddings, dtype=tf.float32, name="embeddings_matrix")
+        self.embedding_matrix = tf.constant(self.config.pretrained_embeddings, dtype=tf.float32, name="embeddings_matrix")
 
         self.build()
         self.argmax = tf.argmax(self.pred, axis=1)
@@ -138,12 +138,12 @@ class Conditonal_Encoding_LSTM_Model(Model):
 
         # run first headline LSTM
         with tf.variable_scope("headline_cell"):
-            cell_headline = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
+            cell_headline = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.config.hidden_size)
             _, headline_state = tf.nn.dynamic_rnn(cell_headline, headline_x, dtype=tf.float32, sequence_length = self.h_sequence_lengths_placeholder)
 
         # run second LSTM that accept state from first LSTM
         with tf.variable_scope("body_cell"):
-            cell_body = tf.nn.rnn_cell.LSTMCell(num_units = self.config.hidden_size)
+            cell_body = tf.contrib.rnn.LSTMBlockFusedCell(num_units = self.config.hidden_size)
             outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.b_sequence_lengths_placeholder)
 
         output = outputs[:,-1,:]
@@ -247,6 +247,7 @@ class Conditonal_Encoding_LSTM_Model(Model):
                     print "New best dev! Saving model in ./data/weights/conditional_lstm_best_stance.weights"
                     saver.save(sess, './data/weights/conditional_lstm_best_stance.weights')
             if saver:
+                print "Finished Epoch ... Saving model in ./data/weights/conditional_lstm_curr_stance.weights"
                 saver.save(sess, './data/weights/conditional_lstm_curr_stance.weights')
             print
 
