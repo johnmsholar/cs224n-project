@@ -152,14 +152,14 @@ class Two_LSTM_Encoders_Model(Model):
 
         # Headlines -- Compute the output at the end of the LSTM (automatically unrolled)
         with tf.variable_scope("headline_cell"):
-            headline_cell = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.config.hidden_size)
+            headline_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
             headline_outputs, _ = tf.nn.dynamic_rnn(headline_cell, headlines_x, dtype=tf.float32, sequence_length = self.headline_seq_lengths)
             headline_output = headline_outputs[:, -1, :]
             assert headline_output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], headline_output.get_shape().as_list())
 
         # Articles -- Compute the output at the end of the LSTM (automatically unrolled)
         with tf.variable_scope("article_cell"):
-            article_cell = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.config.hidden_size)
+            article_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
             article_outputs, _ = tf.nn.dynamic_rnn(article_cell, articles_x, dtype=tf.float32, sequence_length = self.article_seq_lengths)
             article_output = article_outputs[:, -1, :]
             assert article_output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], article_output.get_shape().as_list())
