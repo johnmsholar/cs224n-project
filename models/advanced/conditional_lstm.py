@@ -44,7 +44,7 @@ class Config:
  
     hidden_size = 300 # Hidden State Size
     batch_size = 50
-    n_epochs = 5
+    n_epochs = None
     lr = 0.02
     max_grad_norm = 5.
     dropout_rate = 0.5
