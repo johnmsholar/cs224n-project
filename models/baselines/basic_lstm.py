@@ -299,11 +299,11 @@ def main(debug=True):
                 saver.restore(session, './data/weights/basic_lstm_best_stance.weights')
                 print "Final evaluation on test set",
 
-                prog = Progbar(target=1 + len(test_set[0])/ self.config.batch_size)
+                prog = Progbar(target=1 + len(test_set[0])/config.batch_size)
                 actual = vectorize_stances(test_set[1])
                 preds = []
-                for i, (inputs_batch, labels_batch) in enumerate(minibatches(test_set, self.config.batch_size)):
-                    predictions_batch = list(self.predict_on_batch(sess, inputs_batch))
+                for i, (inputs_batch, labels_batch) in enumerate(minibatches(test_set, config.batch_size)):
+                    predictions_batch = list(model.predict_on_batch(sess, inputs_batch))
                     preds.extend(predictions_batch)
                     prog.update(i + 1)       
                 test_score = pretty_report_score(actual, preds, "./data/plots/basic_lstm.png")

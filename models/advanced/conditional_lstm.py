@@ -320,8 +320,8 @@ def main(debug=True):
                 print "Final evaluation on test set",
                 actual = vectorize_stances(test_set[2])
                 preds = []
-                for i, (headline_batch, article_batch, labels_batch) in enumerate(minibatches(test_set, self.config.batch_size)):
-                    predictions_batch = list(self.predict_on_batch(sess, headline_batch, article_batch))
+                for i, (headline_batch, article_batch, labels_batch) in enumerate(minibatches(test_set, config.batch_size)):
+                    predictions_batch = list(model.predict_on_batch(sess, headline_batch, article_batch))
                     preds.extend(predictions_batch)
                 test_score = pretty_report_score(actual, preds, "./data/plots/conditional_lstm_confusion_matrix.png")
                 print "- test Score: {:.2f}".format(test_score)
