@@ -23,4 +23,3 @@ scipy==0.18.1
 six==1.10.0
 subprocess32==3.2.7
 tensorflow==1.0.0
-tensorflow-gpu==1.0.0
