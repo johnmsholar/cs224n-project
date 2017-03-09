@@ -32,7 +32,7 @@ import os
 import sys
 sys.path.insert(0, '../')
 
-from fnc1_utils.score import report_score
+from fnc1_utils.score import report_score, pretty_report_score
 from model import Model
 from fnc1_utils.featurizer import create_inputs_by_glove
 from util import Progbar, vectorize_stances, minibatches, create_tensorflow_saver
@@ -52,7 +52,7 @@ class Config:
     hidden_size = 400
 
     batch_size = 30
-    n_epochs = 5
+    n_epochs = None
     lr = 0.02
     dropout_rate = 0.5
 
@@ -298,11 +298,15 @@ def main(debug=True):
     if not os.path.exists('./data/predictions/'):
         os.makedirs('./data/predictions/')
 
+    if not os.path.exists('./data/plots/'):
+        os.makedirs('./data/plots/')
+
     with tf.Graph().as_default():
         print 80 * "="
         print "INITIALIZING"
         print 80 * "="
         config = Config()
+        config.n_epochs = args.epoch
 
         # Load Data
         # Note: X_train_input, X_dev_input, X_test_input are tuples of (articles, headlines).
@@ -353,15 +357,17 @@ def main(debug=True):
                 print 80 * "="
                 print "Restoring the best model weights found on the dev set"
                 saver.restore(session, './data/weights/two_lstm_encoders_best_stance.weights')
+
                 print "Final evaluation on test set",
-
                 actual = vectorize_stances(test_set[2])
-                preds = list(model.predict_on_batch(session, *test_set[:2]))
-                test_score = report_score(actual, preds)
-
+                preds = []
+                for i, (headline_batch, article_batch, labels_batch) in enumerate(minibatches(test_set, self.config.batch_size)):
+                    predictions_batch = list(self.predict_on_batch(sess, headline_batch, article_batch))
+                    preds.extend(predictions_batch)
+                test_score = pretty_report_score(actual, preds, "./data/plots/two_lstm_encoders_confusion_matrix.png")
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"
-                with open('./data/predictions/two_lstm_encoders_predicted.pkl', 'w') as f:
+                with open('./data/predictions/conditional_encoding_lstm_predicted.pkl', 'w') as f:
                     cPickle.dump(preds, f, -1)
                 print "Done!"
 
