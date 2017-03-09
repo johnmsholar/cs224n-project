@@ -278,7 +278,7 @@ def main(debug=True):
 
         # Create Basic LSTM Model
         config.pretrained_embeddings = glove_matrix
-        model = BasicLSTM(config)
+        model = LSTMBlockFusedCell(config)
         
         # Create Data Lists
         train_examples = [X_train_input, y_train_input]
@@ -291,7 +291,7 @@ def main(debug=True):
         init = tf.global_variables_initializer()
         with tf.Session() as session:
             session.run(init)
-            exclude_names = set(["embedding_matrix:0"])
+            exclude_names = set(["embedding_matrix:0", "embedding_matrix/Adam:0", "embedding_matrix/Adam_1:0"])
             saver = create_tensorflow_saver(exclude_names)
             if args.restore:
                 saver.restore(session, './data/weights/basic_lstm_curr_stance.weights')
