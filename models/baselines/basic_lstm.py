@@ -63,7 +63,7 @@ class BasicLSTM(Model):
         self.inputs_placeholder = None
         self.labels_placeholder = None
         self.dropout_placeholder = None
-        self.embedding_matrix = tf.Variable(self.config.pretrained_embeddings, dtype=tf.float32, name="embedding_matrix")
+        self.embedding_matrix = tf.constant(self.config.pretrained_embeddings, dtype=tf.float32, name="embedding_matrix")
         self.build()
         self.argmax = tf.argmax(self.pred, axis=1)
 
@@ -128,8 +128,6 @@ class BasicLSTM(Model):
             initializer=tf.constant_initializer(0))
 
         # Compute the output at the end of the LSTM (automatically unrolled)
-        start_time = time.time()
-        # cell = tf.nn.rnn_cell.LSTMCell(num_units=self.config.hidden_size)
         # Tensor Flow 1.0 Code:
         cell = tf.contrib.rnn.LSTMCell(num_units=self.config.hidden_size)
         outputs, _ = tf.nn.dynamic_rnn(cell, x, dtype=tf.float32, sequence_length = self.sequence_lengths_placeholder)
@@ -243,6 +241,7 @@ class BasicLSTM(Model):
                     print "New best dev! Saving model in ./data/weights/basic_lstm_best_stance.weights"
                     saver.save(sess, './data/weights/basic_lstm_best_stance.weights')
             if saver:
+                print "Finished Epoch ... Saving model in ./data/weights/basic_lstm_curr_stance.weights"
                 saver.save(sess, './data/weights/basic_lstm_curr_stance.weights')
             print
 
@@ -278,7 +277,7 @@ def main(debug=True):
 
         # Create Basic LSTM Model
         config.pretrained_embeddings = glove_matrix
-        model = LSTMBlockFusedCell(config)
+        model = BasicLSTM(config)
         
         # Create Data Lists
         train_examples = [X_train_input, y_train_input]
