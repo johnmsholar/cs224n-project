@@ -329,7 +329,8 @@ def main(debug=True):
                 for i, (headline_batch, article_batch, labels_batch) in enumerate(minibatches(test_set, config.batch_size)):
                     predictions_batch = list(model.predict_on_batch(session, headline_batch, article_batch))
                     preds.extend(predictions_batch)
-                test_score = pretty_report_score(actual, preds, "./data/plots/conditional_lstm_confusion_matrix.png")
+                test_score = report_score(actual, preds)
+                # test_score = pretty_report_score(actual, preds, "./data/plots/conditional_lstm_confusion_matrix.png")
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"
                 with open('./data/predictions/conditional_encoding_lstm_predicted.pkl', 'w') as f:
