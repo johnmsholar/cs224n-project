@@ -48,7 +48,7 @@ class Config:
     lr = 0.02
     max_grad_norm = 5.
     dropout_rate = 0.5
-    beta = 0.2
+    beta = 0.02
 
     # Other params
     pretrained_embeddings = None
@@ -327,7 +327,7 @@ def main(debug=True):
                 actual = vectorize_stances(test_set[2])
                 preds = []
                 for i, (headline_batch, article_batch, labels_batch) in enumerate(minibatches(test_set, config.batch_size)):
-                    predictions_batch = list(model.predict_on_batch(sess, headline_batch, article_batch))
+                    predictions_batch = list(model.predict_on_batch(session, headline_batch, article_batch))
                     preds.extend(predictions_batch)
                 test_score = pretty_report_score(actual, preds, "./data/plots/conditional_lstm_confusion_matrix.png")
                 print "- test Score: {:.2f}".format(test_score)
