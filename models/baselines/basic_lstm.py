@@ -103,11 +103,8 @@ class BasicLSTM(Model):
         Returns:
             embeddings: tf.Tensor of shape (None, max_length, embed_size)
         """
-        start_time = time.time()
         e = tf.nn.embedding_lookup(self.embedding_matrix, self.inputs_placeholder)
         embeddings = tf.reshape(e, shape=[-1, self.config.max_length, self.config.embed_size], name="embeddings")
-        end_time = time.time()
-        print "Adding embeddings took {}".format(end_time - start_time)          
         return embeddings
 
     def add_prediction_op(self): 
@@ -131,11 +128,7 @@ class BasicLSTM(Model):
         # Tensor Flow 1.0 Code:
         cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
         outputs, _ = tf.nn.dynamic_rnn(cell, x, dtype=tf.float32, sequence_length = self.sequence_lengths_placeholder)
-        end_time = time.time()
-        print "Feed forward LSTM took {}".format(end_time - start_time)
-
         output = outputs[:,-1,:]
-        print output.get_shape()
         assert output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.max_length, self.config.hidden_size], output.get_shape().as_list())
 
         # Compute predictions
@@ -154,12 +147,8 @@ class BasicLSTM(Model):
         Returns:
             loss: A 0-d tensor (scalar)
         """
-        start_time = time.time()
         loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.labels_placeholder, logits=preds))
-        end_time = time.time()
-        print "Computing Loss took {}".format(end_time - start_time)        
         return loss
-
 
     def add_training_op(self, loss):
         """Sets up the training Ops.
@@ -173,11 +162,8 @@ class BasicLSTM(Model):
         Returns:
             train_op: The Op for training.
         """
-        start_time = time.time()
         optimizer = tf.train.AdamOptimizer(self.config.lr)
         train_op = optimizer.minimize(loss)
-        end_time = time.time()
-        print "AdamOptimizer Minimize took {}".format(end_time - start_time)
         return train_op    
 
 
@@ -295,7 +281,6 @@ def main(debug=True):
             if args.restore:
                 saver.restore(session, './data/weights/basic_lstm_curr_stance.weights')
                 print "Restored weights from ./data/weights/basic_lstm_curr_stance.weights"
-                print(session.run(tf.global_variables()))
                 print "-------------------------------------------"
             session.graph.finalize()
 
