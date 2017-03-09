@@ -169,7 +169,7 @@ class Two_LSTM_Encoders_Model(Model):
         article_output_dropout = tf.nn.dropout(article_output, dropout_rate)
 
         # Concatenate headline and article outputs
-        output = tf.concat(1, [headline_output_dropout, article_output_dropout])
+        output = tf.concat([headline_output_dropout, article_output_dropout], 1)
         preds = tf.matmul(output, U) + b
         assert preds.get_shape().as_list() == [None, self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.num_classes], preds.get_shape().as_list())
         return preds
