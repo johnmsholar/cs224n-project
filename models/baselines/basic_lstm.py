@@ -23,7 +23,7 @@ import os
 import sys
 sys.path.insert(0, '../')
 
-from fnc1_utils.score import report_score
+from fnc1_utils.score import report_score, pretty_report_score
 from model import Model
 from fnc1_utils.featurizer import create_inputs_by_glove
 from util import Progbar, vectorize_stances, minibatches, create_tensorflow_saver
@@ -41,7 +41,7 @@ class Config:
     max_length = 1000
     hidden_size = 400 # Hidden State Size
     batch_size = 30
-    n_epochs = 5
+    n_epochs = None
     lr = 0.02
     max_grad_norm = 5.
     dropout_rate = 0.5
@@ -103,11 +103,8 @@ class BasicLSTM(Model):
         Returns:
             embeddings: tf.Tensor of shape (None, max_length, embed_size)
         """
-        start_time = time.time()
         e = tf.nn.embedding_lookup(self.embedding_matrix, self.inputs_placeholder)
         embeddings = tf.reshape(e, shape=[-1, self.config.max_length, self.config.embed_size], name="embeddings")
-        end_time = time.time()
-        print "Adding embeddings took {}".format(end_time - start_time)          
         return embeddings
 
     def add_prediction_op(self): 
@@ -129,13 +126,9 @@ class BasicLSTM(Model):
 
         # Compute the output at the end of the LSTM (automatically unrolled)
         # Tensor Flow 1.0 Code:
-        cell = tf.contrib.rnn.LSTMCell(num_units=self.config.hidden_size)
+        cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
         outputs, _ = tf.nn.dynamic_rnn(cell, x, dtype=tf.float32, sequence_length = self.sequence_lengths_placeholder)
-        end_time = time.time()
-        print "Feed forward LSTM took {}".format(end_time - start_time)
-
         output = outputs[:,-1,:]
-        print output.get_shape()
         assert output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.max_length, self.config.hidden_size], output.get_shape().as_list())
 
         # Compute predictions
@@ -154,12 +147,8 @@ class BasicLSTM(Model):
         Returns:
             loss: A 0-d tensor (scalar)
         """
-        start_time = time.time()
         loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.labels_placeholder, logits=preds))
-        end_time = time.time()
-        print "Computing Loss took {}".format(end_time - start_time)        
         return loss
-
 
     def add_training_op(self, loss):
         """Sets up the training Ops.
@@ -173,11 +162,8 @@ class BasicLSTM(Model):
         Returns:
             train_op: The Op for training.
         """
-        start_time = time.time()
         optimizer = tf.train.AdamOptimizer(self.config.lr)
         train_op = optimizer.minimize(loss)
-        end_time = time.time()
-        print "AdamOptimizer Minimize took {}".format(end_time - start_time)
         return train_op    
 
 
@@ -224,7 +210,6 @@ class BasicLSTM(Model):
             predictions_batch = list(self.predict_on_batch(sess, inputs_batch))
             preds.extend(predictions_batch)
             prog.update(i + 1)       
-
         dev_score = report_score(actual, preds)
 
         print "- dev Score: {:.2f}".format(dev_score)
@@ -256,6 +241,9 @@ def main(debug=True):
 
     if not os.path.exists('./data/predictions/'):
         os.makedirs('./data/predictions/')
+
+    if not os.path.exists('./data/plots/'):
+        os.makedirs('./data/plots/')
 
     with tf.Graph().as_default():
         print 80 * "="
@@ -295,7 +283,6 @@ def main(debug=True):
             if args.restore:
                 saver.restore(session, './data/weights/basic_lstm_curr_stance.weights')
                 print "Restored weights from ./data/weights/basic_lstm_curr_stance.weights"
-                print(session.run(tf.global_variables()))
                 print "-------------------------------------------"
             session.graph.finalize()
 
@@ -309,12 +296,17 @@ def main(debug=True):
                 print "TESTING"
                 print 80 * "="
                 print "Restoring the best model weights found on the dev set"
-                saver.restore(session, './data/weights/best_stance.weights')
+                saver.restore(session, './data/weights/basic_lstm_best_stance.weights')
                 print "Final evaluation on test set",
 
+                prog = Progbar(target=1 + len(test_set[0])/ self.config.batch_size)
                 actual = vectorize_stances(test_set[1])
-                preds = list(model.predict_on_batch(session, *test_set[:1]))
-                test_score = report_score(actual, preds)
+                preds = []
+                for i, (inputs_batch, labels_batch) in enumerate(minibatches(test_set, self.config.batch_size)):
+                    predictions_batch = list(self.predict_on_batch(sess, inputs_batch))
+                    preds.extend(predictions_batch)
+                    prog.update(i + 1)       
+                test_score = pretty_report_score(actual, preds, "./data/plots/basic_lstm.png")
 
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"

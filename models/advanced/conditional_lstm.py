@@ -23,7 +23,7 @@ import os
 import sys
 sys.path.insert(0, '../')
 
-from fnc1_utils.score import report_score
+from fnc1_utils.score import report_score, pretty_report_score
 from model import Model
 from fnc1_utils.featurizer import create_inputs_by_glove
 from util import Progbar, vectorize_stances, minibatches, create_tensorflow_saver
@@ -138,12 +138,12 @@ class Conditonal_Encoding_LSTM_Model(Model):
 
         # run first headline LSTM
         with tf.variable_scope("headline_cell"):
-            cell_headline = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.config.hidden_size)
+            cell_headline = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
             _, headline_state = tf.nn.dynamic_rnn(cell_headline, headline_x, dtype=tf.float32, sequence_length = self.h_sequence_lengths_placeholder)
 
         # run second LSTM that accept state from first LSTM
         with tf.variable_scope("body_cell"):
-            cell_body = tf.contrib.rnn.LSTMBlockFusedCell(num_units = self.config.hidden_size)
+            cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
             outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.b_sequence_lengths_placeholder)
 
         output = outputs[:,-1,:]
@@ -231,7 +231,6 @@ class Conditonal_Encoding_LSTM_Model(Model):
         for i, (headline_batch, article_batch, labels_batch) in enumerate(minibatches(dev_set, self.config.batch_size)):
             predictions_batch = list(self.predict_on_batch(sess, headline_batch, article_batch))
             preds.extend(predictions_batch)
-
         dev_score = report_score(actual, preds)
         print "- dev Score: {:.2f}".format(dev_score)
         return dev_score
@@ -263,6 +262,9 @@ def main(debug=True):
 
     if not os.path.exists('./data/predictions/'):
         os.makedirs('./data/predictions/')
+
+    if not os.path.exists('./data/plots/'):
+        os.makedirs('./data/plots/')
 
     with tf.Graph().as_default():
         print 80 * "="
@@ -314,12 +316,14 @@ def main(debug=True):
                 print 80 * "="
                 print "Restoring the best model weights found on the dev set"
                 saver.restore(session, './data/weights/conditional_lstm_best_stance.weights')
+
                 print "Final evaluation on test set",
-
                 actual = vectorize_stances(test_set[2])
-                preds = list(model.predict_on_batch(session, *test_set[:2]))
-                test_score = report_score(actual, preds)
-
+                preds = []
+                for i, (headline_batch, article_batch, labels_batch) in enumerate(minibatches(test_set, self.config.batch_size)):
+                    predictions_batch = list(self.predict_on_batch(sess, headline_batch, article_batch))
+                    preds.extend(predictions_batch)
+                test_score = pretty_report_score(actual, preds, "./data/plots/conditional_lstm_confusion_matrix.png")
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"
                 with open('./data/predictions/conditional_encoding_lstm_predicted.pkl', 'w') as f:
