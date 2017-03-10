@@ -44,9 +44,6 @@ class Config:
     dropout_rate = 0.5
     beta = 0.02
 
-    # Other params
-    pretrained_embeddings = None
-
 class Conditonal_Encoding_LSTM_Model(Advanced_Model):
     """ Conditional Encoding LSTM Model.
     """

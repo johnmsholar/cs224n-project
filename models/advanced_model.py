@@ -40,13 +40,6 @@ class Advanced_Model(object):
         self.a_placeholder = None
         self.labels_placeholder = None
         self.dropout_placeholder = None
-
-        # Constants
-        self.embedding_matrix = tf.constant(
-            self.config.pretrained_embeddings,
-            dtype=tf.float32,
-            name="embedding_matrix"
-        )
         
         # Save Files
         fn_names = self.get_fn_names()
@@ -91,7 +84,12 @@ class Advanced_Model(object):
         """
         self.config.h_max_length = max_lengths[0]
         self.config.a_max_length = max_lengths[1]
-        self.config.pretrained_embeddings = glove_matrix
+        self.embedding_matrix = tf.constant(
+            glove_matrix,
+            dtype=tf.float32,
+            name="embedding_matrix"
+        )
+
 
     def get_fn_names(self):
         """ Retrieve file names.
