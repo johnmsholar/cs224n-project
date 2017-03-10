@@ -238,11 +238,14 @@ class Advanced_Model(object):
             Return predictions and score
         """
         # Compute Predictions
+        prog = Progbar(target=1+len(data_set[0])/self.config.batch_size)
         actual = vectorize_stances(data_set[2])
         preds = []
         for i, (headlines_batch, articles_batch, _) in enumerate(minibatches(data_set, config.batch_size)):
             predictions_batch = list(self.predict_on_batch(sess, headlines_batch, articles_batch))
             preds.extend(predictions_batch)
+            prog.update(i + 1)
+
         if save_preds:
             print "Writing predictions to {}".format(self.preds_fn)
             with open(self.preds_fn, 'w') as f:
