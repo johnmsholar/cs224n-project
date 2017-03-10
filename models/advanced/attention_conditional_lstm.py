@@ -108,6 +108,10 @@ def main(debug=True):
         y_test_input
     )
 
+    print (np.sum(y_train_input, axis=0))
+    print (np.sum(y_dev_input, axis=0))
+    print (np.sum(y_test_input, axis=0))
+
     with tf.Graph().as_default():
         print 80 * "="
         print "INITIALIZING"
