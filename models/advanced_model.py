@@ -186,9 +186,10 @@ class Advanced_Model(object):
     def add_loss_op(self, preds):
         """Adds Ops for the loss function to the computational graph.
         """
-	loss = tf.losses.softmax_cross_entropy(
+        loss = tf.losses.softmax_cross_entropy(
             onehot_labels=self.labels_placeholder,
             logits=preds,
+            label_smoothing=.5
         )
        
         reg = 0
