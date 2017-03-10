@@ -75,7 +75,10 @@ class Advanced_Model(object):
         self.build()
 
     def build(self):
-        super(Advanced_Model, self).build()
+        self.add_placeholders()
+        self.pred = self.add_prediction_op()
+        self.loss = self.add_loss_op(self.pred)
+        self.train_op = self.add_training_op(self.loss)
         self.class_predictions = tf.argmax(self.pred, axis=1)
 
     def config_model(self, glove_matrix, max_lengths):
