@@ -30,7 +30,7 @@ class Config:
     information parameters. Model objects are passed a Config() object at
     instantiation. Use self.config.? instead of Config.?
     """
-    num_classes = 4 # Number of classses for classification task.
+    num_classes = 3 # Number of classses for classification task.
     embed_size = 300 # Size of Glove Vectors
 
     # Hyper Parameters
@@ -96,7 +96,8 @@ def main(debug=True):
         config.n_epochs = args.epoch
 
     # Load Data
-    X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths= create_inputs_by_glove(concatenate=False)
+    X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths= create_inputs_by_glove_split_on_class(True, False)
+    
     train_examples, dev_set, test_set = create_data_sets_for_model(
         X_train_input,
         X_dev_input,
