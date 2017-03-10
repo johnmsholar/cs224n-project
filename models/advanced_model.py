@@ -25,7 +25,7 @@ class Advanced_Model(object):
         the headlines and articles seperately.
     """
 
-    def __init__(self, config, scoring_function, max_lengths):
+    def __init__(self, config, scoring_function, max_lengths, glove_matrix):
     	""" config must be Config class
         scoring_function(actual, preds)
     	"""
@@ -39,6 +39,13 @@ class Advanced_Model(object):
         self.a_placeholder = None
         self.labels_placeholder = None
         self.dropout_placeholder = None
+
+        # Constants
+        self.embedding_matrix = tf.constant(
+            glove_matrix,
+            dtype=tf.float32,
+            name="embedding_matrix"
+        )
         
         # Save Files
         fn_names = self.get_fn_names()
@@ -84,16 +91,6 @@ class Advanced_Model(object):
         self.loss = self.add_loss_op(self.pred)
         self.train_op = self.add_training_op(self.loss)
         self.class_predictions = tf.argmax(self.pred, axis=1)
-
-    def config_model(self, glove_matrix):
-        """ Configure the models Config class.
-        """
-        self.embedding_matrix = tf.constant(
-            glove_matrix,
-            dtype=tf.float32,
-            name="embedding_matrix"
-        )
-
 
     def get_fn_names(self):
         """ Retrieve file names.

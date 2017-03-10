@@ -116,8 +116,7 @@ def main(debug=True):
 
         # Create and configure model
         print "Building model...",
-        model = Conditonal_Encoding_LSTM_Model(config, report_score, max_lengths)
-        model.config_model(glove_matrix)
+        model = Conditonal_Encoding_LSTM_Model(config, report_score, max_lengths, glove_matrix)
         start = time.time()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
