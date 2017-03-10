@@ -189,7 +189,7 @@ class Advanced_Model(object):
         )
         reg = 0
         for var in tf.trainable_variables():
-            reg += tf.reduce_mean(tf.nn.l2_loss(var))
+            reg += tf.nn.l2_loss(var)
         reg *= self.config.beta
         loss += reg
         return loss
