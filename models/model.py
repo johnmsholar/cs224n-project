@@ -13,7 +13,7 @@ import tensorflow as tf
 from util import minibatches, Progbar, vectorize_stances
 from fnc1_utils.score import report_score
 
-class Model(Model):
+class Model(object):
     """Abstracts a Tensorflow graph for a learning task.
 
     We use various Model classes as usual abstractions to encapsulate tensorflow
