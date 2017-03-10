@@ -143,10 +143,10 @@ class Advanced_Model(object):
         """Creates the feed_dict for the model.
         """
         feed_dict = {
-            self.h_seq_lengths_placeholder: headlines_batch,
-            self.a_seq_lengths_placeholder: articles_batch,
-            self.h_seq_lengths: h_seq_lengths,
-            self.a_seq_lengths: a_seq_lengths,
+            self.h_placeholder: headlines_batch,
+            self.a_placeholder: articles_batch,
+            self.h_seq_lengths_placeholder: h_seq_lengths,
+            self.a_seq_lengths_placeholder: a_seq_lengths,
             self.dropout_placeholder: dropout,
         }
         if labels_batch is not None:
