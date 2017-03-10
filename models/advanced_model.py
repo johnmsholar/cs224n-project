@@ -189,7 +189,6 @@ class Advanced_Model(object):
         loss = tf.losses.softmax_cross_entropy(
             onehot_labels=self.labels_placeholder,
             logits=preds,
-            label_smoothing=.5
         )
        
         reg = 0

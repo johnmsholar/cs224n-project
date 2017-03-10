@@ -37,7 +37,7 @@ class Config:
     hidden_size = 300 # Hidden State Size
     batch_size = 50
     n_epochs = None
-    lr = 0.02
+    lr = 0.2
     max_grad_norm = 5.
     dropout_rate = 0.5
     beta = 0.02
@@ -78,9 +78,9 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         output = attention_layer(headline_outputs, h_n)
 
         # Compute predictions
-        output_dropout = tf.nn.dropout(output, dropout_rate)
+        # output_dropout = tf.nn.dropout(output, dropout_rate)
         class_squash_layer = ClassSquashLayer(self.config.hidden_size, self.config.num_classes)
-        preds = class_squash_layer(output_dropout)
+        preds = class_squash_layer(output)
         return preds
 
 def main(debug=True):
