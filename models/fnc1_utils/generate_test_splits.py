@@ -68,6 +68,8 @@ def underRepresent(id_pairs, stances, perc_unrelated):
 # separate the samples into unrelated versus related 
 def split_by_unrelated_verus_related(id_pairs, stances):
     by_stance = distribute_by_stance(id_pairs, stances)
+
+    print by_stance
     
     # Construct a list of all (h_id, b_id) pairs that have
     # "related" labels i.e. have stances "agree", "disagree",
@@ -115,7 +117,7 @@ def split_by_related_class(id_pairs, stances):
 
 # return a dict with {stance -> (h_id, b_id)}
 def distribute_by_stance(id_pairs, stances):
-    by_stance = {i: [] for i in range(0, 4)}
+    by_stance = {i: [] for i in range(1, 5)}
     assert len(id_pairs) == len(stances)
     for (i, id_pair) in enumerate(id_pairs):
         stance = stances[i]
