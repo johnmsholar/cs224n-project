@@ -77,7 +77,7 @@ def create_inputs_by_glove_split_on_class(truncate=True, split_on_unrelated=True
     # Compute Glove Index Vector for Each Headline
     # sample id -> computed glove indices
     h_id_to_glove_index_vector = compute_glove_index_vector(h_id_to_headline, word_to_glove_index, truncate, KEEP_ALL_SENTENCES)
-    b_id_to_glove_index_vector = compute_glove_index_vector(b_id_to_body, word_to_glove_index, truncate, num_sentences_to_keep, True)
+    b_id_to_glove_index_vector = compute_glove_index_vector(b_id_to_body, word_to_glove_index, truncate, num_sentences_to_keep)
 
     # Deterimine max lengths amongst headlines and bodies
     # This information is leveraged by RNNs.
@@ -174,12 +174,6 @@ def compute_glove_index_vector (id_to_text, word_to_glove_index, truncate = True
             trunc_text = text
         else:
             trunc_text = text[:num_sentences_to_keep * 20]
-            #joint_text = ' '.join(text)
-	    #print joint_text
-            #split_text = re.split('', joint_text)
-	    #trunc_text = split_text[:num_sentences_to_keep*2 + 1]
-            # trunc_text = [word for sentence in split_text[:num_sentences_to_keep*2+1] for word in sentence] 
-
         if debug:
             print trunc_text
 
