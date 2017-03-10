@@ -5,7 +5,7 @@ import sklearn
 import sys
 sys.path.insert(0, '../')
 from util import plot_confusion_matrix, save_confusion_matrix
-LABELS = [0,1,2,3]
+LABELS = [1,2,3,4]
 LABELS_HEADER = ['agree', 'disagree', 'discuss', 'unrelated']
 LABELS_RELATED = [0,1]
 LABELS_RELATED_HEADER = ['unrelated','related']

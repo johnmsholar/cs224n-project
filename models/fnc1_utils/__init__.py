@@ -9,10 +9,10 @@ John Sholar <jmsholar@cs.stanford.edu>
 """
 
 LABEL_MAPPING = {
-    'agree': 0,
-    'disagree': 1,
-    'discuss': 2,
-    'unrelated': 3,
+    'agree':1,
+    'disagree': 2,
+    'discuss': 3,
+    'unrelated': 4,
 }
 
 RELATED_UNRELATED_MAPPING = {
@@ -21,7 +21,7 @@ RELATED_UNRELATED_MAPPING = {
 }
 
 RELATED_CLASS_MAPPING = {
-    'agree': 0,
-    'disagree': 1,
-    'discuss': 2,
+    'agree': 1,
+    'disagree': 2,
+    'discuss': 3,
 }
