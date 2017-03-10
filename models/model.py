@@ -13,7 +13,7 @@ import tensorflow as tf
 from util import minibatches, Progbar, vectorize_stances
 from fnc1_utils.score import report_score
 
-class Model(object):
+class Model(Model):
     """Abstracts a Tensorflow graph for a learning task.
 
     We use various Model classes as usual abstractions to encapsulate tensorflow
@@ -144,6 +144,7 @@ class Model(object):
                     print "New best dev! Saving model in ./data/weights/stance.weights"
                     saver.save(sess, './data/weights/stance.weights')
             print
+
 
     def build(self):
         self.add_placeholders()
