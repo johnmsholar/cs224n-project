@@ -28,7 +28,7 @@ from fnc1_utils.score import report_score, pretty_report_score
 from model import Model
 from fnc1_utils.featurizer import create_inputs_by_glove
 from util import Progbar, vectorize_stances, minibatches, \
-    create_tensorflow_saver
+    create_tensorflow_saver, multiply_3d_by_2d
 
 
 class Config:
@@ -187,6 +187,8 @@ class Attention_Conditional_Encoding_LSTM_Model(Model):
             "W_h", shape=[self.config.hidden_size, self.config.hidden_size],
             initializer=tf.contrib.layers.xavier_initializer()
         )
+        w = tf.get_variable(
+            "w", shape=[self.config.hidden_size, 1], initializer=tf.contrib.layers.xavier_initializer())
         W_x = tf.get_variable(
             "W_x", shape=[self.config.hidden_size, self.config.hidden_size],
             initializer=tf.contrib.layers.xavier_initializer()
@@ -196,17 +198,33 @@ class Attention_Conditional_Encoding_LSTM_Model(Model):
             initializer=tf.contrib.layers.xavier_initializer()
         )
 
-        Y = body_outputs
+        # k is hidden_size
+        # L is h_max_length
+
+
+        # hidden states of the headline LSTM
+        # dimensions: batch x h_max_length x hidden_size (batch x L x k)
+        Y = headline_outputs 
         h_n = output
-        M_component_1 = tf.matmul(Y, W_y)
+
+        # dimension: batch x h_max_length x hidden_size (batch x L x k)
+        M_component_1 = multiply_3d_by_2d (Y, W_y)
         M_component_2 = tf.matmul(
             tf.ones(shape=(self.config.h_max_length, self.config.hidden_size)),
-            tf.matmul(tf.matmul(h_n, W_h))
+            tf.matmul(h_n, W_h),
         )
+        # dimension: batch x h_max_length x hidden_size (batch x L x k)
         M = tf.tanh(M_component_1 + M_component_2)
-        print M.shape
-        assert False
-
+        alpha = tf.nn.softmax(multiply_3d_by_2d(M, w))
+        Y_t = tf.transpose(Y, perm=[0,2,1])
+        r= tf.matmul(Y_t, alpha)
+        r_dim_1 = tf.shape(r)[0]
+        r_dim_2 = r.get_shape().as_list()[1]
+        # r is batch x hidden
+        r = tf.reshape(r, [r_dim_1, r_dim_2])
+        h_star_comp1 = tf.matmul(r, W_p)
+        h_star_comp2 = tf.matmul(h_n, W_x)
+        output = tf.tanh(h_star_comp1 + h_star_comp2)
 
         # Compute predictions
         output_dropout = tf.nn.dropout(output, dropout_rate)
