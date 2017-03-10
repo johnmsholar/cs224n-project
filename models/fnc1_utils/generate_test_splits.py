@@ -3,9 +3,9 @@ import os
 from collections import defaultdict
 import filenames
 import csv
-from __init__ import LABEL_MAPPING
-# Train/Test Split as defined by FNC-1 Baseline
+from __init__ import LABEL_MAPPING, RELATED_UNRELATED_MAPPING, RELATED_CLASS_MAPPING
 
+# Train/Test Split as defined by FNC-1 Baseline
 rgen = random.Random()
 rgen.seed(1489215)
 
@@ -63,6 +63,55 @@ def underRepresent(id_pairs, stances, perc_unrelated):
     stances = [sample[1] for sample in new_id_pairs_stance]
     print "Under-representing, so now {} samples from {}".format(new_num_unrelated, curr_num_unrelated)
     return id_pairs, stances
+
+# id pairs are h_id, b_id
+# separate the samples into unrelated versus related 
+def split_by_unrelated_verus_related(id_pairs, stances):
+    by_stance = distribute_by_stance(id_pairs, stances)
+    
+    # Construct a list of all (h_id, b_id) pairs that have
+    # "related" labels i.e. have stances "agree", "disagree",
+    # or "discuss"
+    related_ids = []
+    related.extend(by_stance[LABEL_MAPPING["agree"]])
+    related.extend(by_stance[LABEL_MAPPING["disagree"]])
+    related.extend(by_stance[LABEL_MAPPING["discuss"]])
+
+    # Construct a list of all "unrelated" stances
+    unrelated_ids = by_stance[LABEL_MAPPING["unrelated"]]
+
+    # Construct joint list of ids
+    ids = related_ids + unrelated_ids
+
+    # Construct stance labels
+    related_labels = [RELATED_UNRELATED_MAPPING["related"]] * len(related_ids)
+    unrelated_labels = [RELATED_UNRELATED_MAPPING["unrelated"]] * len(unrelated_ids)
+    labels = related_labels + unrelated_labels
+
+    return ids, labels
+
+# id pairs are h_id, b_id
+# separate the samples by agree/disagree/discuss 
+def split_by_related_class(id_pairs, stances):
+    by_stance = distribute_by_stance(id_pairs, stances)
+
+    # Split up (h_id, b_id) tules according to the type
+    # of related class that the stance belongs to, i.e.
+    # "agree", "disagree", "discuss"    
+    agree = by_stance[LABEL_MAPPING["agree"]]
+    disagree = by_stance[LABEL_MAPPING["disagree"]]
+    discuss = by_stance[LABEL_MAPPING["discuss"]]
+
+    # Construct a lit of all "related" ids
+    ids = agree + disagree + discuss
+
+    # Construct stance labels
+    agree_labels = [RELATED_CLASS_MAPPING["agree"]] * len(agree)
+    disagree_labels = [RELATED_CLASS_MAPPING["disagree"]] * len(disagree)
+    discuss_labels = [RELATED_CLASS_MAPPING["discuss"]] * len(discuss)
+    labels = agree_labels + disagree_labels + discuss_labels
+
+    return ids, labels
 
 # return a dict with {stance -> (h_id, b_id)}
 def distribute_by_stance(id_pairs, stances):

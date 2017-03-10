@@ -19,7 +19,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from collections import defaultdict
 
-from generate_test_splits import compute_splits, underRepresent
+from generate_test_splits import compute_splits, underRepresent, split_by_unrelated_verus_related, split_by_related_class
 
 import sys
 sys.path.insert(0, '../')
@@ -38,8 +38,83 @@ NEWLINE_CHAR = '\n'
 DASH_CHAR = '-'
 UNK_TOKEN = "PLACEHOLDER_UNK"
 USE_RANDOM_FNC = False
-UNDER_REPRESENT = True
+UNDER_REPRESENT = False
 PERC_UNRELATED = 0.5
+
+# Split data first according to train, test split afforded by FNC1
+# where articles in train set do not apear in dev and do not appear in test.
+# Then, take these splits and split a list of (h_id, b_id) tuples according
+# to stance - specifically into "related" or "unrelated" stances or 
+# amongst the "related" classes.
+# Note: glove_set = (word_to_glove_index, glove_matrix) tuple. If None, we load Glove.
+def create_inputs_by_glove_split_on_class(truncate=True, split_on_unrelated=True, glove_set=None):
+    b_id_to_body, h_id_to_headline, h_id_b_id_to_stance = construct_data_set()
+
+    # X is [(headline id, body id)]
+    X_train, X_dev, X_test, y_train, y_dev, y_test = compute_splits(h_id_b_id_to_stance, TRAINING_SIZE, USE_RANDOM_FNC)
+
+    if split_on_unrelated:
+        # Split Train, Dev, and Test Sets according to related and unrelated classes
+        X_train_split, y_train_split = split_by_unrelated_verus_related(X_train, y_train)
+        X_dev_split, y_dev_split = split_by_unrelated_verus_related(X_dev, y_dev)
+        X_test_split, y_test_split = split_by_unrelated_versus_related(X_test, y_test)
+    else:
+        # Split Train, Dev, and Test Sets according to related classes (throwing away
+        # all the unrelated classes)
+        X_train_split, y_train_split = split_by_related_class(X_train, y_train)
+        X_dev_split, y_dev_split = split_by_related_class(X_dev, y_dev)
+        X_test_split, y_test_split = split_by_related_class(X_test, y_test)      
+
+    # Get Glove Embeddings
+    if glove_set is None:
+        word_to_glove_index, glove_matrix = create_glove_dict()
+    else:
+        word_to_glove_index = glove_set[0]
+        glove_matrix = glove_set[1]
+
+    # Compute Glove Index Vector for Each Headline
+    # sample id -> computed glove indices
+    h_id_to_glove_index_vector = compute_glove_index_vector(h_id_to_headline, word_to_glove_index, truncate)
+    b_id_to_glove_index_vector = compute_glove_index_vector(b_id_to_body, word_to_glove_index, truncate)
+
+    # Deterimine max lengths amongst headlines and bodies
+    # This information is leveraged by RNNs.
+    max_body_length = max([len(index_vec) for (b_id, index_vec) in b_id_to_glove_index_vector.items()])
+    max_headline_length = max([len(index_vec) for (h_id, index_vec) in h_id_to_glove_index_vector.items()])
+    max_input_lengths = (max_headline_length, max_body_length)
+
+    # Create tuples for train, dev, and test
+    # These tuples are (headline_list, article_list)
+    X_train_input = compute_glove_id_embeddings(
+        X_train_split,
+        h_id_to_glove_index_vector,
+        b_id_to_glove_index_vector,
+        max_input_lengths,
+        False
+    )
+
+    X_dev_input = compute_glove_id_embeddings(
+        X_dev_split, 
+        h_id_to_glove_index_vector,
+        b_id_to_glove_index_vector,
+        max_input_lengths,
+        False
+    )
+
+    X_test_input = compute_glove_id_embeddings(
+        X_test_split,
+        h_id_to_glove_index_vector,
+        b_id_to_glove_index_vector,
+        max_input_lengths,
+        False
+    )
+
+    y_train_input = compute_stance_embeddings(y_train_split)
+    y_dev_input = compute_stance_embeddings(y_dev_split)
+    y_test_input = compute_stance_embeddings(y_test_split)
+
+    return X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_input_lengths, word_to_glove_index
+
 
 # if concatenate is true then X's are one input matrix which have article and headline concatenated
 # otherwise return tuple of input matrices for each input x
@@ -67,6 +142,7 @@ def create_inputs_by_glove(concatenate=True, truncate=True):
     max_headline_length = max([len(index_vec) for (h_id, index_vec) in h_id_to_glove_index_vector.items()])
     max_input_lengths = (max_headline_length, max_body_length)
 
+    # Compute embeddings for headlines and articles
     X_train_input = compute_glove_id_embeddings(X_train, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_lengths, concatenate)
     X_dev_input = compute_glove_id_embeddings(X_dev, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_lengths, concatenate)
     X_test_input = compute_glove_id_embeddings(X_test, h_id_to_glove_index_vector, b_id_to_glove_index_vector, max_input_lengths, concatenate)
@@ -197,6 +273,19 @@ def read_glove_set():
     print "FINISHED READING GLOVE VECTORS INTO MEMORY"
     print "------------------------------------------"
     return glove_vectors
+
+# Read glove data and then create embedding matrix as well as
+# a mapping from word to index in the embedding matrix
+def create_glove_dict():
+    glove_vectors = read_glove_set() # word to numpy array
+    glove_vectors[UNK_TOKEN] = np.random.normal(size=GLOVE_SIZE)
+    glove_words = glove_vectors.keys()
+    word_to_glove_index = {} # mapping into the glove index for embedding
+    glove_matrix = np.zeros((len(glove_vectors), GLOVE_SIZE))
+    for i, word in enumerate(glove_words):
+        word_to_glove_index[word] = i
+        glove_matrix[i] = glove_vectors[word]
+    return word_to_glove_index, glove_matrix
 
 # Read the dicts id to body and id to headline
 # For each example, compute the sum of the glove vectors

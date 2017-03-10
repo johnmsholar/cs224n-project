@@ -145,6 +145,7 @@ class Model(object):
                     saver.save(sess, './data/weights/stance.weights')
             print
 
+
     def build(self):
         self.add_placeholders()
         self.pred = self.add_prediction_op()

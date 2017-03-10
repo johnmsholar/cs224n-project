@@ -34,7 +34,7 @@ def score_submission(gold_labels, test_labels):
 
 def print_confusion_matrix(cm):
     lines = []
-    header = "|{:^11}|{:^11}|{:^11}|{:^11}|{:^11}|".format('', *LABELS)
+    header = "|{:^11}|{:^11}|{:^11}|{:^11}|{:^11}|".format('', *LABELS_HEADER)
     line_len = len(header)
     lines.append("-"*line_len)
     lines.append(header)
@@ -45,7 +45,7 @@ def print_confusion_matrix(cm):
     for i, row in enumerate(cm):
         hit += row[i]
         total += sum(row)
-        lines.append("|{:^11}|{:^11}|{:^11}|{:^11}|{:^11}|".format(LABELS[i],
+        lines.append("|{:^11}|{:^11}|{:^11}|{:^11}|{:^11}|".format(LABELS_HEADER[i],
                                                                    *row))
         lines.append("-"*line_len)
     print('\n'.join(lines))

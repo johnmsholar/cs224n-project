@@ -71,6 +71,8 @@ class Conditonal_Encoding_LSTM_Model(Model):
         self.dropout_placeholder = None
         self.embedding_matrix = tf.constant(self.config.pretrained_embeddings, dtype=tf.float32, name="embeddings_matrix")
 
+        self.exclude_names = set(["embeddings_matrix:0", "embeddings_matrix_h:0", "embeddings_matrix_b:0"])
+
         self.build()
         self.argmax = tf.argmax(self.pred, axis=1)
 
@@ -305,8 +307,7 @@ def main(debug=True):
 
         with tf.Session() as session:
             session.run(init)
-            exclude_names = set(["embeddings_matrix:0", "embeddings_matrix_h:0", "embeddings_matrix_b:0"])
-            saver = create_tensorflow_saver(exclude_names)
+            saver = create_tensorflow_saver(model.exclude_names)
             if args.restore:
                 saver.restore(session, './data/weights/conditional_lstm_curr_stance.weights')
             session.graph.finalize()
