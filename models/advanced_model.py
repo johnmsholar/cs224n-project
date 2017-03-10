@@ -25,7 +25,7 @@ class Advanced_Model(object):
         the headlines and articles seperately.
     """
 
-    def __init__(self, config, scoring_function):
+    def __init__(self, config, scoring_function, max_lengths):
     	""" config must be Config class
         scoring_function(actual, preds)
     	"""
@@ -71,6 +71,10 @@ class Advanced_Model(object):
         # Scoring Function for Evaluation
         self.scoring_function = scoring_function
 
+        # Configure internal params
+        self.h_max_length = max_lengths[0]
+        self.a_max_length = max_lengths[1]        
+
         # Build Tensorflow Graph Model
         self.build()
 
@@ -81,11 +85,9 @@ class Advanced_Model(object):
         self.train_op = self.add_training_op(self.loss)
         self.class_predictions = tf.argmax(self.pred, axis=1)
 
-    def config_model(self, glove_matrix, max_lengths):
+    def config_model(self, glove_matrix):
         """ Configure the models Config class.
         """
-        self.config.h_max_length = max_lengths[0]
-        self.config.a_max_length = max_lengths[1]
         self.embedding_matrix = tf.constant(
             glove_matrix,
             dtype=tf.float32,
@@ -114,12 +116,12 @@ class Advanced_Model(object):
         )
         self.h_placeholder = tf.placeholder(
             tf.int32,
-            shape=(None, self.config.h_max_length),
+            shape=(None, self.h_max_length),
             name="headline_inputs_placeholder"
         )
         self.a_placeholder = tf.placeholder(
             tf.int32,
-            shape=(None, self.config.a_max_length), 
+            shape=(None, self.a_max_length), 
             ame="article_inputs_placeholder"
         )
         self.labels_placeholder = tf.placeholder(
@@ -162,14 +164,14 @@ class Advanced_Model(object):
             e = tf.nn.embedding_lookup(self.embedding_matrix, self.h_placeholder)
             embeddings = tf.reshape(
                 e,
-                shape=[-1, self.config.h_max_length, self.config.embed_size],
+                shape=[-1, self.h_max_length, self.config.embed_size],
                 name="headline_embeddings"
             )
         else:
             e = tf.nn.embedding_lookup(self.embedding_matrix, self.a_placeholder)
             embeddings = tf.reshape(
                 e,
-                shape=[-1, self.config.a_max_length, self.config.embed_size],
+                shape=[-1, self.a_max_length, self.config.embed_size],
                 name="article_embeddings"
             )
         return embeddings

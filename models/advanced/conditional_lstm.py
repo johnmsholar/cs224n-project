@@ -31,11 +31,7 @@ class Config:
     num_classes = 4 # Number of classses for classification task.
     embed_size = 300 # Size of Glove Vectors
 
-    h_max_length = None # set when configuring inputs, headline max length
-    b_max_length = None # set when configuring inputs, body max length
-
     # Hyper Parameters
- 
     hidden_size = 300 # Hidden State Size
     batch_size = 50
     n_epochs = None
@@ -120,8 +116,8 @@ def main(debug=True):
 
         # Create and configure model
         print "Building model...",
-        model = Conditonal_Encoding_LSTM_Model(config, report_score)
-        model.config_model(glove_matrix, max_lengths)
+        model = Conditonal_Encoding_LSTM_Model(config, report_score, max_lengths)
+        model.config_model(glove_matrix)
         start = time.time()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
