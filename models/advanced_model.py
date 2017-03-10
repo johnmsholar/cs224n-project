@@ -80,7 +80,7 @@ class Advanced_Model(object):
 
         # Configure internal params
         self.h_max_length = max_lengths[0]
-        self.a_max_length = max_lengths[1]        
+        self.a_max_length = max_lengths[1]    
 
         # Build Tensorflow Graph Model
         self.build()
@@ -91,6 +91,11 @@ class Advanced_Model(object):
         self.loss = self.add_loss_op(self.pred)
         self.train_op = self.add_training_op(self.loss)
         self.class_predictions = tf.argmax(self.pred, axis=1)
+
+    def print_params(self):
+        print "PRINTING PARAMS OF MODEL"
+        print "Headline Max Length {}".format(self.h_max_length)
+        print "Article Max Length {}".formt(self.a_max_length)
 
     def get_fn_names(self):
         """ Retrieve file names.

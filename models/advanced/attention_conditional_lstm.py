@@ -97,7 +97,7 @@ def main(debug=True):
 
     # Load Data
     # X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths= create_inputs_by_glove_split_on_class(True, False)
-    X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths, _ = create_inputs_by_glove_split_on_class(True, False)
+    X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths, _ = create_inputs_by_glove_split_on_class(False, False, None, 2)
 
     train_examples, dev_set, test_set = create_data_sets_for_model(
         X_train_input,
@@ -116,6 +116,7 @@ def main(debug=True):
         # Create and configure model
         print "Building model...",
         model = Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_lengths, glove_matrix)
+        model.print_params()
         start = time.time()
         print "took {:.2f} seconds\n".format(time.time() - start)
 

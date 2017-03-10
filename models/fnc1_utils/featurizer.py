@@ -40,6 +40,7 @@ UNK_TOKEN = "PLACEHOLDER_UNK"
 USE_RANDOM_FNC = False
 UNDER_REPRESENT = False
 PERC_UNRELATED = 0.5
+KEEP_ALL_SENTENCES = -1
 
 # Split data first according to train, test split afforded by FNC1
 # where articles in train set do not apear in dev and do not appear in test.
@@ -47,7 +48,8 @@ PERC_UNRELATED = 0.5
 # to stance - specifically into "related" or "unrelated" stances or 
 # amongst the "related" classes.
 # Note: glove_set = (word_to_glove_index, glove_matrix) tuple. If None, we load Glove.
-def create_inputs_by_glove_split_on_class(truncate=True, split_on_unrelated=True, glove_set=None):
+# Note: num_sentences_to_kee ony used if truncate = False
+def create_inputs_by_glove_split_on_class(truncate=True, split_on_unrelated=True, glove_set=None, num_sentences_to_keep=KEEP_ALL_SENTENCES):
     b_id_to_body, h_id_to_headline, h_id_b_id_to_stance = construct_data_set()
 
     # X is [(headline id, body id)]
@@ -74,8 +76,8 @@ def create_inputs_by_glove_split_on_class(truncate=True, split_on_unrelated=True
 
     # Compute Glove Index Vector for Each Headline
     # sample id -> computed glove indices
-    h_id_to_glove_index_vector = compute_glove_index_vector(h_id_to_headline, word_to_glove_index, truncate)
-    b_id_to_glove_index_vector = compute_glove_index_vector(b_id_to_body, word_to_glove_index, truncate)
+    h_id_to_glove_index_vector = compute_glove_index_vector(h_id_to_headline, word_to_glove_index, truncate, KEEP_ALL_SENTENCES)
+    b_id_to_glove_index_vector = compute_glove_index_vector(b_id_to_body, word_to_glove_index, truncate, num_sentences_to_keep)
 
     # Deterimine max lengths amongst headlines and bodies
     # This information is leveraged by RNNs.
@@ -123,7 +125,8 @@ def create_inputs_by_glove_split_on_class(truncate=True, split_on_unrelated=True
 
 # if concatenate is true then X's are one input matrix which have article and headline concatenated
 # otherwise return tuple of input matrices for each input x
-def create_inputs_by_glove(concatenate=True, truncate=True):
+# Note: num_sentences_to_keep only utilized if truncate = False
+def create_inputs_by_glove(concatenate=True, truncate=True, num_sentences_to_keep=KEEP_ALL_SENTENCES):
     b_id_to_body, h_id_to_headline, h_id_b_id_to_stance = construct_data_set()
     # X is [(headline id, body id)]
     X_train, X_dev, X_test, y_train, y_dev, y_test = compute_splits(h_id_b_id_to_stance, TRAINING_SIZE, USE_RANDOM_FNC)
@@ -141,8 +144,8 @@ def create_inputs_by_glove(concatenate=True, truncate=True):
 
     # compute glove index vector for every headline
     # sample id -> computed glove indices
-    h_id_to_glove_index_vector = compute_glove_index_vector(h_id_to_headline, word_to_glove_index, truncate)
-    b_id_to_glove_index_vector = compute_glove_index_vector(b_id_to_body, word_to_glove_index, truncate)
+    h_id_to_glove_index_vector = compute_glove_index_vector(h_id_to_headline, word_to_glove_index, truncate, KEEP_ALL_SENTENCES)
+    b_id_to_glove_index_vector = compute_glove_index_vector(b_id_to_body, word_to_glove_index, truncate, num_sentences_to_keep)
     max_body_length = max([len(index_vec) for (b_id, index_vec) in b_id_to_glove_index_vector.items()])
     max_headline_length = max([len(index_vec) for (h_id, index_vec) in h_id_to_glove_index_vector.items()])
     max_input_lengths = (max_headline_length, max_body_length)
@@ -162,13 +165,19 @@ def create_inputs_by_glove(concatenate=True, truncate=True):
 
 # id_to_text should be {id -> text} for either headline or body
 # word_to_glove_index should be {word -> word's index in glove}
-def compute_glove_index_vector (id_to_text, word_to_glove_index, truncate = True):
+def compute_glove_index_vector (id_to_text, word_to_glove_index, truncate = True, num_sentences_to_keep=KEEP_ALL_SENTENCES):
     sample_id_to_glove_index_vector = {}
     for (sample_id, text) in id_to_text.items():
         if truncate:
             trunc_text = text[:MAX_BODY_LENGTH]
-        else:
+        elif num_sentences_to_keep == KEEP_ALL_SENTENCES:
             trunc_text = text
+        else:
+            split_text = re.split([.!?], text)
+            trunc_text = ' '.join(split_text[:num_sentences_to_keep+1])
+
+        print trunc_text
+
         index_vector = np.zeros(len(trunc_text))
         for i, word in enumerate(trunc_text):
             if word not in word_to_glove_index:
