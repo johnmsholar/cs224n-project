@@ -25,18 +25,17 @@ class Advanced_Model(object):
         the headlines and articles seperately.
     """
 
-    def __init__(self, config, fn_names, scoring_function):
+    def __init__(self, config, scoring_function):
     """
         config must be Config class
-        fn_names = [best_weights_fn, curr_weights_fn, preds_fn]
         scoring_function(actual, preds)
     """
         # Init config
         self.config = config
 
         # Placeholders
-        self.h_seq_lengths = None
-        self.a_seq_lengths = None
+        self.h_seq_lengths_placeholder = None
+        self.a_seq_lengths_placeholder = None
         self.h_placeholder = None
         self.a_placeholder = None
         self.labels_placeholder = None
@@ -50,6 +49,7 @@ class Advanced_Model(object):
         )
         
         # Save Files
+        fn_names = self.get_fn_names()
         self.weights_path = './data/weights'
         self.preds_path = './data/predictions'
         self.plots_path = './data/plots'
@@ -66,6 +66,15 @@ class Advanced_Model(object):
 
         if not os.path.exists('./data/plots/'):
             os.makedirs('./data/plots/')
+
+        # TODO: Potentially Unnecessary -- maybe remove this??
+        self.exclude_names = set(
+            [
+            "embeddings_matrix:0",
+            "embeddings_matrix_h:0",
+            "embeddings_matrix_b:0"
+            ]
+        )
 
         # Scoring Function for Evaluation
         self.scoring_function = scoring_function
@@ -84,15 +93,21 @@ class Advanced_Model(object):
         self.config.a_max_length = max_lengths[1]
         self.config.pretrained_embeddings = glove_matrix
 
+    def get_fn_names(self):
+        """ Retrieve file names.
+            fn_names = [best_weights_fn, curr_weights_fn, preds_fn]
+        """
+        raise NotImplementedError("Each Model must re-implement this method.")
+
     def add_placeholders(self):
         """Adds placeholder variables to tensorflow computational graph.
         """
-        self.h_seq_lengths = tf.placeholder(
+        self.h_seq_lengths_placeholder = tf.placeholder(
             tf.int32,
             (None),
             name="headline_seq_lengths"
         )
-        self.a_seq_lengths = tf.placeholder(
+        self.a_seq_lengths_placeholder = tf.placeholder(
             tf.int32,
             (None),
             name="article_seq_lengths"
@@ -129,8 +144,8 @@ class Advanced_Model(object):
         """Creates the feed_dict for the model.
         """
         feed_dict = {
-            self.h_placeholder: headlines_batch,
-            self.a_placeholder: articles_batch,
+            self.h_seq_lengths_placeholder: headlines_batch,
+            self.a_seq_lengths_placeholder: articles_batch,
             self.h_seq_lengths: h_seq_lengths,
             self.a_seq_lengths: a_seq_lengths,
             self.dropout_placeholder: dropout,
@@ -139,11 +154,11 @@ class Advanced_Model(object):
             feed_dict[self.labels_placeholder] = labels_batch 
         return feed_dict
 
-    def add_embedding(self, headline_model=True):
+    def add_embedding(self, headline_embedding=True):
         """ Adds an embedding layer that maps from input tokens (integers) to vectors and then 
             concatenates those vectors.
         """
-        if headline_model:
+        if headline_embedding:
             e = tf.nn.embedding_lookup(self.embedding_matrix, self.h_placeholder)
             embeddings = tf.reshape(
                 e,
@@ -213,7 +228,8 @@ class Advanced_Model(object):
             headlines_batch,
             articles_batch,
             h_seq_lengths=h_seq_lengths,
-            a_seq_lengths=a_seq_lengths)
+            a_seq_lengths=a_seq_lengths
+        )
         preds = sess.run(self.class_predictions, feed_dict=feed)
         return preds
 
