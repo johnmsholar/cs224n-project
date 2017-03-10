@@ -122,7 +122,7 @@ class Advanced_Model(object):
         self.a_placeholder = tf.placeholder(
             tf.int32,
             shape=(None, self.a_max_length), 
-            ame="article_inputs_placeholder"
+            name="article_inputs_placeholder"
         )
         self.labels_placeholder = tf.placeholder(
             tf.float32,
