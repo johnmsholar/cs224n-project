@@ -8,7 +8,7 @@ Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
 
-from __init__ import LABEL_MAPPING
+from __init__ import LABEL_MAPPING, RELATED_UNRELATED_MAPPING, RELATED_CLASS_MAPPING
 from enum import Enum
 import csv
 import re
@@ -109,9 +109,14 @@ def create_inputs_by_glove_split_on_class(truncate=True, split_on_unrelated=True
         False
     )
 
-    y_train_input = compute_stance_embeddings(y_train_split)
-    y_dev_input = compute_stance_embeddings(y_dev_split)
-    y_test_input = compute_stance_embeddings(y_test_split)
+    if split_on_unrelated:
+        y_train_input = compute_stance_embeddings(y_train_split, RELATED_UNRELATED_MAPPING)
+        y_dev_input = compute_stance_embeddings(y_dev_split, RELATED_UNRELATED_MAPPING)
+        y_test_input = compute_stance_embeddings(y_test_split, RELATED_UNRELATED_MAPPING)
+    else:    
+        y_train_input = compute_stance_embeddings(y_train_split, RELATED_CLASS_MAPPING)
+        y_dev_input = compute_stance_embeddings(y_dev_split, RELATED_CLASS_MAPPING)
+        y_test_input = compute_stance_embeddings(y_test_split, RELATED_CLASS_MAPPING)
 
     return X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_input_lengths, word_to_glove_index
 
@@ -348,8 +353,8 @@ def compute_id_embeddings(id_id_list, glove_body_matrix, glove_headline_matrix):
         index += 1
     return (input_matrix_body, input_matrix_headline)
 
-def compute_stance_embeddings(stance_list):
-    labels_matrix = np.zeros((len(stance_list), len(LABEL_MAPPING)))
+def compute_stance_embeddings(stance_list, mapping=LABEL_MAPPING):
+    labels_matrix = np.zeros((len(stance_list), len(mapping)))
     for i in range(0,len(stance_list)):
         labels_matrix[i][stance_list[i]] = 1
     return labels_matrix
