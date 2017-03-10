@@ -49,9 +49,9 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         """ Retrieve file names.
             fn_names = [best_weights_fn, curr_weights_fn, preds_fn]
         """
-        best_weights_fn = 'conditional_lstm_best_stance.weights'
-        curr_weights_fn = 'conditional_lstm_curr_stance.weights'
-        preds_fn = 'conditional_encoding_lstm_predicted.pkl'
+        best_weights_fn = 'attention_conditional_lstm_best_stance.weights'
+        curr_weights_fn = 'attention_conditional_lstm_curr_stance.weights'
+        preds_fn = 'attention_conditional_encoding_lstm_predicted.pkl'
         return [best_weights_fn, curr_weights_fn, preds_fn]
 
     def add_prediction_op(self): 
