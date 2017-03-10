@@ -26,10 +26,9 @@ class Advanced_Model(object):
     """
 
     def __init__(self, config, scoring_function):
-    """
-        config must be Config class
+    	""" config must be Config class
         scoring_function(actual, preds)
-    """
+    	"""
         # Init config
         self.config = config
 
