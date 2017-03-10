@@ -108,9 +108,9 @@ def main(debug=True):
         y_test_input
     )
 
-    print (np.sum(y_train_input, axis=0))
-    print (np.sum(y_dev_input, axis=0))
-    print (np.sum(y_test_input, axis=0))
+    print "Distribution of Train {}".format(np.sum(y_train_input, axis=0))
+    print "Distribtion of Dev {}".format(np.sum(y_dev_input, axis=0))
+    print "Distribution of Test{}".format(np.sum(y_test_input, axis=0))
 
     with tf.Graph().as_default():
         print 80 * "="
