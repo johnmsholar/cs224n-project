@@ -28,7 +28,9 @@ from fnc1_utils.score import report_score, pretty_report_score
 from model import Model
 from fnc1_utils.featurizer import create_inputs_by_glove
 from util import Progbar, vectorize_stances, minibatches, \
-    create_tensorflow_saver, multiply_3d_by_2d
+    create_tensorflow_saver
+from layers.attention_layer import AttentionLayer
+from layers.class_squash_layer import ClassSquashLayer
 
 
 class Config:
@@ -148,14 +150,6 @@ class Attention_Conditional_Encoding_LSTM_Model(Model):
         body_x = self.add_embedding(False)
         dropout_rate = self.dropout_placeholder
 
-        # Create final layer to project the output from th RNN onto
-        # the four classification labels.
-        U = tf.get_variable("U", shape=[self.config.hidden_size,
-                                        self.config.num_classes],
-                            initializer=tf.contrib.layers.xavier_initializer())
-        b = tf.get_variable("b", shape=[self.config.num_classes],
-                            initializer=tf.constant_initializer(0))
-
         # run first headline LSTM
         with tf.variable_scope("headline_cell"):
             cell_headline = tf.contrib.rnn.LSTMBlockCell(
@@ -172,66 +166,20 @@ class Attention_Conditional_Encoding_LSTM_Model(Model):
                                            initial_state=headline_state,
                                            dtype=tf.float32,
                                            sequence_length=self.b_sequence_lengths_placeholder)
+        # splice out last hidden state of body output
+        h_n = body_outputs[:, -1, :]
+        print h_n.get_shape()
 
-        output = body_outputs[:, -1, :]
-        assert output.get_shape().as_list() == [None,
-                                                self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format(
-            [None, self.config.hidden_size], output.get_shape().as_list())
+        # Attention Cell
+        attention_layer = AttentionLayer(self.config.hidden_size, self.config.h_max_length)
+        output = attention_layer(headline_outputs, h_n)
 
-        # Attention Model: Pass through a final feed-forward Neural Net
-        W_y = tf.get_variable(
-            "W_y", shape=[self.config.hidden_size, self.config.hidden_size],
-            initializer=tf.contrib.layers.xavier_initializer()
-        )
-        W_h = tf.get_variable(
-            "W_h", shape=[self.config.hidden_size, self.config.hidden_size],
-            initializer=tf.contrib.layers.xavier_initializer()
-        )
-        w = tf.get_variable(
-            "w", shape=[self.config.hidden_size, 1], initializer=tf.contrib.layers.xavier_initializer())
-        W_x = tf.get_variable(
-            "W_x", shape=[self.config.hidden_size, self.config.hidden_size],
-            initializer=tf.contrib.layers.xavier_initializer()
-        )
-        W_p = tf.get_variable(
-            "W_p", shape=[self.config.hidden_size, self.config.hidden_size],
-            initializer=tf.contrib.layers.xavier_initializer()
-        )
-
-        # k is hidden_size
-        # L is h_max_length
-
-
-        # hidden states of the headline LSTM
-        # dimensions: batch x h_max_length x hidden_size (batch x L x k)
-        Y = headline_outputs 
-        h_n = output
-
-        # dimension: batch x h_max_length x hidden_size (batch x L x k)
-        M_component_1 = multiply_3d_by_2d (Y, W_y)
-        M_component_2 = tf.matmul(
-            tf.ones(shape=(self.config.h_max_length, self.config.hidden_size)),
-            tf.matmul(h_n, W_h),
-        )
-        # dimension: batch x h_max_length x hidden_size (batch x L x k)
-        M = tf.tanh(M_component_1 + M_component_2)
-        alpha = tf.nn.softmax(multiply_3d_by_2d(M, w))
-        Y_t = tf.transpose(Y, perm=[0,2,1])
-        r= tf.matmul(Y_t, alpha)
-        r_dim_1 = tf.shape(r)[0]
-        r_dim_2 = r.get_shape().as_list()[1]
-        # r is batch x hidden
-        r = tf.reshape(r, [r_dim_1, r_dim_2])
-        h_star_comp1 = tf.matmul(r, W_p)
-        h_star_comp2 = tf.matmul(h_n, W_x)
-        output = tf.tanh(h_star_comp1 + h_star_comp2)
-
-        # Compute predictions
+        # Dropout
         output_dropout = tf.nn.dropout(output, dropout_rate)
-        preds = tf.matmul(output_dropout, U) + b
-        assert preds.get_shape().as_list() == [None,
-                                               self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format(
-            [None, self.config.num_classes], preds.get_shape().as_list())
+
+        # Squash into class layer
+        class_squash_layer = ClassSquashLayer(self.config.hidden_size, self.config.num_classes)
+        preds = class_squash_layer(output_dropout)
         return preds
 
     def add_loss_op(self, preds):
