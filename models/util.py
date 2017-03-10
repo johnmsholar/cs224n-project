@@ -235,3 +235,25 @@ def create_tensorflow_saver(exclude_names):
     print "SAVER VARIABLES"
     print [var.name for va in train_vars]
     return tf.train.Saver(train_vars)
+
+# broadcasting util function
+# three_tensor is dimensions: x_dim, y_dim, h_dim
+# two_tensor is dimensions: h_dim, z_dim
+# result is: x_dim, y_dim, z_dim
+# h_dim and z_dim should be static
+def multiply_3d_by_2d(three_tensor, two_tensor, y_dim_flat=True):
+    # print tf.shape(three_tensor)
+    three_tensor_shape = tf.shape(three_tensor)
+    x_dim = tf.shape(three_tensor)[0]
+    if y_dim_flat:
+        y_dim = three_tensor.get_shape().as_list()[1]
+    else:
+        y_dim = three_tensor_shape[1]
+    [h_dim, z_dim] = two_tensor.get_shape().as_list()
+
+    # three_tensor is now x_dim*y_dim by h_dim
+    reshaped_three_tensor = tf.reshape(three_tensor, [x_dim*y_dim, h_dim])
+    # result is x_dim*y_dim by z_dim
+    multiplied_tensor = tf.matmul(reshaped_three_tensor, two_tensor)
+    packed_back_three_tensor = tf.reshape(multiplied_tensor, [x_dim, y_dim, z_dim])
+    return packed_back_three_tensor
