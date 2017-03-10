@@ -233,7 +233,7 @@ def confusion_matrix_backend(cm, classes,
 def create_tensorflow_saver(exclude_names):
     train_vars = [var for var in tf.global_variables() if var.name not in exclude_names]
     print "SAVER VARIABLES"
-    print [var.name for va in train_vars]
+    print [var.name for var in train_vars]
     return tf.train.Saver(train_vars)
 
 # broadcasting util function
