@@ -64,13 +64,6 @@ def create_embeddings(
     glove_matrix: embeddings matrix of words -> glove vectors
     word_to_glove:index: mapping from word to index in glove_matrix (row number)
     """
-    if debug:
-        # Dummy data for debugging
-        TRAIN_BODIES_FNAME = "./dummy_data/train_bodies.csv"
-        TRAIN_STANCES_FNAME = "./dummy_data/train_stances.csv"
-        GLOVE_FILENAME = "./dummy_data/glove.txt"
-
-
     # X is [X_train, X_dev, X_test] where each is of the format [(headline id, body id)]
     # y is [y_train, y_dev, y_test] where each is of the format [stance]
     # b_id_to_article = {b_id} -> ['list', 'rep', 'of', 'article', 'tokens']
@@ -78,7 +71,7 @@ def create_embeddings(
     # h_id_b_id_to_stance = {(h_id, b_id)} -> stance
     # raw_article_id_to_b_id = {raw_article_id} -> b_id
     # headline_to_h_id = = {headline_str_rep} -> h_id
-    X, y, b_id_to_article, h_id_to_headline, h_id_b_id_to_stance, raw_article_id_to_b_id, headline_to_h_id = compute_splits(training_size, random_split)
+    X, y, b_id_to_article, h_id_to_headline, h_id_b_id_to_stance, raw_article_id_to_b_id, headline_to_h_id = compute_splits(training_size, random_split, debug)
 
     # Get Glove Embeddings
     if glove_set is None:
@@ -346,12 +339,9 @@ if __name__ == '__main__':
         max_article_length=500,
         glove_set=None,
         debug_printing=False,
+        # debug=False,
+        debug=True,
     )
-    print X
-    print y
-    print glove_matrix
-    print max_input_lengths
-    print word_to_glove_index
 
 # -----------------------------------------------
 # LEGACY CODE -- THIS IS MANTAINED FOR BASIC LSTM

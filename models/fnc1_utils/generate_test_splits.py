@@ -24,13 +24,13 @@ DASH_CHAR = '-'
 rgen = random.Random()
 rgen.seed(1489123)
 
-def compute_splits(training=0.8, random=True):
+def compute_splits(training=0.8, random=True, debug=False):
     """ Construct train, dev, test splits.
         training (percentage assigned for training data)
         random (whether to create a random test/train split or use FNC1 split)
     """
     # Load raw data and normalize according to our conventions
-    b_id_to_article, h_id_to_headline, h_id_b_id_to_stance, raw_article_id_to_b_id, headline_to_h_id = construct_data_set()
+    b_id_to_article, h_id_to_headline, h_id_b_id_to_stance, raw_article_id_to_b_id, headline_to_h_id = construct_data_set(debug)
     num_articles = len(b_id_to_article.keys())
 
     # Generate random or FNC1 test/train split
@@ -74,6 +74,11 @@ def construct_data_set(debug=False):
         Assign each headline an index. Assign each article an index. 
         Save (headline, raw_article_id, stance) tuples as (h_id, b_id, stance)
     """
+    if debug:
+        filenames.TRAIN_BODIES_FNAME = "./dummy_data/train_bodies.csv"
+        filenames.TRAIN_STANCES_FNAME = "./dummy_data/train_stances.csv"
+        filenames.GLOVE_FILENAME = "./dummy_data/glove.txt"
+
     # Raw Data File Headers
     body_id_header = 'Body ID'
     article_body_header = 'articleBody'
