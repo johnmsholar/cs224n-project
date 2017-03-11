@@ -107,7 +107,7 @@ def main(debug=True):
         glove_set=None,
     )   
 
-    X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input = produce_uniform_data_split(X, y)
+    X, y = produce_uniform_data_split(X, y)
 
     # Each set is of the form:
     # [headline_glove_index_matrix, article_glove_index_matrix, h_seq_lengths, a_seq_lengths, labels]

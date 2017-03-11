@@ -331,11 +331,18 @@ def produce_uniform_data_split(X, y):
         for i in range(3):
             rows_in_class = (y[:, i] == 1)
             num_rows_in_class = np.sum(rows_in_class.astype(int))
-            X_local = (X[0][rows_in_class, :], X[1][rows_in_class, :], X[2][rows_in_class], X[3][rows_in_class])
+            
+            X_h_seq_lengths = [l for i, l in enumerate(X[2]) if i in rows_in_class]
+            X_a_seq_lengths = [l for i, l in enumerate(X[3]) if i in rows_in_class]
+            X_local = (X[0][rows_in_class, :], X[1][rows_in_class, :], X_h_seq_lengths, X_a_seq_lengths)
             y_local = y[rows_in_class, :]
+
             random_indices = random.sample(range(num_rows_in_class), int(count))
-            X_local = (X_local[0][random_indices, :], X_local[1][random_indices, :], X_local[2][random_indices], X_local[3][random_indices])
+            X_local_h_seq_lengths = [l for i, l in enumerate(X_local[2]) if i in random_indices]
+            X_local_a_seq_lengths = [l for i, l in enumerate(X_local[3]) if i in random_indices]
+            X_local = (X_local[0][random_indices, :], X_local[1][random_indices, :], X_local_h_seq_lengths, X_local_a_seq_lengths)
             y_local = y_local[random_indices, :]
+
             if new_X is None and new_y is None:
                 new_X = X_local
                 new_y = y_local
@@ -345,4 +352,4 @@ def produce_uniform_data_split(X, y):
         finalized_variables.append((new_X, new_y))
     (X_train, y_train), (X_dev, y_dev), (X_test, y_test) = finalized_variables
     # need to shuffle
-    return (X_train, X_dev, X_test), (y_train, y_dev, y_test)
+    return [X_train, X_dev, X_test], [y_train, y_dev, y_test]
