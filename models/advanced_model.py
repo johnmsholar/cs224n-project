@@ -207,6 +207,7 @@ class Advanced_Model(object):
     def train_on_batch(self, sess, headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch):
         """Perform one step of gradient descent on the provided batch of data.
         """
+        import pdb; pdb.set_trace()       
         dropout_rate = self.config.dropout_rate
         feed = self.create_feed_dict(
             headlines_batch,
@@ -332,20 +333,16 @@ def produce_uniform_data_split(X, y):
             rows_in_class = (y[:, i] == 1)
             num_rows_in_class = np.sum(rows_in_class.astype(int))
 
-            import pdb; pdb.set_trace()            
             X_h_seq_lengths = [l for i, l in enumerate(X[2]) if rows_in_class[i]]
             X_a_seq_lengths = [l for i, l in enumerate(X[3]) if rows_in_class[i]]
             X_local = (X[0][rows_in_class, :], X[1][rows_in_class, :], X_h_seq_lengths, X_a_seq_lengths)
             y_local = y[rows_in_class, :]
 
-            import pdb; pdb.set_trace()
             random_indices = random.sample(range(num_rows_in_class), int(count))
             X_local_h_seq_lengths = [l for i, l in enumerate(X_local[2]) if i in random_indices]
             X_local_a_seq_lengths = [l for i, l in enumerate(X_local[3]) if i in random_indices]
             X_local = (X_local[0][random_indices, :], X_local[1][random_indices, :], X_local_h_seq_lengths, X_local_a_seq_lengths)
             y_local = y_local[random_indices, :]
-
-            import pdb; pdb.set_trace()
 
             if new_X is None and new_y is None:
                 new_X = X_local
