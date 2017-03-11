@@ -39,7 +39,7 @@ class Config:
     n_epochs = None
     lr = 0.02
     max_grad_norm = 5.
-    dropout_rate = 1.0
+    dropout_rate = 0.0
     beta = 0
 
 class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
@@ -96,7 +96,7 @@ def main(debug=True):
         config.n_epochs = args.epoch
 
     # Load Data
-     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
+    X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=.80,
         random_split=False,
         truncate_headlines=False,
