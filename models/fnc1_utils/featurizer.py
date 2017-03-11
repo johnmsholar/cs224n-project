@@ -9,30 +9,28 @@ John Sholar <jmsholar@cs.stanford.edu>
 """
 
 from __init__ import LABEL_MAPPING, RELATED_UNRELATED_MAPPING, RELATED_CLASS_MAPPING
-import csv
-import filenames
-
-import numpy as np
-from sklearn.model_selection import train_test_split
-from collections import defaultdict
-
 from generate_test_splits import compute_splits, underRepresent, split_by_unrelated_versus_related, split_by_related_class
 
+from collections import defaultdict
+import filenames
+import numpy as np
+import csv
 import sys
+
 sys.path.insert(0, '../')
 from util import Progbar
 
-RANDOM_STATE = 42
+# Constants
+NUM_GLOVE_WORDS = 400000.0
+UNK_TOKEN = "PLACEHOLDER_UNK"
+
+# Legacy -- Global Variables
 TRAINING_SIZE = .80
 GLOVE_SIZE = 300
 MAX_BODY_LENGTH = 500
-NUM_GLOVE_WORDS = 400000.0
-
-UNK_TOKEN = "PLACEHOLDER_UNK"
 USE_RANDOM_FNC = False
 UNDER_REPRESENT = False
 PERC_UNRELATED = 0.5
-KEEP_ALL_SENTENCES = -1
 
 def create_embeddings(
     training_size=.80,
@@ -45,12 +43,26 @@ def create_embeddings(
     glove_set=None,
 ): 
     """
+    training_size: train/test split config
+    random_split: False -> use FNC1 split, True -> use random split
+    truncate_headline: False -> full headline, True -> truncate headline
+    truncate_articles: True -> truncate article, False -> full article
     classification_problem: 
                             1 -- 4 class prediction problem
                             2 -- "related" versus "unrelated" problem
                             3 -- "agree", "disagree", "discuss" problem
+    max_headline_length: length at which we truncate headline, if we are truncating
+    max_article_length: lenght at which we truncate article, if we are truncating
+    glove_set: None -> Read Glove, Else (word_to_glove_index, glove_matrix) -> Don't read Glove
+
+    Returns X, y, glove_matrix, max_input_lengths, word_to_glove_index
+    X: [X_train, X_dev, X_test] X_train, X_dev, X_test are tuples consisting of (headline matrix of glove indices, article matrix of glove indices, h_seq_lengths, article_seq_lengths)
+    y: [y_train, y_dev, y_test] y_train, y_dev, y_test are matrices where each row is a 1 hot vector represntation of the class label
+    glove_matrix: embeddings matrix of words -> glove vectors
+    word_to_glove:index: mapping from word to index in glove_matrix (row number)
     """
-    # X is [X_train, X_dev, X_test] where each is of the foramt [(headline id, body id)]
+
+    # X is [X_train, X_dev, X_test] where each is of the format [(headline id, body id)]
     # y is [y_train, y_dev, y_test] where each is of the format [stance]
     # b_id_to_article = {b_id} -> ['list', 'rep', 'of', 'article', 'tokens']
     # h_id_to_headline = {h_id} -> ['list', 'rep', 'of', 'headline', 'tokens']
@@ -104,7 +116,7 @@ def create_embeddings(
     max_input_lengths = (max_headline_length, max_body_length)
 
     # Create tuples for train, dev, and test
-    # These tuples are (headline_list, article_list)
+    # These tuples are (headline_list, article_list, h_seq_lengths, article_seq_lengths)
     X_train_input = compute_glove_id_embeddings(
         X_train_split,
         h_id_to_glove_index_vector,
@@ -131,7 +143,9 @@ def create_embeddings(
 
     if classification_problem == 1:
         # "agree", "disagree", "discuss", "unrelated" classification problem
-        pass
+        y_train_input = compute_stance_embeddings(y_train_split)
+        y_dev_input = compute_stance_embeddings(y_dev_split)
+        y_test_input = compute_stance_embeddings(y_test_split)
 
     elif classification_problem == 2:
         # "related", "unrelated" classifcation problem
@@ -206,19 +220,27 @@ def compute_glove_id_embeddings (id_list, h_id_to_glove_index_vector, b_id_to_gl
     else:
         headline_list = np.zeros((len(id_list), max_input_lengths[0]))
         body_list = np.zeros((len(id_list), max_input_lengths[1]))
+        headline_seq_lengths = []
+        body_seq_lengths = []
+
         for index, (h_id, b_id) in enumerate(id_list):
             h_index_vector = h_id_to_glove_index_vector[h_id]
             b_index_vector = b_id_to_glove_index_vector[b_id]
-            headline_list[index][:len(h_index_vector)] = h_index_vector
-            body_list[index][:len(b_index_vector)] = b_index_vector
-        return (headline_list, body_list)
+            headline_length = len(h_index_vector)
+            body_length = len(b_index_vector)
 
-# TODO: Think about this -- we are padding the vectors with zeros. This means that we are
-#       adding incorrect tokens to the embedding if these correspond to a word in the glove
-#       vector.
+            headline_list[index][:headline_length] = h_index_vector
+            body_list[index][:body_length] = b_index_vector
+            headline_seq_lengths.append(headline_length)
+            body_seq_lengths.append(body_length)
+
+        return (headline_list, body_list, headline_seq_lengths, body_seq_lengths)
+
 def compute_glove_index_vector (id_to_text, word_to_glove_index, truncate=True, truncate_size=500):
     """ id_to_text should be {id -> text} for either headline or body
         word_to_glove_index should be {word -> word's index in glove}
+
+        Returns sample_id_to_glove_index_vector = {id} -> np.
     """
     sample_id_to_glove_index_vector = {}
     for (sample_id, text) in id_to_text.items():
@@ -243,7 +265,7 @@ def compute_stance_embeddings(stance_list, mapping=LABEL_MAPPING):
     return labels_matrix
 
 if __name__ == '__main__':
-    create_embeddings(
+    X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=.80,
         random_split=False,
         truncate_headlines=False,

@@ -64,7 +64,7 @@ def compute_splits(training=0.8, random=True):
             y_test.append(stance)
 
     print "Train: {}, Dev: {}, Test: {}".format(len(x_train), len(x_dev), len(x_test))
-
+    
     X = (x_train, x_dev, x_test)
     y = (y_train, y_dev, y_test)
     return X, y, b_id_to_article, h_id_to_headline, h_id_b_id_to_stance, raw_article_id_to_b_id, headline_to_h_id
