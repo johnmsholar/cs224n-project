@@ -274,6 +274,9 @@ class Advanced_Model(object):
         print "Evaluating on dev set"
         dev_score, _ = self.predict(sess, dev_set)
         print "- dev Score: {:.2f}".format(dev_score)
+        print "Evaluating on train set"
+        train_score, _ = self.predict(sess, train_examples)
+        print "- train Score: {:.2f}".format(train_score)
         return dev_score
 
     def fit(self, sess, saver, train_examples, dev_set):
@@ -320,9 +323,9 @@ def produce_uniform_data_split(
     train_dist = np.sum(y_train, axis=0)
     dev_dist = np.sum(y_dev, axis=0)
     test_dist = np.sum(y_test, axis=0)
-    train_count = max(100, min(train_dist))
-    dev_count = max(100, min(dev_dist))
-    test_count = max(100, min(test_dist))
+    train_count = min(15, min(train_dist))
+    dev_count = min(15, min(dev_dist))
+    test_count = min(15, min(test_dist))
     target_variables = [
         (X_train, y_train, train_count),
         (X_dev, y_dev, dev_count),
