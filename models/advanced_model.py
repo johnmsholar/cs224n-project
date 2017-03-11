@@ -305,20 +305,21 @@ def create_data_sets_for_model(X, y):
     test_set = [X[2][0], X[2][1], X[2][2], X[2][3], y[2]]
     return train_examples, dev_set, test_set
 
-def produce_uniform_data_split(
-    X_train,
-    X_dev,
-    X_test,
-    y_train,
-    y_dev,
-    y_test,
-):
+def produce_uniform_data_split(X, y):
+    X_train = X[0]
+    X_dev = X[1]
+    X_test = X[2]
+    y_train = y[0]
+    y_dev = y[1]
+    y_test = y[2]
+
     train_dist = np.sum(y_train, axis=0)
     dev_dist = np.sum(y_dev, axis=0)
     test_dist = np.sum(y_test, axis=0)
     train_count = min(15, min(train_dist))
     dev_count = min(15, min(dev_dist))
     test_count = min(15, min(test_dist))
+
     target_variables = [
         (X_train, y_train, train_count),
         (X_dev, y_dev, dev_count),
@@ -330,18 +331,18 @@ def produce_uniform_data_split(
         for i in range(3):
             rows_in_class = (y[:, i] == 1)
             num_rows_in_class = np.sum(rows_in_class.astype(int))
-            X_local = (X[0][rows_in_class, :], X[1][rows_in_class, :])
+            X_local = (X[0][rows_in_class, :], X[1][rows_in_class, :], X[2][rows_in_class], X[3][rows_in_class])
             y_local = y[rows_in_class, :]
             random_indices = random.sample(range(num_rows_in_class), int(count))
-            X_local = (X_local[0][random_indices, :], X_local[1][random_indices, :])
+            X_local = (X_local[0][random_indices, :], X_local[1][random_indices, :], X_local[2][random_indices], X_local[3][random_indices])
             y_local = y_local[random_indices, :]
             if new_X is None and new_y is None:
                 new_X = X_local
                 new_y = y_local
             else:
-                new_X = (np.concatenate([new_X[0], X_local[0]]), np.concatenate([new_X[1], X_local[1]]))
+                new_X = (np.concatenate([new_X[0], X_local[0]]), np.concatenate([new_X[1], X_local[1]]), new_X[2] + X_local[2], new_X[3] + X_local[3])
                 new_y = np.concatenate([new_y, y_local])
         finalized_variables.append((new_X, new_y))
     (X_train, y_train), (X_dev, y_dev), (X_test, y_test) = finalized_variables
     # need to shuffle
-    return X_train, X_dev, X_test, y_train, y_dev, y_test,
+    return (X_train, X_dev, X_test), (y_train, y_dev, y_test)
