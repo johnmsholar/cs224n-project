@@ -340,8 +340,8 @@ def produce_uniform_data_split(X, y):
 
             import pdb; pdb.set_trace()
             random_indices = random.sample(range(num_rows_in_class), int(count))
-            X_local_h_seq_lengths = [l for i, l in enumerate(X_local[2]) if random_indices[i]]
-            X_local_a_seq_lengths = [l for i, l in enumerate(X_local[3]) if random_indices[i]]
+            X_local_h_seq_lengths = [l for i, l in enumerate(X_local[2]) if i in random_indices]
+            X_local_a_seq_lengths = [l for i, l in enumerate(X_local[3]) if i in random_indices]
             X_local = (X_local[0][random_indices, :], X_local[1][random_indices, :], X_local_h_seq_lengths, X_local_a_seq_lengths)
             y_local = y_local[random_indices, :]
 
