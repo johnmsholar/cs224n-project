@@ -79,7 +79,7 @@ class Advanced_Model(object):
 
         # Configure internal params
         self.h_max_length = max_lengths[0]
-        self.a_max_length = max_lengths[1]        
+        self.a_max_length = max_lengths[1]    
 
         # Build Tensorflow Graph Model
         self.build()
@@ -90,6 +90,11 @@ class Advanced_Model(object):
         self.loss = self.add_loss_op(self.pred)
         self.train_op = self.add_training_op(self.loss)
         self.class_predictions = tf.argmax(self.pred, axis=1)
+
+    def print_params(self):
+        print "PRINTING PARAMS OF MODEL"
+        print "Headline Max Length {}".format(self.h_max_length)
+        print "Article Max Length {}".format(self.a_max_length)
 
     def get_fn_names(self):
         """ Retrieve file names.
@@ -180,12 +185,11 @@ class Advanced_Model(object):
     def add_loss_op(self, preds):
         """Adds Ops for the loss function to the computational graph.
         """
-        loss = tf.reduce_mean(
-            tf.nn.softmax_cross_entropy_with_logits(
-                labels=self.labels_placeholder,
-                logits=preds
-            )
+        loss = tf.losses.softmax_cross_entropy(
+            onehot_labels=self.labels_placeholder,
+            logits=preds,
         )
+       
         reg = 0
         for var in tf.trainable_variables():
             reg += tf.nn.l2_loss(var)

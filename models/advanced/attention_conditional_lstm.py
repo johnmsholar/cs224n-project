@@ -37,7 +37,7 @@ class Config:
     hidden_size = 300 # Hidden State Size
     batch_size = 50
     n_epochs = None
-    lr = 0.02
+    lr = 0.2
     max_grad_norm = 5.
     dropout_rate = 0.5
     beta = 0.02
@@ -49,9 +49,9 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         """ Retrieve file names.
             fn_names = [best_weights_fn, curr_weights_fn, preds_fn]
         """
-        best_weights_fn = 'conditional_lstm_best_stance.weights'
-        curr_weights_fn = 'conditional_lstm_curr_stance.weights'
-        preds_fn = 'conditional_encoding_lstm_predicted.pkl'
+        best_weights_fn = 'attention_conditional_lstm_best_stance.weights'
+        curr_weights_fn = 'attention_conditional_lstm_curr_stance.weights'
+        preds_fn = 'attention_conditional_encoding_lstm_predicted.pkl'
         return [best_weights_fn, curr_weights_fn, preds_fn]
 
     def add_prediction_op(self): 
@@ -78,9 +78,9 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         output = attention_layer(headline_outputs, h_n)
 
         # Compute predictions
-        output_dropout = tf.nn.dropout(output, dropout_rate)
+        # output_dropout = tf.nn.dropout(output, dropout_rate)
         class_squash_layer = ClassSquashLayer(self.config.hidden_size, self.config.num_classes)
-        preds = class_squash_layer(output_dropout)
+        preds = class_squash_layer(output)
         return preds
 
 def main(debug=True):
@@ -97,7 +97,7 @@ def main(debug=True):
 
     # Load Data
     # X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths= create_inputs_by_glove_split_on_class(True, False)
-    X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths, _ = create_inputs_by_glove_split_on_class(True, False)
+    X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths, _ = create_inputs_by_glove_split_on_class(False, False, None, 2)
     """
     X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input = (
         produce_uniform_data_split(X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input))
@@ -111,6 +111,10 @@ def main(debug=True):
         y_test_input
     )
 
+    print "Distribution of Train {}".format(np.sum(y_train_input, axis=0))
+    print "Distribtion of Dev {}".format(np.sum(y_dev_input, axis=0))
+    print "Distribution of Test{}".format(np.sum(y_test_input, axis=0))
+
     with tf.Graph().as_default():
         print 80 * "="
         print "INITIALIZING"
@@ -119,6 +123,7 @@ def main(debug=True):
         # Create and configure model
         print "Building model...",
         model = Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_lengths, glove_matrix)
+        model.print_params()
         start = time.time()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
