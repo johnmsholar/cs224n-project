@@ -26,7 +26,8 @@ UNK_TOKEN = "PLACEHOLDER_UNK"
 
 # Legacy -- Global Variables
 TRAINING_SIZE = .80
-GLOVE_SIZE = 300
+# GLOVE_SIZE = 300
+GLOVE_SIZE = 2
 MAX_BODY_LENGTH = 500
 USE_RANDOM_FNC = False
 UNDER_REPRESENT = False
@@ -41,6 +42,8 @@ def create_embeddings(
     max_headline_length=500,
     max_article_length=500,
     glove_set=None,
+    debug_printing=False,
+    debug=False
 ): 
     """
     training_size: train/test split config
@@ -61,6 +64,12 @@ def create_embeddings(
     glove_matrix: embeddings matrix of words -> glove vectors
     word_to_glove:index: mapping from word to index in glove_matrix (row number)
     """
+    if debug:
+        # Dummy data for debugging
+        TRAIN_BODIES_FNAME = "./dummy_data/train_bodies.csv"
+        TRAIN_STANCES_FNAME = "./dummy_data/train_stances.csv"
+        GLOVE_FILENAME = "./dummy_data/glove.txt"
+
 
     # X is [X_train, X_dev, X_test] where each is of the format [(headline id, body id)]
     # y is [y_train, y_dev, y_test] where each is of the format [stance]
@@ -162,6 +171,68 @@ def create_embeddings(
     else:
         raise Exception('Invalid classifcation problem')        
 
+    # Print out meta - info
+    if debug_printing:
+        with open('./debug/b_id_to_article.csv', 'w') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(['Body ID', "Article"])
+            for key, value in b_id_to_article.items():
+                writer.writerow([key, ' '.join(value)])
+
+        with open('./debug/h_id_to_headline.csv', 'w') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(['Body ID', "Article"])
+            for key, value in h_id_to_headline.items():
+                writer.writerow([key, ' '.join(value)])
+
+        with open('./debug/h_id_b_id_to_stance.csv', 'w') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(['Headline ID', "Body ID", "Stance"])
+            for key, value in h_id_b_id_to_stance.items():
+                writer.writerow([key[0], key[1], value])
+
+        with open('./debug/raw_article_id_to_b_id.csv', 'w') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(['Raw Article ID', "Body ID"])
+            for key, value in raw_article_id_to_b_id.items():
+                writer.writerow([key, value])
+
+        with open('./debug/X_train_split.csv', 'w') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(['Headline ID', "Body ID", "Stance"])
+            for i, t in enumerate(X_train_split):
+                writer.writerow([t[0], t[1], y_train_split[i]])
+
+        with open('./debug/X_dev_split.csv', 'w') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(['Headline ID', "Body ID", "Stance"])
+            for i, t in enumerate(X_dev_split):
+                writer.writerow([t[0], t[1], y_dev_split[i]])
+
+        with open('./debug/X_test_split.csv', 'w') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(['Headline ID', "Body ID", "Stance"])
+            for i, t in enumerate(X_test_split):
+                writer.writerow([t[0], t[1], y_test_split[i]])   
+
+        with open('./debug/h_id_to_glove_index_vector.csv', 'w') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(['Headline ID', "Glove Index Vector"])
+            for key, value in h_id_to_glove_index_vector.items():
+                writer.writerow([key] + value.tolist()) 
+
+        with open('./debug/b_id_to_glove_index_vector.csv', 'w') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(['Body ID', "Glove Index Vector"])
+            for key, value in b_id_to_glove_index_vector.items():
+                writer.writerow([key] + value.tolist()) 
+
+        with open('./debug/word_to_glove_index.csv', 'w') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(['Word', "Glove Index "])
+            for key, value in word_to_glove_index.items():
+                writer.writerow([key, value])    
+
     # Consolidate X and y into tuples for easy access
     X = (X_train_input, X_dev_input, X_test_input)
     y = (y_train_input, y_dev_input, y_test_input)
@@ -172,7 +243,7 @@ def create_glove_dict():
         a mapping from word to index in the embedding matrix.
     """
     glove_vectors = read_glove_set() # word to numpy array
-    glove_vectors[UNK_TOKEN] = np.random.normal(size=GLOVE_SIZE)
+    glove_vectors[UNK_TOKEN] = np.zeros((1, GLOVE_SIZE))
     glove_words = glove_vectors.keys()
     word_to_glove_index = {} # mapping into the glove index for embedding
     glove_matrix = np.zeros((len(glove_vectors), GLOVE_SIZE))
@@ -266,15 +337,21 @@ def compute_stance_embeddings(stance_list, mapping=LABEL_MAPPING):
 
 if __name__ == '__main__':
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
-        training_size=.80,
-        random_split=False,
+        training_size=1.0,
+        random_split=True,
         truncate_headlines=False,
         truncate_articles=True,
-        classification_problem=2,
+        classification_problem=3,
         max_headline_length=500,
         max_article_length=500,
         glove_set=None,
+        debug_printing=False,
     )
+    print X
+    print y
+    print glove_matrix
+    print max_input_lengths
+    print word_to_glove_index
 
 # -----------------------------------------------
 # LEGACY CODE -- THIS IS MANTAINED FOR BASIC LSTM

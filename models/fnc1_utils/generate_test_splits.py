@@ -69,7 +69,7 @@ def compute_splits(training=0.8, random=True):
     y = (y_train, y_dev, y_test)
     return X, y, b_id_to_article, h_id_to_headline, h_id_b_id_to_stance, raw_article_id_to_b_id, headline_to_h_id
 
-def construct_data_set():
+def construct_data_set(debug=False):
     """ Read in the headlines, articles, and (headline, raw_article_id, stance) tuples.
         Assign each headline an index. Assign each article an index. 
         Save (headline, raw_article_id, stance) tuples as (h_id, b_id, stance)
@@ -99,7 +99,8 @@ def construct_data_set():
             b_id_to_article[b_id] = article
 
     # Ensure that all articles have been read
-    assert len(b_id_to_article.keys()) == 1683
+    if not debug:
+        assert len(b_id_to_article.keys()) == 1683
 
     # Read (headline, raw_article_id, stance) tuples.
     # First assign each headline a unique id.
@@ -125,11 +126,12 @@ def construct_data_set():
             h_id_b_id_to_stance[(curr_h_id, b_id)] = LABEL_MAPPING[row[stance_header]]
 
     # Random spot check for correctness
-    random_headline = "Missing American journalist reportedly beheaded by Islamic State "
-    random_h_id = headline_to_h_id[random_headline]
-    assert random_h_id == 383
-    assert raw_article_id_to_b_id[195] == 125
-    assert h_id_b_id_to_stance[(383, 125)] == LABEL_MAPPING["discuss"]
+    if not debug:
+        random_headline = "Missing American journalist reportedly beheaded by Islamic State "
+        random_h_id = headline_to_h_id[random_headline]
+        assert random_h_id == 383
+        assert raw_article_id_to_b_id[195] == 125
+        assert h_id_b_id_to_stance[(383, 125)] == LABEL_MAPPING["discuss"]
 
     return b_id_to_article, h_id_to_headline, h_id_b_id_to_stance, raw_article_id_to_b_id, headline_to_h_id
 
