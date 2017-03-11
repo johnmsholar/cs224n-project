@@ -19,7 +19,7 @@ sys.path.insert(0, '../')
 
 from advanced_model import Advanced_Model, create_data_sets_for_model, produce_uniform_data_split
 from fnc1_utils.score import report_score
-from fnc1_utils.featurizer import create_inputs_by_glove, create_inputs_by_glove_split_on_class
+from fnc1_utils.featurizer import create_embeddings
 from util import create_tensorflow_saver
 from layers.attention_layer import AttentionLayer
 from layers.class_squash_layer import ClassSquashLayer
@@ -37,10 +37,10 @@ class Config:
     hidden_size = 300 # Hidden State Size
     batch_size = 50
     n_epochs = None
-    lr = 0.2
+    lr = 0.02
     max_grad_norm = 5.
-    dropout_rate = 0.5
-    beta = 0.02
+    dropout_rate = 1.0
+    beta = 0
 
 class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
     """ Conditional Encoding LSTM Model.
@@ -96,24 +96,28 @@ def main(debug=True):
         config.n_epochs = args.epoch
 
     # Load Data
-    # X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths= create_inputs_by_glove_split_on_class(True, False)
-    X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths, _ = create_inputs_by_glove_split_on_class(False, False, None, 2)
+     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
+        training_size=.80,
+        random_split=False,
+        truncate_headlines=False,
+        truncate_articles=True,
+        classification_problem=3,
+        max_headline_length=500,
+        max_article_length=500,
+        glove_set=None,
+    )   
+
     """
     X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input = (
         produce_uniform_data_split(X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input))
     """
-    train_examples, dev_set, test_set = create_data_sets_for_model(
-        X_train_input,
-        X_dev_input,
-        X_test_input,
-        y_train_input,
-        y_dev_input,
-        y_test_input
-    )
 
-    print "Distribution of Train {}".format(np.sum(y_train_input, axis=0))
-    print "Distribtion of Dev {}".format(np.sum(y_dev_input, axis=0))
-    print "Distribution of Test{}".format(np.sum(y_test_input, axis=0))
+    # Each set is of the form:
+    # [headline_glove_index_matrix, article_glove_index_matrix, h_seq_lengths, a_seq_lengths, labels]
+    train_examples, dev_set, test_set = create_data_sets_for_model(X, y)
+    print "Distribution of Train {}".format(np.sum(train_examples[4], axis=0))
+    print "Distribtion of Dev {}".format(np.sum(dev_set[4], axis=0))
+    print "Distribution of Test{}".format(np.sum(test_set[4], axis=0))
 
     with tf.Graph().as_default():
         print 80 * "="
@@ -122,7 +126,7 @@ def main(debug=True):
 
         # Create and configure model
         print "Building model...",
-        model = Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_lengths, glove_matrix)
+        model = Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix)
         model.print_params()
         start = time.time()
         print "took {:.2f} seconds\n".format(time.time() - start)

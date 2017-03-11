@@ -204,11 +204,15 @@ class Advanced_Model(object):
         train_op = optimizer.minimize(loss)
         return train_op
 
-    def train_on_batch(self, sess, headlines_batch, articles_batch, labels_batch):
+    def train_on_batch(self, sess, headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch):
         """Perform one step of gradient descent on the provided batch of data.
         """
-        h_seq_lengths = [len(arr) for arr in headlines_batch]
-        a_seq_lengths = [len(arr) for arr in articles_batch]
+        print headlines_batch[0]
+        print h_seq_lengths
+        print "-"*80
+        print articles_batch[0]
+        print a_seq_lengths
+
         dropout_rate = self.config.dropout_rate
         feed = self.create_feed_dict(
             headlines_batch,
@@ -221,11 +225,9 @@ class Advanced_Model(object):
         _, loss = sess.run([self.train_op, self.loss], feed_dict=feed)
         return loss
 
-    def predict_on_batch(self, sess, headlines_batch, articles_batch):
+    def predict_on_batch(self, sess, headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths):
         """Make predictions for the provided batch of data.
         """
-        h_seq_lengths = [len(arr) for arr in headlines_batch]
-        a_seq_lengths = [len(arr) for arr in articles_batch]
         feed = self.create_feed_dict(
             headlines_batch,
             articles_batch,
@@ -244,8 +246,8 @@ class Advanced_Model(object):
         prog = Progbar(target=1+len(data_set[0])/self.config.batch_size)
         actual = vectorize_stances(data_set[2])
         preds = []
-        for i, (headlines_batch, articles_batch, _) in enumerate(minibatches(data_set, self.config.batch_size)):
-            predictions_batch = list(self.predict_on_batch(sess, headlines_batch, articles_batch))
+        for i, (headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, _) in enumerate(minibatches(data_set, self.config.batch_size)):
+            predictions_batch = list(self.predict_on_batch(sess, headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths))
             preds.extend(predictions_batch)
             prog.update(i + 1)
 
@@ -266,8 +268,8 @@ class Advanced_Model(object):
         """
         # Train the Epoch
         prog = Progbar(target=1+len(train_examples[0])/self.config.batch_size)
-        for i, (headlines_batch, articles_batch, labels_batch) in enumerate(minibatches(train_examples, self.config.batch_size)):
-            loss = self.train_on_batch(sess, headlines_batch, articles_batch, labels_batch)
+        for i, (headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch) in enumerate(minibatches(train_examples, self.config.batch_size)):
+            loss = self.train_on_batch(headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch)
             prog.update(i + 1, [("train loss", loss)])
 
         # Evaluate on the Dev Set
@@ -296,20 +298,17 @@ class Advanced_Model(object):
                 saver.save(sess, self.curr_weights_fn)
             print    
 
-def create_data_sets_for_model(
-    X_train,
-    X_dev,
-    X_test,
-    y_train,
-    y_dev,
-    y_test,
-):
-    """ Given train, dev, and test splits for input and labels,
+def create_data_sets_for_model(X, y):
+    """ Given train, dev, and test splits for input, sequnce lengths, labels,
         construct the arrays that can be processed by the model.
+        X: [X_train, X_dev, X_test] X_train, X_dev, X_test are tuples consisting of (headline matrix of glove indices, article matrix of glove indices, h_seq_lengths, article_seq_lengths)
+        y: [y_train, y_dev, y_test] y_train, y_dev, y_test are matrices where each row is a 1 hot vector represntation of the class label
+
+        Returns lists in the form of [headline_glove_index_matrix, article_glove_index_matrix, h_seq_lengths, a_seq_lengths, labels]
     """
-    train_examples = [X_train[0], X_train[1], y_train]
-    dev_set = [X_dev[0], X_dev[1], y_dev]
-    test_set = [X_test[0], X_test[1], y_test]
+    train_examples = [X[0][0], X[0][1], X[0][2], X[0]X[3], y[0]]
+    dev_set = [X[1][0], X[1][1], X[1][2], X[1]X[3], y[1]]
+    test_set = [X[2][0], X[2][1], X[2][2], X[2]X[3], y[2]]
     return train_examples, dev_set, test_set
 
 def produce_uniform_data_split(
