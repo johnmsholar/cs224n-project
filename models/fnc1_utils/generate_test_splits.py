@@ -1,36 +1,58 @@
-import random
-import os
+#!/usr/bin/env python2.7
+# -*- coding: utf-8 -*-
+"""
+CS 224N 2016-2017 
+generate_test_splits.py: Construct test splits.
+Sahil Chopra <schopra8@cs.stanford.edu>
+Saachi Jain <saachi@cs.stanford.edu>
+John Sholar <jmsholar@cs.stanford.edu>
+"""
+from __init__ import LABEL_MAPPING, RELATED_UNRELATED_MAPPING, RELATED_CLASS_MAPPING
 from collections import defaultdict
 import filenames
+import random
+import string
 import csv
-from __init__ import LABEL_MAPPING, RELATED_UNRELATED_MAPPING, RELATED_CLASS_MAPPING
+import re
+import os
 
-# Train/Test Split as defined by FNC-1 Baseline
+# Constants
+SPACE_CHAR = ' '
+NEWLINE_CHAR = '\n'
+DASH_CHAR = '-'
+
 rgen = random.Random()
-rgen.seed(1489215)
+rgen.seed(1489123)
 
-# id_id_stance should be (h_id b_id)-> stance
-def compute_splits(id_id_stance, training=0.8, random=True):
-    num_articles = len(set([ids[1] for (ids, stance) in id_id_stance.items()]))
+def compute_splits(training=0.8, random=True):
+    """ Construct train, dev, test splits.
+        training (percentage assigned for training data)
+        random (whether to create a random test/train split or use FNC1 split)
+    """
+    # Load raw data and normalize according to our conventions
+    b_id_to_article, h_id_to_headline, h_id_b_id_to_stance, raw_article_id_to_b_id, headline_to_h_id = construct_data_set()
+    num_articles = len(b_id_to_article.keys())
+
+    # Generate random or FNC1 test/train split
     if (random):
         training_ids, hold_out_ids = generate_random_hold_out_split(num_articles, training)
     else:
-        training_ids, hold_out_ids = generate_original_holdouts()
+        training_ids, hold_out_ids = generate_original_holdouts(raw_article_id_to_b_id)
 
+    # Shuffle article ids       
     rgen.shuffle(training_ids)
-    train_ids = training_ids[:int(training * len(training_ids))]
-    dev_ids = training_ids[int(training * len(training_ids)):]
+    train_ids = set(training_ids[:int(training * len(training_ids))])
+    dev_ids = set(training_ids[int(training * len(training_ids)):])
 
-    train_ids = set(train_ids)
-    dev_ids = set(dev_ids)
-    # train pairs are (headline, body)
+    # Construct splits
     x_train = []
     y_train = []
     x_dev = []
     y_dev = []
     x_test = []
     y_test = []
-    for (id_pair, stance) in id_id_stance.items():
+
+    for (id_pair, stance) in h_id_b_id_to_stance.items():
         if id_pair[1] in train_ids:
             x_train.append(id_pair)
             y_train.append(stance)
@@ -40,42 +62,139 @@ def compute_splits(id_id_stance, training=0.8, random=True):
         else:
             x_test.append(id_pair)
             y_test.append(stance)
+
     print "Train: {}, Dev: {}, Test: {}".format(len(x_train), len(x_dev), len(x_test))
-    return x_train, x_dev, x_test, y_train, y_dev, y_test
 
-# id_pairs are h_id, b_id
-# cut the unrelated samples until there are < perc_unrelated samples in the whole set
-def underRepresent(id_pairs, stances, perc_unrelated):
-    by_stance = distribute_by_stance(id_pairs, stances)
-    rgen.shuffle(by_stance[LABEL_MAPPING["unrelated"]])
-    curr_num_unrelated = len(by_stance[LABEL_MAPPING["unrelated"]])
-    num_total = len(id_pairs)
-    needed_num_unrelated = int(perc_unrelated * num_total)
-    if (needed_num_unrelated < curr_num_unrelated):
-        by_stance[LABEL_MAPPING["unrelated"]] = by_stance[LABEL_MAPPING["unrelated"]][:needed_num_unrelated]
-    # (id_pair, stance)
-    new_num_unrelated = len(by_stance[LABEL_MAPPING["unrelated"]])
-    new_id_pairs_stance = []
-    for (stance, stance_id_pair_list) in by_stance.items():
-        new_id_pairs_stance += [(id_pair, stance) for id_pair in stance_id_pair_list]
-    rgen.shuffle(new_id_pairs_stance)
-    id_pairs = [sample[0] for sample in new_id_pairs_stance]
-    stances = [sample[1] for sample in new_id_pairs_stance]
-    print "Under-representing, so now {} samples from {}".format(new_num_unrelated, curr_num_unrelated)
-    return id_pairs, stances
+    X = (x_train, x_dev, x_test)
+    y = (y_train, y_dev, y_test)
+    return X, y, b_id_to_article, h_id_to_headline, h_id_b_id_to_stance, raw_article_id_to_b_id, headline_to_h_id
 
-# id pairs are h_id, b_id
-# separate the samples into unrelated versus related 
-def split_by_unrelated_verus_related(id_pairs, stances):
+def construct_data_set():
+    """ Read in the headlines, articles, and (headline, raw_article_id, stance) tuples.
+        Assign each headline an index. Assign each article an index. 
+        Save (headline, raw_article_id, stance) tuples as (h_id, b_id, stance)
+    """
+    # Raw Data File Headers
+    body_id_header = 'Body ID'
+    article_body_header = 'articleBody'
+    headline_header = 'Headline'
+    stance_header = 'Stance'
+
+    # Mappings
+    raw_article_id_to_b_id = {}
+    b_id_to_article = {}
+    h_id_to_headline = {}
+    headline_to_h_id = {}
+    h_id_b_id_to_stance = {}
+
+    # Read articles, construct our own set of article ids,
+    # and mappings from our article ids to articles.
+    with open(filenames.TRAIN_BODIES_FNAME) as bodies_file:
+        bodies_reader = csv.DictReader(bodies_file, delimiter = ',')
+        for b_id, row in enumerate(bodies_reader):
+            raw_article_id = int(row[body_id_header])
+            raw_article_id_to_b_id[raw_article_id] = b_id
+            article_body = row[article_body_header]
+            article = clean(article_body)
+            b_id_to_article[b_id] = article
+
+    # Ensure that all articles have been read
+    assert len(b_id_to_article.keys()) == 1683
+
+    # Read (headline, raw_article_id, stance) tuples.
+    # First assign each headline a unique id.
+    # Then construct (h_id, b_id, stance) tuples.
+    headlines = set([])
+    h_id = 0
+    with open(filenames.TRAIN_STANCES_FNAME) as stances_file:
+        stances_reader = csv.DictReader(stances_file, delimiter = ',')
+        for row in stances_reader:
+            headline = row[headline_header]
+
+            if headline not in headlines:
+                # New headline, so create an h_id
+                headlines.add(headline)
+                h_id_to_headline[h_id] = clean(headline)
+                headline_to_h_id[headline] = h_id
+                h_id += 1
+
+            # Create (h_id, b_id, stance) tuple
+            curr_h_id = headline_to_h_id[headline]
+            raw_article_id = int(row[body_id_header])
+            b_id = raw_article_id_to_b_id[raw_article_id]
+            h_id_b_id_to_stance[(curr_h_id, b_id)] = LABEL_MAPPING[row[stance_header]]
+
+    # Random spot check for correctness
+    random_headline = "Missing American journalist reportedly beheaded by Islamic State "
+    random_h_id = headline_to_h_id[random_headline]
+    assert random_h_id == 383
+    assert raw_article_id_to_b_id[195] == 125
+    assert h_id_b_id_to_stance[(383, 125)] == LABEL_MAPPING["discuss"]
+
+    return b_id_to_article, h_id_to_headline, h_id_b_id_to_stance, raw_article_id_to_b_id, headline_to_h_id
+
+def clean(article_body):
+    """ Clean the article body (string text) and return as a list of tokens.
+    """
+    article_body = article_body.replace(NEWLINE_CHAR, SPACE_CHAR)
+    article_body = article_body.replace(DASH_CHAR, SPACE_CHAR)    
+
+    def clean_word(word):
+        w = word.lower()
+        tokens = re.findall(r"[\w']+|[.,!?;]", w)
+        return [t.strip() for t in tokens if (t.isalnum() or t in string.punctuation) and t.strip() != '']
+
+    cleaned_article = []
+    for w in str.split(article_body, SPACE_CHAR):
+        c_word = clean_word(w)
+        if c_word is not SPACE_CHAR:
+            cleaned_article.extend(c_word)
+
+    return cleaned_article
+
+def generate_random_hold_out_split (num_articles, training = 0.8):
+    """ Generate random article split
+    """
+    article_ids = [i for i in range(0, num_articles)] # article ids are consecutive
+    rgen.shuffle(article_ids)  # and shuffle that list
+    training_ids = article_ids[:int(training * len(article_ids))]
+    hold_out_ids = article_ids[int(training * len(article_ids)):]
+    return training_ids, hold_out_ids
+
+def generate_original_holdouts(raw_article_id_to_b_id):
+    """ Returns a list of article ids for training and for hold out from original.
+    """
+    # Generate article ids for training and test (holdout)
+    training_fnc_ids = read_list_of_ids(filenames.ORIG_TRAIN_BODY_ID_FNAME)
+    hold_out_fnc_ids = read_list_of_ids(filenames.ORIG_HOLDOUT_BODY_ID_FNAME)
+
+    # Convert raw article ids to b_ids 
+    training_fnc_ids = [raw_article_id_to_b_id[raw_article_id] for raw_article_id in training_fnc_ids]
+    hold_out_fnc_ids = [raw_article_id_to_b_id[raw_article_id] for raw_article_id in hold_out_fnc_ids]
+    return training_fnc_ids, hold_out_fnc_ids
+
+def read_list_of_ids(filename):
+    """ Given a file with an ID on every line, return the list of IDs.
+    """
+    id_list = []
+    with open(filename, 'rb') as csvfile:
+        id_reader = csv.reader(csvfile, delimiter = ' ', quotechar='|')
+        id_list = [int(l[0]) for l in id_reader]
+    return id_list
+
+def split_by_unrelated_versus_related(id_pairs, stances):
+    """ id pairs are h_id, b_id separate the samples into 
+        unrelated versus related 
+    """
     by_stance = distribute_by_stance(id_pairs, stances)
     
     # Construct a list of all (h_id, b_id) pairs that have
     # "related" labels i.e. have stances "agree", "disagree",
     # or "discuss"
     related_ids = []
-    related.extend(by_stance[LABEL_MAPPING["agree"]])
-    related.extend(by_stance[LABEL_MAPPING["disagree"]])
-    related.extend(by_stance[LABEL_MAPPING["discuss"]])
+    related_ids.extend(by_stance[LABEL_MAPPING["agree"]])
+    related_ids.extend(by_stance[LABEL_MAPPING["disagree"]])
+    related_ids.extend(by_stance[LABEL_MAPPING["discuss"]])
 
     # Construct a list of all "unrelated" stances
     unrelated_ids = by_stance[LABEL_MAPPING["unrelated"]]
@@ -90,9 +209,10 @@ def split_by_unrelated_verus_related(id_pairs, stances):
 
     return ids, labels
 
-# id pairs are h_id, b_id
-# separate the samples by agree/disagree/discuss 
 def split_by_related_class(id_pairs, stances):
+    """ id pairs are h_id, b_id
+        separate the samples by agree/disagree/discuss 
+    """
     by_stance = distribute_by_stance(id_pairs, stances)
 
     # Split up (h_id, b_id) tules according to the type
@@ -113,86 +233,34 @@ def split_by_related_class(id_pairs, stances):
 
     return ids, labels
 
-# return a dict with {stance -> (h_id, b_id)}
 def distribute_by_stance(id_pairs, stances):
+    """ return a dict with {stance -> (h_id, b_id)}
+    """
     by_stance = {i: [] for i in range(0, 4)}
     assert len(id_pairs) == len(stances)
-    for (i, id_pair) in enumerate(id_pairs):
+    for i, id_pair in enumerate(id_pairs):
         stance = stances[i]
         by_stance[stance].append(id_pair)
     return by_stance
 
-
-# returns a list of article ids for training and for hold out from original 
-def generate_original_holdouts():
-    training_fnc_ids = read_list_of_ids(filenames.ORIG_TRAIN_BODY_ID_FNAME)
-    hold_out_fnc_ids = read_list_of_ids(filenames.ORIG_HOLDOUT_BODY_ID_FNAME)
-    b_id_to_index = {}
-    # Read Article Bodies and get a map of id to index
-    with open(filenames.TRAIN_BODIES_FNAME) as bodies_file:
-        bodies_reader = csv.DictReader(bodies_file, delimiter = ',')
-        index = 0
-        for row in bodies_reader:
-            b_id = int(row['Body ID'])
-            b_id_to_index[b_id] = index
-            index+=1
-    # convert from FNC IDs to index IDs
-    training_fnc_ids = [b_id_to_index[a_id] for a_id in training_fnc_ids]
-    hold_out_fnc_ids = [b_id_to_index[a_id] for a_id in hold_out_fnc_ids]
-    return training_fnc_ids, hold_out_fnc_ids
-
-# given a file with an ID on every line, return the list of IDs
-def read_list_of_ids(filename):
-    id_list = []
-    with open(filename, 'rb') as csvfile:
-        id_reader = csv.reader(csvfile, delimiter = ' ', quotechar='|')
-        for l in id_reader:
-            id_list.append(int(l[0]))
-    return id_list
-
-# generate random article split
-# pass in the number of articles
-def generate_random_hold_out_split (num_articles, training = 0.8):
-    article_ids = [i for i in range(0, num_articles)] # article ids are consecutive
-    rgen.shuffle(article_ids)  # and shuffle that list
-    training_ids = article_ids[:int(training * len(article_ids))]
-    hold_out_ids = article_ids[int(training * len(article_ids)):]
-    return training_ids, hold_out_ids
-
-def read_ids(file,base):
-    ids = []
-    with open(base+"/"+file,"r") as f:
-        for line in f:
-           ids.append(int(line))
-        return ids
-
-
-def kfold_split(dataset, training = 0.8, n_folds = 10, base_dir="splits"):
-    if not (os.path.exists(base_dir+ "/"+ "training_ids.txt")
-            and os.path.exists(base_dir+ "/"+ "hold_out_ids.txt")):
-        generate_hold_out_split(dataset,training,base_dir)
-
-    training_ids = read_ids("training_ids.txt", base_dir)
-    hold_out_ids = read_ids("hold_out_ids.txt", base_dir)
-
-    folds = []
-    for k in range(n_folds):
-        folds.append(training_ids[int(k*len(training_ids)/n_folds):int((k+1)*len(training_ids)/n_folds)])
-
-    return folds,hold_out_ids
-
-
-def get_stances_for_folds(dataset,folds,hold_out):
-    stances_folds = defaultdict(list)
-    stances_hold_out = []
-    for stance in dataset.stances:
-        if stance['Body ID'] in hold_out:
-            stances_hold_out.append(stance)
-        else:
-            fold_id = 0
-            for fold in folds:
-                if stance['Body ID'] in fold:
-                    stances_folds[fold_id].append(stance)
-                fold_id += 1
-
-    return stances_folds,stances_hold_out
+def underRepresent(id_pairs, stances, perc_unrelated):
+    """ id_pairs are h_id, b_id
+        cut the unrelated samples until there are < perc_unrelated samples in the whole set
+    """
+    by_stance = distribute_by_stance(id_pairs, stances)
+    rgen.shuffle(by_stance[LABEL_MAPPING["unrelated"]])
+    curr_num_unrelated = len(by_stance[LABEL_MAPPING["unrelated"]])
+    num_total = len(id_pairs)
+    needed_num_unrelated = int(perc_unrelated * num_total)
+    if (needed_num_unrelated < curr_num_unrelated):
+        by_stance[LABEL_MAPPING["unrelated"]] = by_stance[LABEL_MAPPING["unrelated"]][:needed_num_unrelated]
+    # (id_pair, stance)
+    new_num_unrelated = len(by_stance[LABEL_MAPPING["unrelated"]])
+    new_id_pairs_stance = []
+    for (stance, stance_id_pair_list) in by_stance.items():
+        new_id_pairs_stance += [(id_pair, stance) for id_pair in stance_id_pair_list]
+    rgen.shuffle(new_id_pairs_stance)
+    id_pairs = [sample[0] for sample in new_id_pairs_stance]
+    stances = [sample[1] for sample in new_id_pairs_stance]
+    print "Under-representing, so now {} samples from {}".format(new_num_unrelated, curr_num_unrelated)
+    return id_pairs, stances
