@@ -124,12 +124,16 @@ class Model(object):
         for i, (articles_batch, headlines_batch, labels_batch) in enumerate(minibatches(train_examples, self.config.batch_size)):
             loss = self.train_on_batch(sess, articles_batch, headlines_batch, labels_batch)
             prog.update(i + 1, [("train loss", loss)])
-
+        print "Evaluating on train set"
+        train_actual = vectorize_stances(train_examples[2])
+        train_preds = list(self.predict_on_batch(sess, *train_examples[:2]))
+        train_score = report_score(train_actual, train_preds)
         print "Evaluating on dev set"
         actual = vectorize_stances(dev_set[2])
         preds = list(self.predict_on_batch(sess, *dev_set[:2]))
         dev_score = report_score(actual, preds)
 
+        print "- train Score {:.2f}".format(train_score)
         print "- dev Score: {:.2f}".format(dev_score)
         return dev_score
 

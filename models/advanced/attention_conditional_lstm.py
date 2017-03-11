@@ -17,7 +17,7 @@ import os
 import sys
 sys.path.insert(0, '../')
 
-from advanced_model import Advanced_Model, create_data_sets_for_model
+from advanced_model import Advanced_Model, create_data_sets_for_model, produce_uniform_data_split
 from fnc1_utils.score import report_score
 from fnc1_utils.featurizer import create_inputs_by_glove, create_inputs_by_glove_split_on_class
 from util import create_tensorflow_saver
@@ -98,7 +98,10 @@ def main(debug=True):
     # Load Data
     # X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths= create_inputs_by_glove_split_on_class(True, False)
     X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths, _ = create_inputs_by_glove_split_on_class(False, False, None, 2)
-
+    """
+    X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input = (
+        produce_uniform_data_split(X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input))
+    """
     train_examples, dev_set, test_set = create_data_sets_for_model(
         X_train_input,
         X_dev_input,
