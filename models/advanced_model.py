@@ -11,6 +11,7 @@ Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
 
+import random
 import numpy as np
 import tensorflow as tf
 from util import Progbar, minibatches, vectorize_stances, create_tensorflow_saver
@@ -67,13 +68,11 @@ class Advanced_Model(object):
             os.makedirs('./data/plots/')
 
         # TODO: Potentially Unnecessary -- maybe remove this??
-        self.exclude_names = set(
-            [
+        self.exclude_names = set([
             "embeddings_matrix:0",
             "embeddings_matrix_h:0",
             "embeddings_matrix_b:0"
-            ]
-        )
+        ])
 
         # Scoring Function for Evaluation
         self.scoring_function = scoring_function
@@ -305,3 +304,44 @@ def create_data_sets_for_model(
     dev_set = [X_dev[0], X_dev[1], y_dev]
     test_set = [X_test[0], X_test[1], y_test]
     return train_examples, dev_set, test_set
+
+def produce_uniform_data_split(
+    X_train,
+    X_dev,
+    X_test,
+    y_train,
+    y_dev,
+    y_test,
+):
+    train_dist = np.sum(y_train, axis=0)
+    dev_dist = np.sum(y_dev, axis=0)
+    test_dist = np.sum(y_test, axis=0)
+    train_count = max(100, min(train_dist))
+    dev_count = max(100, min(dev_dist))
+    test_count = max(100, min(test_dist))
+    target_variables = [
+        (X_train, y_train, train_count),
+        (X_dev, y_dev, dev_count),
+        (X_test, y_test, test_count)
+    ]
+    finalized_variables = []
+    for X, y, count in target_variables:
+        new_X, new_y = None, None
+        for i in range(3):
+            rows_in_class = (y[:, i] == 1)
+            num_rows_in_class = np.sum(rows_in_class.astype(int))
+            X_local = (X[0][rows_in_class, :], X[1][rows_in_class, :])
+            y_local = y[rows_in_class, :]
+            random_indices = random.sample(range(num_rows_in_class), int(count))
+            X_local = (X_local[0][random_indices, :], X_local[1][random_indices, :])
+            y_local = y_local[random_indices, :]
+            if new_X is None and new_y is None:
+                new_X = X_local
+                new_y = y_local
+            else:
+                new_X = (np.concatenate([new_X[0], X_local[0]]), np.concatenate([new_X[1], X_local[1]]))
+                new_y = np.concatenate([new_y, y_local])
+        finalized_variables.append((new_X, new_y))
+    (X_train, y_train), (X_dev, y_dev), (X_test, y_test) = finalized_variables
+    # need to shuffle
+    return X_train, X_dev, X_test, y_train, y_dev, y_test,
