@@ -78,9 +78,9 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         output = attention_layer(headline_outputs, h_n)
 
         # Compute predictions
-        # output_dropout = tf.nn.dropout(output, dropout_rate)
+        output_dropout = tf.nn.dropout(output, dropout_rate)
         class_squash_layer = ClassSquashLayer(self.config.hidden_size, self.config.num_classes)
-        preds = class_squash_layer(output)
+        preds = class_squash_layer(output_dropout)
         return preds
 
 def main(debug=True):
