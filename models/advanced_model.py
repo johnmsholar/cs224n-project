@@ -88,9 +88,9 @@ class Advanced_Model(object):
     def build(self):
         self.add_placeholders()
         self.pred, self.debug_ops = self.add_prediction_op(self.debug)
-        self.loss = self.add_loss_op(self.pred)
-        self.train_op = self.add_training_op(self.loss)
         self.class_predictions = tf.argmax(tf.nn.softmax(self.pred), axis=1)
+        self.loss, self.debug_loss_ops = self.add_loss_op(self.pred)
+        self.train_op = self.add_training_op(self.loss)
 
     def print_params(self):
         print "PRINTING PARAMS OF MODEL"
@@ -190,13 +190,20 @@ class Advanced_Model(object):
             onehot_labels=self.labels_placeholder,
             logits=preds,
         )
+        debug_ops = None
+        if self.debug:
+            pass
+            # preds_print = tf.Print(preds, [preds], 'preds', summarize=1200)
+            # onehot_print = tf.Print(self.labels_placeholder, [self.labels_placeholder], 'labels_placeholder', summarize=1200)
+            # class_preds_print = tf.Print(self.class_predictions, [self.class_predictions], 'class_predictions', summarize=1200)
+            # debug_ops = [preds_print, onehot_print, class_preds_print]
        
         reg = 0
         for var in tf.trainable_variables():
             reg += tf.nn.l2_loss(var)
         reg *= self.config.beta
         loss += reg
-        return loss
+        return loss, debug_ops
 
     def add_training_op(self, loss):
         """Sets up the training Ops.
@@ -219,6 +226,8 @@ class Advanced_Model(object):
         )
 
         _, loss = sess.run([self.train_op, self.loss], feed_dict=feed)
+        if self.debug and self.debug_loss_ops is not None:
+            sess.run(self.debug_loss_ops, feed_dict=feed)
         return loss
 
     def predict_on_batch(self, sess, headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths):
@@ -245,11 +254,12 @@ class Advanced_Model(object):
             return 0, []
 
         prog = Progbar(target=1+len(data_set[0])/self.config.batch_size)
-        actual = vectorize_stances(data_set[4])
+        actual = []
         preds = []
-        for i, (headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, _) in enumerate(minibatches(data_set, self.config.batch_size)):
+        for i, (headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch) in enumerate(minibatches(data_set, self.config.batch_size)):
             predictions_batch = list(self.predict_on_batch(sess, headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths))
             preds.extend(predictions_batch)
+            actual.extend(vectorize_stances(labels_batch))
             prog.update(i + 1)
 
         if save_preds:
@@ -279,12 +289,6 @@ class Advanced_Model(object):
         print "- dev Score: {:.2f}".format(dev_score)
         print "Evaluating on train set"
         train_score, preds = self.predict(sess, train_examples)
-
-        with open(self.config.intermediate_results_file, 'w+') as out_file:
-            out_file.write('Predictions')
-            out_file.write(join(preds))
-            out_file.write('-'*80)
-            out_file.write(' '.join(vectorize_stances(train_examples[4])))
 
         print "- train Score: {:.2f}".format(train_score)
         return dev_score
