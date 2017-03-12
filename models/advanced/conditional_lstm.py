@@ -22,26 +22,25 @@ from fnc1_utils.score import report_score
 from fnc1_utils.featurizer import create_inputs_by_glove, create_embeddings
 from util import create_tensorflow_saver
 
-class Config:
+class Config(object):
     """Holds model hyperparams and data information.
     The config class is used to store various hyperparameters and dataset
     information parameters. Model objects are passed a Config() object at
     instantiation. Use self.config.? instead of Config.?
     """
-    num_classes = 3 # Number of classses for classification task.
-    embed_size = 300 # Size of Glove Vectors
+    def __init__(self):
+        self.num_classes = 3 # Number of classses for classification task.
+        self.embed_size = 300 # Size of Glove Vectors
 
-    # Hyper Parameters
-    hidden_size = 300 # Hidden State Size
-    batch_size = 50
-    n_epochs = None
-    lr = 0.001
-    max_grad_norm = 5.
-    dropout_rate = 1.0
-    beta = 0
-
-    intermediate_results_file = '../analysis/intermediate_results.txt'
-
+        # Hyper Parameters
+        self.hidden_size = 300 # Hidden State Size
+        self.batch_size = 50
+        self.n_epochs = None
+        self.lr = 0.001
+        self.max_grad_norm = 5.
+        self.dropout_rate = 1.0
+        self.beta = 0
+        
 class Conditonal_Encoding_LSTM_Model(Advanced_Model):
     """ Conditional Encoding LSTM Model.
     """
@@ -52,7 +51,8 @@ class Conditonal_Encoding_LSTM_Model(Advanced_Model):
         best_weights_fn = 'conditional_lstm_best_stance.weights'
         curr_weights_fn = 'conditional_lstm_curr_stance.weights'
         preds_fn = 'conditional_encoding_lstm_predicted.pkl'
-        return [best_weights_fn, curr_weights_fn, preds_fn]
+        best_train_weights_fn = 'conditional_encoding_lstm_predicted_best_train_stance.weights'
+        return [best_weights_fn, curr_weights_fn, preds_fn, best_train_weights_fn]
 
     def add_prediction_op(self, debug):
         """Runs RNN on the input. 
@@ -115,11 +115,9 @@ def main(debug=True):
         config.n_epochs = args.epoch
 
     # Load Data
-    # X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths= create_inputs_by_glove(concatenate=False)
-
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=.80,
-        random_split=True,
+        random_split=False,
         truncate_headlines=False,
         truncate_articles=True,
         classification_problem=3,
@@ -177,7 +175,7 @@ def main(debug=True):
                 saver.restore(session, model.best_weights_fn)
 
                 print "Final evaluation on test set",
-                test_score, _ = model.predict(session, test_set, save_preds=True)
+                test_score, _, _ = model.predict(session, test_set, save_preds=True)
                 print "- test Score: {:.2f}".format(test_score)
 
 if __name__ == '__main__':

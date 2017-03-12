@@ -49,8 +49,9 @@ def print_confusion_matrix(cm):
                                                                    *row))
         lines.append("-"*line_len)
     print('\n'.join(lines))
+    return '\n'.join(lines)
 
-def pretty_report_score(actual, preds, filename):
+def pretty_report_score(actual, preds):
     cm = sklearn.metrics.confusion_matrix(actual, preds)
     classes = ['AGREE', 'DISAGREE', 'DISCUSS', 'UNRELATED']
     save_confusion_matrix(cm, classes, filename, normalize=True)
@@ -62,9 +63,10 @@ def report_score(actual,predicted):
     score,cm = score_submission(actual,predicted)
     best_score, _ = score_submission(actual,actual)
 
-    print_confusion_matrix(cm)
+    lines = print_confusion_matrix(cm, filename)
     print("Score: " +str(score) + " out of " + str(best_score) + "\t("+str(score*100/best_score) + "%)")
-    return score*100/best_score
+    lines += '\n' + ("Score: " +str(score) + " out of " + str(best_score) + "\t("+str(score*100/best_score) + "%)")
+    return score*100/best_score, lines
 
 
 if __name__ == "__main__":

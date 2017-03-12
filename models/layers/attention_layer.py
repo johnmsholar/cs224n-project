@@ -31,7 +31,6 @@ class AttentionLayer:
             W_x = tf.get_variable("W_x", shape=[self.hidden_size, self.hidden_size])
             W_p = tf.get_variable("W_p", shape=[self.hidden_size, self.hidden_size])
             
-
             M_component_1 = multiply_3d_by_2d (Y, W_y)
 
             mult_h_n = tf.matmul(h_n, W_h) # batch x hidden_size

@@ -31,20 +31,24 @@ from fnc1_utils.score import report_score
 from fnc1_utils.featurizer import create_inputs_by_glove
 from util import create_tensorflow_saver
 
-class Config:
+class Config(object):
     """Holds model hyperparams and data information.
+    The config class is used to store various hyperparameters and dataset
+    information parameters. Model objects are passed a Config() object at
+    instantiation. Use self.config.? instead of Config.?
     """
-    num_classes = 4 # Number of classses for classification task.
-    embed_size = 300 # Size of Glove Vectors
+    def __init__(self):
+        self.num_classes = 3 # Number of classses for classification task.
+        self.embed_size = 300 # Size of Glove Vectors
 
-    # Hyper Parameters
-    hidden_size = 300 # Hidden State Size
-    batch_size = 50
-    n_epochs = None
-    lr = 0.02
-    max_grad_norm = 5.
-    dropout_rate = 0.5
-    beta = 0.02
+        # Hyper Parameters
+        self.hidden_size = 300 # Hidden State Size
+        self.batch_size = 50
+        self.n_epochs = None
+        self.lr = 0.001
+        self.max_grad_norm = 5.
+        self.dropout_rate = 1.0
+        self.beta = 0
 
 class Two_LSTM_Encoders_Model(Advanced_Model):
     """ 1 LSTM to encode headline.
@@ -59,7 +63,8 @@ class Two_LSTM_Encoders_Model(Advanced_Model):
         best_weights_fn = 'two_lstm_encoders_best_stance.weights'
         curr_weights_fn = 'two_lstm_encoders_curr_stance.weights'
         preds_fn = 'two_lstm_encoders_predicted.pkl'
-        return [best_weights_fn, curr_weights_fn, preds_fn]
+        best_train_weights_fn = 'two_lstm_encoders_best_train_stance.weights'
+        return [best_weights_fn, curr_weights_fn, preds_fn, best_train_weights_fn]
 
     def add_prediction_op(self): 
         """ 1 LSTM on headlines.
@@ -118,15 +123,20 @@ def main(debug=True):
         config.n_epochs = args.epoch
 
     # Load Data
-    X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths= create_inputs_by_glove(concatenate=False)
-    train_examples, dev_set, test_set = create_data_sets_for_model(
-        X_train_input,
-        X_dev_input,
-        X_test_input,
-        y_train_input,
-        y_dev_input,
-        y_test_input
-    )
+    X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
+        training_size=0.8,
+        random_split=False,
+        truncate_headlines=False,
+        truncate_articles=True,
+        classification_problem=3,
+        max_headline_length=500,
+        max_article_length=500,
+        glove_set=None,
+        debug=debug
+    )   
+
+    # TODO: Remove This
+    X, y = produce_uniform_data_split(X, y)
 
     with tf.Graph().as_default():
         print 80 * "="
@@ -167,7 +177,7 @@ def main(debug=True):
                 saver.restore(session, model.best_weights_fn)
 
                 print "Final evaluation on test set",
-                test_score, _ = model.predict(session, test_set, save_preds=True)
+                test_score, _, _= model.predict(session, test_set, save_preds=True)
                 print "- test Score: {:.2f}".format(test_score)
 if __name__ == '__main__':
     main(False)

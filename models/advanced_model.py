@@ -15,8 +15,9 @@ import random
 import numpy as np
 import tensorflow as tf
 from util import Progbar, minibatches, vectorize_stances, create_tensorflow_saver
-from fnc1_utils.score import report_score
 
+import json
+import time
 import os
 import sys
 import cPickle
@@ -28,7 +29,7 @@ class Advanced_Model(object):
 
     def __init__(self, config, scoring_function, max_lengths, glove_matrix, debug=False):
     	""" config must be Config class
-        scoring_function(actual, preds)
+            scoring_function(actual, preds) returns score, confusion_matrix_str
     	"""
         # Init config
         self.config = config
@@ -49,31 +50,38 @@ class Advanced_Model(object):
             name="embedding_matrix"
         )
         
-        # Save Files
+        # Save Files -- "./data/{time_stamp}/{specific_dir}"
         fn_names = self.get_fn_names()
-        self.weights_path = './data/weights'
-        self.preds_path = './data/predictions'
-        self.plots_path = './data/plots'
+        init_time = time.time()
+        self.weights_path = './data/{}/weights'.format(init_time)
+        self.preds_path = './data/{}/predictions'.format(init_time)
+        self.plots_path = './data/{}/plots'.format(init_time)
+        self.logs_path = './data/{}/logs'.format(init_time)
         self.best_weights_fn = '{}/{}'.format(self.weights_path, fn_names[0])
         self.curr_weights_fn = '{}/{}'.format(self.weights_path, fn_names[1])
         self.preds_fn = '{}/{}'.format(self.preds_path, fn_names[2])
+        self.best_train_weights_fn = '{}/{}'.format(self.weights_path, fn_names[3])
+        self.hyper_parameters_fn = '{}/hyper_parameters.txt'.format(self.logs_path)
+        self.train_confusion_matrix_fn = '{}/best_train_confusion_matrix'.format(self.logs_path)
+        self.dev_confusion_matrix_fn = '{}/best_dev_confusion_matrix'.format(self.logs_path)
+        self.test_confusion_matrix_fn = '{}/best_test_confusion_matrix'.format(self.logs_path)
 
         # Create Necessary Directories 
-        if not os.path.exists('./data/weights/'):
-            os.makedirs('./data/weights/')
+        if not os.path.exists(self.weights_path):
+            os.makedirs(self.weights_path)
 
-        if not os.path.exists('./data/predictions/'):
-            os.makedirs('./data/predictions/')
+        if not os.path.exists(self.preds_path):
+            os.makedirs(self.preds_path)
 
-        if not os.path.exists('./data/plots/'):
-            os.makedirs('./data/plots/')
+        if not os.path.exists(self.plots_path):
+            os.makedirs(self.plots_path)
 
-        # TODO: Potentially Unnecessary -- maybe remove this??
-        self.exclude_names = set([
-            "embeddings_matrix:0",
-            "embeddings_matrix_h:0",
-            "embeddings_matrix_b:0"
-        ])
+        if not os.path.exists(self.logs_path):
+            os.makedirs(self.logs_path)
+
+        # Save hyperparameters in file
+        with open(self.hyper_parameters_fn, 'w') as f:
+            json.dump(self.config.__dict__, f)
 
         # Scoring Function for Evaluation
         self.scoring_function = scoring_function
@@ -186,23 +194,26 @@ class Advanced_Model(object):
     def add_loss_op(self, preds):
         """Adds Ops for the loss function to the computational graph.
         """
+        # Compute Loss
         loss = tf.losses.softmax_cross_entropy(
             onehot_labels=self.labels_placeholder,
             logits=preds,
         )
+       
+        # Regularization
+        reg = 0
+        for var in tf.trainable_variables():
+            reg += tf.nn.l2_loss(var)
+        reg *= self.config.beta
+        loss += reg
+
         debug_ops = None
         if self.debug:
             pass
             # preds_print = tf.Print(preds, [preds], 'preds', summarize=1200)
             # onehot_print = tf.Print(self.labels_placeholder, [self.labels_placeholder], 'labels_placeholder', summarize=1200)
             # class_preds_print = tf.Print(self.class_predictions, [self.class_predictions], 'class_predictions', summarize=1200)
-            # debug_ops = [preds_print, onehot_print, class_preds_print]
-       
-        reg = 0
-        for var in tf.trainable_variables():
-            reg += tf.nn.l2_loss(var)
-        reg *= self.config.beta
-        loss += reg
+            # debug_ops = [preds_print, onehot_print, class_preds_print]        
         return loss, debug_ops
 
     def add_training_op(self, loss):
@@ -268,8 +279,8 @@ class Advanced_Model(object):
                 cPickle.dump(preds, f, -1)
 
         # Compute Score
-        score = self.scoring_function(actual, preds)
-        return score, preds   
+        score, confusion_matrix_str = self.scoring_function(actual, preds)
+        return score, preds, confusion_matrix_str   
 
     def run_epoch(self, sess, train_examples, dev_set):
         """ Run a single epoch on the given train_examples. 
@@ -285,26 +296,38 @@ class Advanced_Model(object):
 
         # Evaluate on the Dev Set
         print "Evaluating on dev set"
-        dev_score, _ = self.predict(sess, dev_set)
+        dev_score, _, dev_confusion_matrix_str = self.predict(sess, dev_set)
         print "- dev Score: {:.2f}".format(dev_score)
-        print "Evaluating on train set"
-        train_score, preds = self.predict(sess, train_examples)
 
+        print "Evaluating on train set"
+        train_score, _, train_confusion_matrix_str = self.predict(sess, train_examples)
         print "- train Score: {:.2f}".format(train_score)
-        return dev_score
+        return dev_score, train_score, dev_confusion_matrix_str, train_confusion_matrix_str
 
     def fit(self, sess, saver, train_examples, dev_set):
         """ Train the model over self.config.n_epochs.
         """
         best_dev_score = 0
+        best_train_score = 0
         for epoch in range(self.config.n_epochs):
             print "Epoch {:} out of {:}".format(epoch + 1, self.config.n_epochs)
-            dev_score = self.run_epoch(sess, train_examples, dev_set)
+            dev_score, tain_score, dev_confusion_matrix_str, train_confusion_matrix_str = self.run_epoch(sess, train_examples, dev_set)
             if dev_score > best_dev_score:
                 best_dev_score = dev_score
                 if saver:
                     print "New best dev! Saving model in {}".format(self.best_weights_fn)
                     saver.save(sess, self.best_weights_fn)
+                    with open(self.dev_confusion_matrix_str, 'w') as file:
+                        file.write(dev_confusion_matrix_str)
+
+            if train_score > best_train_score:
+                best_train_score = train_score
+                if saver:
+                    print "New best rain! Saving model in {}".format(self.best_train_weights_fn)
+                    saver.save(sess, self.best_train_weights_fn)
+                    with open(self.train_confusion_matrix_str, 'w') as file:
+                        file.write(train_confusion_matrix_str)
+
             if saver:
                 print "Finished Epoch ... Saving model in {}".format(self.curr_weights_fn)
                 saver.save(sess, self.curr_weights_fn)
