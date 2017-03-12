@@ -153,9 +153,9 @@ def main(debug=True):
 
         # Create and configure model
         print "Building model...",
+        start = time.time()
         model = Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
         model.print_params()
-        start = time.time()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
         # Initialize variables

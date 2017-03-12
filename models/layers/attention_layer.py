@@ -34,7 +34,7 @@ class AttentionLayer:
 
             M_component_1 = multiply_3d_by_2d (Y, W_y)
 
-            mult_h_n = tf.matmul(h_n, W_x) # batch x hidden_size
+            mult_h_n = tf.matmul(h_n, W_h) # batch x hidden_size
             multiplications = tf.constant([self.A_time_steps, 1])
             mult_h_n = tf.tile(mult_h_n, multiplications)
             M_component_2 = tf.reshape(mult_h_n, shape=[-1, self.A_time_steps, self.hidden_size])
