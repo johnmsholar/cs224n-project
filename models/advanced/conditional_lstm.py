@@ -35,7 +35,7 @@ class Config:
     hidden_size = 300 # Hidden State Size
     batch_size = 50
     n_epochs = None
-    lr = 0.01
+    lr = 0.001
     max_grad_norm = 5.
     dropout_rate = 1.0
     beta = 0
@@ -118,7 +118,7 @@ def main(debug=True):
     # X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input, glove_matrix, max_lengths= create_inputs_by_glove(concatenate=False)
 
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
-        training_size=1.0,
+        training_size=.80,
         random_split=True,
         truncate_headlines=False,
         truncate_articles=True,
@@ -145,7 +145,7 @@ def main(debug=True):
         # Create and configure model
         print "Building model...",
         start = time.time()
-        model = Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug=True)
+        model = Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug=debug)
         model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
