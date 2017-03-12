@@ -37,7 +37,7 @@ class Config:
     hidden_size = 300 # Hidden State Size
     batch_size = 50
     n_epochs = None
-    lr = 0.1
+    lr = 0.01
     max_grad_norm = 5.
     dropout_rate = 1.0
     beta = 0
@@ -180,4 +180,4 @@ def main(debug=True):
                 print "- test Score: {:.2f}".format(test_score)
 
 if __name__ == '__main__':
-    main(false)
+    main(False)
