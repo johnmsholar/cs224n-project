@@ -336,9 +336,9 @@ def produce_uniform_data_split(X, y):
     train_dist = np.sum(y_train, axis=0)
     dev_dist = np.sum(y_dev, axis=0)
     test_dist = np.sum(y_test, axis=0)
-    train_count = min(15, min(train_dist))
-    dev_count = min(15, min(dev_dist))
-    test_count = min(15, min(test_dist))
+    train_count = min(train_dist)
+    dev_count = min(dev_dist)
+    test_count = min(test_dist)
 
     target_variables = [
         (X_train, y_train, train_count),
