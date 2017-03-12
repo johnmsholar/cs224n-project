@@ -37,7 +37,7 @@ class Config(object):
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
         self.batch_size = 50
-        self.n_epochs = 5
+        self.n_epochs = 1
         self.lr = 0.001
         self.max_grad_norm = 5.
         self.dropout_rate = 1.0
@@ -93,7 +93,6 @@ def run_model(config, max_input_lengths, glove_matrix):
 def main():
     # Parse Arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--restore', action='store_true')
     args = parser.parse_args()
 
@@ -114,13 +113,12 @@ def main():
     print "Distribtion of Dev {}".format(np.sum(dev_set[4], axis=0))
     print "Distribution of Test{}".format(np.sum(test_set[4], axis=0))
 
-
     # Define hyperparameters
     hyperparameters = {
         'lr': [.1, .01, .001],
         'dropout_rate': [.5, .8, 1],
         'beta': [0, .5, 1, 10],
-        'n_epochs': 5,
+        # 'n_epochs': 5,
     }
 
     # Run model over all these hyper parameters
@@ -138,4 +136,4 @@ def main():
             run_model(config, max_input_lengths, glove_matrix)
 
 if __name__ == '__main__':
-    main(False)
+    main()
