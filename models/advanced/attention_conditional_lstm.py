@@ -43,6 +43,7 @@ class Config(object):
         self.dropout_rate = 1.0
         self.beta = 0
 
+
 class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
     """ Conditional Encoding LSTM Model.
     """
@@ -183,4 +184,4 @@ def main(debug=True):
 
 
 if __name__ == '__main__':
-    main(false)
+    main(False)
