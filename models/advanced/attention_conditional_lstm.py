@@ -55,7 +55,7 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         return [best_weights_fn, curr_weights_fn, preds_fn]
 
     def add_prediction_op(self, debug): 
-        """Runs RNN on the input. 
+        """ Runs RNN on the input. 
         """
         # Lookup Glove Embeddings for the headline words (e.g. one at each time step)
         headline_x = self.add_embedding(headline_embedding=True)
@@ -63,23 +63,27 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         dropout_rate = self.dropout_placeholder
 
         # run first headline LSTM
+        # headline_x_list = [headline_x[:, i, :] for i in range(headline_x.get_shape()[1].value)]
         with tf.variable_scope("headline_cell"):
             cell_headline = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
+            # headline_outputs, headline_state = tf.contrib.rnn.static_rnn(cell_headline, headline_x_list, dtype=tf.float32)
             headline_outputs, headline_state = tf.nn.dynamic_rnn(cell_headline, headline_x, dtype=tf.float32, sequence_length = self.h_seq_lengths_placeholder)
 
         # run second LSTM that accept state from first LSTM
+        # body_x_list = [body_x[:, i, :] for i in range(body_x.get_shape()[1].value)]
         with tf.variable_scope("body_cell"):
             cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
+            # _, article_state = tf.contrib.rnn.static_rnn(cell_body, body_x_list, initial_state=headline_state, dtype=tf.float32)
             outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
-
+        
+        # Apply attention
         article_state = outputs[:,-1,:]
-
         attention_layer = AttentionLayer(self.config.hidden_size, self.h_max_length)
         output = attention_layer(headline_outputs, article_state)
 
         # Compute predictions
         output_dropout = tf.nn.dropout(output, dropout_rate)
-        class_squash_layer = ClassSquashLayer(self.config.hidden_size, self.config.num_classes, )
+        class_squash_layer = ClassSquashLayer(self.config.hidden_size, self.config.num_classes)
         preds = class_squash_layer(output_dropout)
 
         # Debugging Ops
