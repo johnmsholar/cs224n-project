@@ -29,7 +29,7 @@ class Config:
     instantiation. Use self.config.? instead of Config.?
     """
     num_classes = 3 # Number of classses for classification task.
-    embed_size = 2 # Size of Glove Vectors
+    embed_size = 300 # Size of Glove Vectors
 
     # Hyper Parameters
     hidden_size = 300 # Hidden State Size
