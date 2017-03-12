@@ -75,9 +75,9 @@ def construct_data_set(debug=False):
         Save (headline, raw_article_id, stance) tuples as (h_id, b_id, stance)
     """
     if debug:
-        filenames.TRAIN_BODIES_FNAME = "./dummy_data/train_bodies.csv"
-        filenames.TRAIN_STANCES_FNAME = "./dummy_data/train_stances.csv"
-        filenames.GLOVE_FILENAME = "./dummy_data/glove.txt"
+        filenames.TRAIN_BODIES_FNAME = "../../dummy_data/train_bodies.csv"
+        filenames.TRAIN_STANCES_FNAME = "../../dummy_data/train_stances.csv"
+        filenames.GLOVE_FILENAME = "../../dummy_data/glove.txt"
 
     # Raw Data File Headers
     body_id_header = 'Body ID'

@@ -31,7 +31,7 @@ class Config:
     instantiation. Use self.config.? instead of Config.?
     """
     num_classes = 3 # Number of classses for classification task.
-    embed_size = 300 # Size of Glove Vectors
+    embed_size = 2 # Size of Glove Vectors
 
     # Hyper Parameters
     hidden_size = 300 # Hidden State Size
@@ -39,7 +39,7 @@ class Config:
     n_epochs = None
     lr = 0.02
     max_grad_norm = 5.
-    dropout_rate = 0.0
+    dropout_rate = 1.0
     beta = 0
 
 class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
@@ -54,7 +54,7 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         preds_fn = 'attention_conditional_encoding_lstm_predicted.pkl'
         return [best_weights_fn, curr_weights_fn, preds_fn]
 
-    def add_prediction_op(self): 
+    def add_prediction_op(self, debug): 
         """Runs RNN on the input. 
         """
         # Lookup Glove Embeddings for the headline words (e.g. one at each time step)
@@ -72,16 +72,30 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
             cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
             outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
 
-        h_n = outputs[:,-1,:]
+        article_state = outputs[:,-1,:]
 
         attention_layer = AttentionLayer(self.config.hidden_size, self.h_max_length)
-        output = attention_layer(headline_outputs, h_n)
+        output = attention_layer(headline_outputs, article_state)
 
         # Compute predictions
         output_dropout = tf.nn.dropout(output, dropout_rate)
-        class_squash_layer = ClassSquashLayer(self.config.hidden_size, self.config.num_classes)
+        class_squash_layer = ClassSquashLayer(self.config.hidden_size, self.config.num_classes, )
         preds = class_squash_layer(output_dropout)
-        return preds
+
+        # Debugging Ops
+        if debug:
+            headline_x = tf.Print(headline_x, [headline_x], 'headline_x', summarize=20)
+            body_x = tf.Print(body_x, [body_x], 'body_x', summarize=24)
+            h_seq_lengths = tf.Print(self.h_seq_lengths_placeholder, [self.h_seq_lengths_placeholder], 'h_seq_lengths', summarize=3)
+            a_seq_lengths = tf.Print(self.a_seq_lengths_placeholder, [self.a_seq_lengths_placeholder], 'a_seq_lengths', summarize=3)            
+            headline_outputs = tf.Print(headline_outputs, [headline_outputs], 'headline_outputs', summarize=20)
+            headline_state = tf.Print(headline_state, [headline_state], 'headline_state', summarize=20)
+            article_state = tf.Print(article_state, [article_state], 'article_state', summarize=20)
+            debug_ops = [headline_x, body_x, h_seq_lengths, a_seq_lengths, headline_outputs, headline_state, article_state]
+        else:
+            debug_ops = None
+
+        return preds, debug_ops
 
 def main(debug=True):
     # Parse Arguments
@@ -96,18 +110,30 @@ def main(debug=True):
         config.n_epochs = args.epoch
 
     # Load Data
+    # X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
+    #     training_size=.80,
+    #     random_split=False,
+    #     truncate_headlines=False,
+    #     truncate_articles=True,
+    #     classification_problem=3,
+    #     max_headline_length=500,
+    #     max_article_length=500,
+    #     glove_set=None,
+    # )   
+
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
-        training_size=.80,
-        random_split=False,
+        training_size=1.0,
+        random_split=True,
         truncate_headlines=False,
         truncate_articles=True,
         classification_problem=3,
         max_headline_length=500,
         max_article_length=500,
         glove_set=None,
+        debug=debug
     )   
 
-    X, y = produce_uniform_data_split(X, y)
+    # X, y = produce_uniform_data_split(X, y)
 
     # Each set is of the form:
     # [headline_glove_index_matrix, article_glove_index_matrix, h_seq_lengths, a_seq_lengths, labels]
@@ -123,7 +149,7 @@ def main(debug=True):
 
         # Create and configure model
         print "Building model...",
-        model = Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix)
+        model = Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
         model.print_params()
         start = time.time()
         print "took {:.2f} seconds\n".format(time.time() - start)
@@ -160,4 +186,4 @@ def main(debug=True):
                 print "- test Score: {:.2f}".format(test_score)
 
 if __name__ == '__main__':
-    main(False)
+    main(True)

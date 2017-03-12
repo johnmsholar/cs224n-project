@@ -26,12 +26,13 @@ class Advanced_Model(object):
         the headlines and articles seperately.
     """
 
-    def __init__(self, config, scoring_function, max_lengths, glove_matrix):
+    def __init__(self, config, scoring_function, max_lengths, glove_matrix, debug=False):
     	""" config must be Config class
         scoring_function(actual, preds)
     	"""
         # Init config
         self.config = config
+        self.debug = debug
 
         # Placeholders
         self.h_seq_lengths_placeholder = None
@@ -86,7 +87,7 @@ class Advanced_Model(object):
 
     def build(self):
         self.add_placeholders()
-        self.pred = self.add_prediction_op()
+        self.pred, self.debug_ops = self.add_prediction_op(self.debug)
         self.loss = self.add_loss_op(self.pred)
         self.train_op = self.add_training_op(self.loss)
         self.class_predictions = tf.argmax(self.pred, axis=1)
@@ -166,18 +167,18 @@ class Advanced_Model(object):
             embeddings = tf.reshape(
                 e,
                 shape=[-1, self.h_max_length, self.config.embed_size],
-                name="headline_embeddings"
+                name="headline_embedding"
             )
         else:
             e = tf.nn.embedding_lookup(self.embedding_matrix, self.a_placeholder)
             embeddings = tf.reshape(
                 e,
                 shape=[-1, self.a_max_length, self.config.embed_size],
-                name="article_embeddings"
+                name="article_embedding"
             )
         return embeddings
 
-    def add_prediction_op(self):
+    def add_prediction_op(self, debug):
         """Implements the core of the model that transforms a batch of input data into predictions.
         """
         raise NotImplementedError("Each Model must re-implement this method.")
@@ -207,7 +208,6 @@ class Advanced_Model(object):
     def train_on_batch(self, sess, headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch):
         """Perform one step of gradient descent on the provided batch of data.
         """
-        import pdb; pdb.set_trace()       
         dropout_rate = self.config.dropout_rate
         feed = self.create_feed_dict(
             headlines_batch,
@@ -217,6 +217,7 @@ class Advanced_Model(object):
             h_seq_lengths,
             a_seq_lengths
         )
+
         _, loss = sess.run([self.train_op, self.loss], feed_dict=feed)
         return loss
 
@@ -229,6 +230,8 @@ class Advanced_Model(object):
             h_seq_lengths=h_seq_lengths,
             a_seq_lengths=a_seq_lengths
         )
+        if self.debug:
+            sess.run(self.debug_ops, feed_dict=feed)
         preds = sess.run(self.class_predictions, feed_dict=feed)
         return preds
 
@@ -238,6 +241,9 @@ class Advanced_Model(object):
             Return predictions and score
         """
         # Compute Predictions
+        if data_set[0].size == 0:
+            return 0, []
+
         prog = Progbar(target=1+len(data_set[0])/self.config.batch_size)
         actual = vectorize_stances(data_set[4])
         preds = []
