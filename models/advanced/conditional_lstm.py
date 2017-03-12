@@ -17,7 +17,7 @@ import os
 import sys
 sys.path.insert(0, '../')
 
-from advanced_model import Advanced_Model, create_data_sets_for_model
+from advanced_model import Advanced_Model, create_data_sets_for_model, produce_uniform_data_split
 from fnc1_utils.score import report_score
 from fnc1_utils.featurizer import create_inputs_by_glove, create_embeddings
 from util import create_tensorflow_saver
