@@ -88,14 +88,14 @@ class Conditonal_Encoding_LSTM_Model(Advanced_Model):
         # Debugging Ops
         if debug:
             headline_x = tf.Print(headline_x, [headline_x], 'headline_x',summarize=20)
-            # debug_ops = [headline_x]
-            # body_x = tf.Print(body_x, [body_x], 'body_x', summarize=24)
-            # h_seq_lengths = tf.Print(self.h_seq_lengths_placeholder, [self.h_seq_lengths_placeholder],'h_seq_lengths', summarize=3)
-            # a_seq_lengths = tf.Print(self.a_seq_lengths_placeholder, [self.a_seq_lengths_placeholder],'a_seq_lengths', summarize=3)
-            # headline_outputs = tf.Print(headline_outputs, [headline_outputs], 'headline_outputs', summarize=20)
-            # headline_state = tf.Print(headline_state, [headline_state], 'headline_state', summarize=20)
-            # article_state = tf.Print(article_state, [article_state], 'article_state', summarize=20)
-            # debug_ops = [headline_x, body_x, h_seq_lengths, a_seq_lengths, headline_outputs, headline_state, article_state]
+            debug_ops = [headline_x]
+            body_x = tf.Print(body_x, [body_x], 'body_x', summarize=24)
+            h_seq_lengths = tf.Print(self.h_seq_lengths_placeholder, [self.h_seq_lengths_placeholder],'h_seq_lengths', summarize=3)
+            a_seq_lengths = tf.Print(self.a_seq_lengths_placeholder, [self.a_seq_lengths_placeholder],'a_seq_lengths', summarize=3)
+            headline_outputs = tf.Print(headline_outputs, [headline_outputs], 'headline_outputs', summarize=20)
+            headline_state = tf.Print(headline_state, [headline_state], 'headline_state', summarize=20)
+            article_state = tf.Print(article_state, [article_state], 'article_state', summarize=20)
+            debug_ops = [headline_x, body_x, h_seq_lengths, a_seq_lengths, headline_outputs, headline_state, article_state]
             debug_ops = [headline_x]
         else:
             debug_ops = None
@@ -128,6 +128,9 @@ def main(debug=True):
         glove_set=None,
         debug=debug
     )
+
+    # TODO: Remove This
+    X, y = produce_uniform_data_split(X, y)
 
     train_examples, dev_set, test_set = create_data_sets_for_model(X, y)
     print "Distribution of Train {}".format(np.sum(train_examples[4], axis=0))
@@ -178,4 +181,4 @@ def main(debug=True):
                 print "- test Score: {:.2f}".format(test_score)
 
 if __name__ == '__main__':
-    main(True)
+    main(False)
