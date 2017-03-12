@@ -114,17 +114,6 @@ def main(debug=True):
         config.n_epochs = args.epoch
 
     # Load Data
-    # X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
-    #     training_size=.80,
-    #     random_split=False,
-    #     truncate_headlines=False,
-    #     truncate_articles=True,
-    #     classification_problem=3,
-    #     max_headline_length=500,
-    #     max_article_length=500,
-    #     glove_set=None,
-    # )   
-
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=1.0,
         random_split=True,
@@ -137,7 +126,7 @@ def main(debug=True):
         debug=debug
     )   
 
-    # X, y = produce_uniform_data_split(X, y)
+    X, y = produce_uniform_data_split(X, y)
 
     # Each set is of the form:
     # [headline_glove_index_matrix, article_glove_index_matrix, h_seq_lengths, a_seq_lengths, labels]
@@ -190,4 +179,4 @@ def main(debug=True):
                 print "- test Score: {:.2f}".format(test_score)
 
 if __name__ == '__main__':
-    main(True)
+    main(false)
