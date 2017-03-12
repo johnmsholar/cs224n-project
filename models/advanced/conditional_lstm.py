@@ -35,10 +35,12 @@ class Config:
     hidden_size = 300 # Hidden State Size
     batch_size = 50
     n_epochs = None
-    lr = 0.02
+    lr = 0.01
     max_grad_norm = 5.
-    dropout_rate = 0.5
-    beta = 0.02
+    dropout_rate = 1.0
+    beta = 0
+
+    intermediate_results_file = '../analysis/intermediate_results.txt'
 
 class Conditonal_Encoding_LSTM_Model(Advanced_Model):
     """ Conditional Encoding LSTM Model.
@@ -67,34 +69,34 @@ class Conditonal_Encoding_LSTM_Model(Advanced_Model):
         b = tf.get_variable("b", shape=[self.config.num_classes],
             initializer=tf.constant_initializer(0))
 
-        # run first headline LSTM
         with tf.variable_scope("headline_cell"):
-            cell_headline = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
-            headline_outputs, headline_state = tf.nn.dynamic_rnn(cell_headline, headline_x, dtype=tf.float32, sequence_length = self.h_seq_lengths_placeholder)
+            # run first headline LSTM
+            headline_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
+            headline_outputs, headline_state = tf.nn.dynamic_rnn(headline_cell, headline_x, dtype=tf.float32, sequence_length=self.h_seq_lengths_placeholder)
 
-        # run second LSTM that accept state from first LSTM
-        with tf.variable_scope("body_cell"):
-            cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
-            outputs, article_state = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
+        with tf.variable_scope("article_cell"):
+            article_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
+            outputs, article_state = tf.nn.dynamic_rnn(article_cell, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length= self.a_seq_lengths_placeholder)
+            output = outputs[:,-1,:]
+            assert output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], output.get_shape().as_list())
 
-        output = outputs[:,-1,:]
-        assert output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], output.get_shape().as_list())
-
-        # Compute predictions
-        output_dropout = tf.nn.dropout(output, dropout_rate)
-        preds = tf.matmul(output_dropout, U) + b
-        assert preds.get_shape().as_list() == [None, self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.num_classes], preds.get_shape().as_list())
+            # Compute predictions
+            output_dropout = tf.nn.dropout(output, dropout_rate)
+            preds = tf.matmul(output_dropout, U) + b
+            assert preds.get_shape().as_list() == [None, self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.num_classes], preds.get_shape().as_list())
 
         # Debugging Ops
         if debug:
             headline_x = tf.Print(headline_x, [headline_x], 'headline_x',summarize=20)
-            body_x = tf.Print(body_x, [body_x], 'body_x', summarize=24)
-            h_seq_lengths = tf.Print(self.h_seq_lengths_placeholder, [self.h_seq_lengths_placeholder],'h_seq_lengths', summarize=3)
-            a_seq_lengths = tf.Print(self.a_seq_lengths_placeholder, [self.a_seq_lengths_placeholder],'a_seq_lengths', summarize=3)
-            headline_outputs = tf.Print(headline_outputs, [headline_outputs], 'headline_outputs', summarize=20)
-            headline_state = tf.Print(headline_state, [headline_state], 'headline_state', summarize=20)
-            article_state = tf.Print(article_state, [article_state], 'article_state', summarize=20)
-            debug_ops = [headline_x, body_x, h_seq_lengths, a_seq_lengths, headline_outputs, headline_state, article_state]
+            # debug_ops = [headline_x]
+            # body_x = tf.Print(body_x, [body_x], 'body_x', summarize=24)
+            # h_seq_lengths = tf.Print(self.h_seq_lengths_placeholder, [self.h_seq_lengths_placeholder],'h_seq_lengths', summarize=3)
+            # a_seq_lengths = tf.Print(self.a_seq_lengths_placeholder, [self.a_seq_lengths_placeholder],'a_seq_lengths', summarize=3)
+            # headline_outputs = tf.Print(headline_outputs, [headline_outputs], 'headline_outputs', summarize=20)
+            # headline_state = tf.Print(headline_state, [headline_state], 'headline_state', summarize=20)
+            # article_state = tf.Print(article_state, [article_state], 'article_state', summarize=20)
+            # debug_ops = [headline_x, body_x, h_seq_lengths, a_seq_lengths, headline_outputs, headline_state, article_state]
+            debug_ops = [headline_x]
         else:
             debug_ops = None
 

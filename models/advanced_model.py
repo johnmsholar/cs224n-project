@@ -90,7 +90,7 @@ class Advanced_Model(object):
         self.pred, self.debug_ops = self.add_prediction_op(self.debug)
         self.loss = self.add_loss_op(self.pred)
         self.train_op = self.add_training_op(self.loss)
-        self.class_predictions = tf.argmax(self.pred, axis=1)
+        self.class_predictions = tf.argmax(tf.nn.softmax(self.pred), axis=1)
 
     def print_params(self):
         print "PRINTING PARAMS OF MODEL"
@@ -230,7 +230,7 @@ class Advanced_Model(object):
             h_seq_lengths=h_seq_lengths,
             a_seq_lengths=a_seq_lengths
         )
-        if self.debug:
+        if self.debug and self.debug_ops is not None:
             sess.run(self.debug_ops, feed_dict=feed)
         preds = sess.run(self.class_predictions, feed_dict=feed)
         return preds
@@ -278,7 +278,14 @@ class Advanced_Model(object):
         dev_score, _ = self.predict(sess, dev_set)
         print "- dev Score: {:.2f}".format(dev_score)
         print "Evaluating on train set"
-        train_score, _ = self.predict(sess, train_examples)
+        train_score, preds = self.predict(sess, train_examples)
+
+        with open(self.config.intermediate_results_file, 'w+') as out_file:
+            out_file.write('Predictions')
+            out_file.write(join(preds))
+            out_file.write('-'*80)
+            out_file.write(' '.join(vectorize_stances(train_examples[4])))
+
         print "- train Score: {:.2f}".format(train_score)
         return dev_score
 
@@ -307,7 +314,9 @@ def create_data_sets_for_model(X, y):
 
         Returns lists in the form of [headline_glove_index_matrix, article_glove_index_matrix, h_seq_lengths, a_seq_lengths, labels]
     """
-    train_examples = [X[0][0], X[0][1], X[0][2], X[0][3], y[0]]
+    # train_examples = [X[0][0], X[0][1], X[0][2], X[0][3], y[0]]
+    train_examples = [np.repeat(X[0][0], 400, axis=0), np.repeat(X[0][1], 400, axis=0), X[0][2]*400, X[0][3]*400, np.repeat(y[0], 400, axis=0)]
+
     dev_set = [X[1][0], X[1][1], X[1][2], X[1][3], y[1]]
     test_set = [X[2][0], X[2][1], X[2][2], X[2][3], y[2]]
     return train_examples, dev_set, test_set
