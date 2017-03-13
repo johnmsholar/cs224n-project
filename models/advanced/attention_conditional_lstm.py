@@ -107,9 +107,6 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
                 biases_initializer=tf.constant_initializer(0),
         )
 
-        # class_squash_layer = ClassSquashLayer(self.config.hidden_size, self.config.num_classes)
-        # preds = class_squash_layer(output_dropout)
-
         # Debugging Ops
         if debug:
             headline_x = tf.Print(headline_x, [headline_x], 'headline_x', summarize=20)

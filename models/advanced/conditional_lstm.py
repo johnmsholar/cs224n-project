@@ -96,7 +96,6 @@ class Conditonal_Encoding_LSTM_Model(Advanced_Model):
                 weights_initializer=tf.contrib.layers.xavier_initializer(),
                 biases_initializer=tf.constant_initializer(0),
             )
-            # preds = tf.matmul(output_dropout, U) + b
             assert preds.get_shape().as_list() == [None, self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.num_classes], preds.get_shape().as_list())
 
         # Debugging Ops
