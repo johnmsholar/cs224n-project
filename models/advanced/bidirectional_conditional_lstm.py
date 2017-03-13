@@ -73,7 +73,7 @@ class Bidirectional_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         with tf.variable_scope("article_cell"):
             article_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
             outputs, article_state = tf.nn.bidirectional_dynamic_rnn(article_cell, article_cell, body_x, initial_state_fw=headline_states[0], initial_state_bw=headline_states[1], dtype=tf.float32, sequence_length= self.a_seq_lengths_placeholder)
-            output = outputs[:,-1,:]
+            output = tf.concat(outputs[0][:,-1,:], outputs[1][:, -1, :]
             output_dropout = tf.nn.dropout(output, dropout_rate)
             assert output_dropout.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], output_dropout.get_shape().as_list())
 
@@ -147,7 +147,7 @@ def main(debug=True):
         # Create and configure model
         print "Building model...",
         start = time.time()
-        model = Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug=debug)
+        model = Bidirectional_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug=debug)
         model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
