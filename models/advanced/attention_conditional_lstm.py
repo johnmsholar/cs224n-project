@@ -93,22 +93,21 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
             outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
         
         # Apply attention
-        article_state = outputs[:,-1,:]
-        attention_layer = AttentionLayer(self.config.hidden_size, self.h_max_length)
-        output = attention_layer(headline_outputs, article_state)
+        with tf.variable_scope("attention"):
+            article_state = outputs[:,-1,:]
+            attention_layer = AttentionLayer(self.config.hidden_size, self.h_max_length)
+            output = attention_layer(headline_outputs, article_state)
 
         # Compute predictions
-        output_dropout = tf.nn.dropout(output, dropout_rate)
-        preds = tf.contrib.layers.fully_connected(
-                inputs=output_dropout,
-                num_outputs=self.config.num_classes,
-                activation_fn=tf.nn.relu,
-                weights_initializer=tf.contrib.layers.xavier_initializer(),
-                biases_initializer=tf.constant_initializer(0),
-        )
-
-        # class_squash_layer = ClassSquashLayer(self.config.hidden_size, self.config.num_classes)
-        # preds = class_squash_layer(output_dropout)
+        with tf.variable_scope("final_projection"):
+            output_dropout = tf.nn.dropout(output, dropout_rate)
+            preds = tf.contrib.layers.fully_connected(
+                    inputs=output_dropout,
+                    num_outputs=self.config.num_classes,
+                    activation_fn=tf.nn.relu,
+                    weights_initializer=tf.contrib.layers.xavier_initializer(),
+                    biases_initializer=tf.constant_initializer(0),
+            )
 
         # Debugging Ops
         if debug:
