@@ -44,13 +44,14 @@ class Config(object):
         self.beta = 0
 
         # Data Params
-        self.training_size = None
-        self.random_split = None
-        self.truncate_headlines = None
-        self.truncate_articles = None
-        self.classification_problem = None
-        self.max_headline_length = None
-        self.max_article_length = None       
+        self.config.training_size = .80
+        self.config.random_split = False
+        self.config.truncate_headlines = False
+        self.config.truncate_articles = True
+        self.config.classification_problem = 3
+        self.config.max_headline_length = 500
+        self.config.max_article_length = 800
+        self.config.uniform_data_split = False  
 
 
 class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
@@ -135,16 +136,6 @@ def main(debug=True):
     config = Config()
     if args.epoch:
         config.n_epochs = args.epoch
-
-    # Load Data
-    config.training_size = .80
-    config.random_split = False
-    config.truncate_headlines = False
-    config.truncate_articles = True
-    config.classification_problem = 3
-    config.max_headline_length = 500
-    config.max_article_length = 800
-    config.uniform_data_split = False
 
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=config.training_size,
