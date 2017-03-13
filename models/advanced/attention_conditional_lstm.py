@@ -144,6 +144,7 @@ def main(debug=True):
     config.classification_problem = 3
     config.max_headline_length = 500
     config.max_article_length = 800
+    config.uniform_data_split = False
 
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=config.training_size,
@@ -156,6 +157,9 @@ def main(debug=True):
         glove_set=None,
         debug=debug
     )   
+
+    if config.uniform_data_split:
+        X, y = produce_uniform_data_split(X, y)
 
     # Each set is of the form:
     # [headline_glove_index_matrix, article_glove_index_matrix, h_seq_lengths, a_seq_lengths, labels]

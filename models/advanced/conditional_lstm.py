@@ -48,8 +48,8 @@ class Config(object):
         self.truncate_articles = None
         self.classification_problem = None
         self.max_headline_length = None
-        self.max_article_length = None       
-
+        self.max_article_length = None 
+        self.uniform_data_split = None      
        
 class Conditonal_Encoding_LSTM_Model(Advanced_Model):
     """ Conditional Encoding LSTM Model.
@@ -136,6 +136,7 @@ def main(debug=True):
     config.classification_problem = 3
     config.max_headline_length = 500
     config.max_article_length = 500
+    config.uniform_data_split = False
 
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=config.training_size,
@@ -147,7 +148,10 @@ def main(debug=True):
         max_article_length=config.max_article_length,
         glove_set=None,
         debug=debug
-    )   
+    )
+
+    if config.uniform_data_split:
+        X, y = produce_uniform_data_split(X, y)
 
     train_examples, dev_set, test_set = create_data_sets_for_model(X, y)
     print "Distribution of Train {}".format(np.sum(train_examples[4], axis=0))
