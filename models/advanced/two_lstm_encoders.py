@@ -47,7 +47,7 @@ class Config(object):
         self.n_epochs = None
         self.lr = 0.001
         self.max_grad_norm = 5.
-        self.dropout_rate = 1.0
+        self.dropout_rate = 0.8
         self.beta = 0
 
 class Two_LSTM_Encoders_Model(Advanced_Model):
@@ -83,13 +83,6 @@ class Two_LSTM_Encoders_Model(Advanced_Model):
         articles_x = self.add_embedding(False)
         dropout_rate = self.dropout_placeholder
 
-        # Create final layer to project the output from th RNN onto
-        # the four classification labels.
-        U = tf.get_variable("U", shape=[self.config.hidden_size * 2, self.config.num_classes],
-            initializer=tf.contrib.layers.xavier_initializer())
-        b = tf.get_variable("b", shape=[self.config.num_classes],
-            initializer=tf.constant_initializer(0))
-
         # Headlines -- Compute the output at the end of the LSTM (automatically unrolled)
         with tf.variable_scope("headline_cell"):
             headline_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
@@ -104,15 +97,25 @@ class Two_LSTM_Encoders_Model(Advanced_Model):
             article_output = article_outputs[:, -1, :]
             assert article_output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], article_output.get_shape().as_list())
 
-        # Compute dropout on both headlines and articles
-        headline_output_dropout = tf.nn.dropout(headline_output, dropout_rate)
-        article_output_dropout = tf.nn.dropout(article_output, dropout_rate)
 
-        # Concatenate headline and article outputs
-        output = tf.concat([headline_output_dropout, article_output_dropout], 1)
-        preds = tf.matmul(output, U) + b
-        assert preds.get_shape().as_list() == [None, self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.num_classes], preds.get_shape().as_list())
-        return preds
+        # Create final layer to project the output from th RNN onto
+        # the four classification labels.
+        with tf.variable_scope("projection_layer")
+            U = tf.get_variable("U", shape=[self.config.hidden_size * 2, self.config.num_classes],
+                initializer=tf.contrib.layers.xavier_initializer())
+            b = tf.get_variable("b", shape=[self.config.num_classes],
+                initializer=tf.constant_initializer(0))
+
+
+            # Compute dropout on both headlines and articles
+            headline_output_dropout = tf.nn.dropout(headline_output, dropout_rate)
+            article_output_dropout = tf.nn.dropout(article_output, dropout_rate)
+
+            # Concatenate headline and article outputs
+            output = tf.concat([headline_output_dropout, article_output_dropout], 1)
+            preds = tf.matmul(output, U) + b
+            assert preds.get_shape().as_list() == [None, self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.num_classes], preds.get_shape().as_list())
+            return preds
 
 def main(debug=True):
     # Parse Arguments
@@ -134,13 +137,13 @@ def main(debug=True):
         truncate_articles=True,
         classification_problem=3,
         max_headline_length=500,
-        max_article_length=500,
+        max_article_length=200,
         glove_set=None,
         debug=debug
     )   
 
     # TODO: Remove This
-    X, y = produce_uniform_data_split(X, y)
+    # X, y = produce_uniform_data_split(X, y)
 
     with tf.Graph().as_default():
         print 80 * "="

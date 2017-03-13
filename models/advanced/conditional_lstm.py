@@ -65,13 +65,6 @@ class Conditonal_Encoding_LSTM_Model(Advanced_Model):
         body_x = self.add_embedding(headline_embedding=False)
         dropout_rate = self.dropout_placeholder
 
-        # Create final layer to project the output from th RNN onto
-        # the four classification labels.
-        U = tf.get_variable("U", shape=[self.config.hidden_size, self.config.num_classes],
-            initializer=tf.contrib.layers.xavier_initializer())
-        b = tf.get_variable("b", shape=[self.config.num_classes],
-            initializer=tf.constant_initializer(0))
-
         with tf.variable_scope("headline_cell"):
             # run first headline LSTM
             headline_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
@@ -81,11 +74,24 @@ class Conditonal_Encoding_LSTM_Model(Advanced_Model):
             article_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
             outputs, article_state = tf.nn.dynamic_rnn(article_cell, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length= self.a_seq_lengths_placeholder)
             output = outputs[:,-1,:]
-            assert output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], output.get_shape().as_list())
+            output_dropout = tf.nn.dropout(output, dropout_rate)
+            assert output_dropout.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], output_dropout.get_shape().as_list())
+
+        with tf.variable_scope("final_projection")
+            # U = tf.get_variable("U", shape=[self.config.hidden_size, self.config.num_classes],
+            #     initializer=tf.contrib.layers.xavier_initializer())
+            # b = tf.get_variable("b", shape=[self.config.num_classes],
+            #     initializer=tf.constant_initializer(0))
 
             # Compute predictions
-            output_dropout = tf.nn.dropout(output, dropout_rate)
-            preds = tf.matmul(output_dropout, U) + b
+            preds = tf.contrib.layers.fully_connected(
+                inputs=output_dropout,
+                num_outputs=self.config.num_classes,
+                action_fn=tf.nn.relu,
+                weights_initializer=tf.contrib.layers.xavier_initializer(),
+                biases_initializer=tf.constant_initializer(0),
+            )
+            # preds = tf.matmul(output_dropout, U) + b
             assert preds.get_shape().as_list() == [None, self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.num_classes], preds.get_shape().as_list())
 
         # Debugging Ops
