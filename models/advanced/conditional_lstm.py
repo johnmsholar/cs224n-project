@@ -77,7 +77,7 @@ class Conditonal_Encoding_LSTM_Model(Advanced_Model):
             output_dropout = tf.nn.dropout(output, dropout_rate)
             assert output_dropout.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], output_dropout.get_shape().as_list())
 
-        with tf.variable_scope("final_projection")
+        with tf.variable_scope("final_projection"):
             # U = tf.get_variable("U", shape=[self.config.hidden_size, self.config.num_classes],
             #     initializer=tf.contrib.layers.xavier_initializer())
             # b = tf.get_variable("b", shape=[self.config.num_classes],
@@ -87,7 +87,7 @@ class Conditonal_Encoding_LSTM_Model(Advanced_Model):
             preds = tf.contrib.layers.fully_connected(
                 inputs=output_dropout,
                 num_outputs=self.config.num_classes,
-                action_fn=tf.nn.relu,
+                activation_fn=tf.nn.relu,
                 weights_initializer=tf.contrib.layers.xavier_initializer(),
                 biases_initializer=tf.constant_initializer(0),
             )
@@ -131,13 +131,13 @@ def main(debug=True):
         truncate_articles=True,
         classification_problem=3,
         max_headline_length=500,
-        max_article_length=500,
+        max_article_length=200,
         glove_set=None,
         debug=debug
     )
 
     # TODO: Remove This
-    X, y = produce_uniform_data_split(X, y)
+    # X, y = produce_uniform_data_split(X, y)
 
     train_examples, dev_set, test_set = create_data_sets_for_model(X, y)
     print "Distribution of Train {}".format(np.sum(train_examples[4], axis=0))
@@ -188,4 +188,4 @@ def main(debug=True):
                 print "- test Score: {:.2f}".format(test_score)
 
 if __name__ == '__main__':
-    main(False)
+    main(True)
