@@ -101,7 +101,7 @@ def main(debug=False):
     # Load Data
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=.80,
-        random_split=True,
+        random_split=False,
         truncate_headlines=False,
         truncate_articles=True,
         classification_problem=3,
