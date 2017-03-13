@@ -44,14 +44,14 @@ class Config(object):
         self.beta = 0
 
         # Data Params
-        self.config.training_size = .80
-        self.config.random_split = False
-        self.config.truncate_headlines = False
-        self.config.truncate_articles = True
-        self.config.classification_problem = 3
-        self.config.max_headline_length = 500
-        self.config.max_article_length = 800
-        self.config.uniform_data_split = False  
+        self.training_size = .80
+        self.random_split = False
+        self.truncate_headlines = False
+        self.truncate_articles = True
+        self.classification_problem = 3
+        self.max_headline_length = 500
+        self.max_article_length = 800
+        self.uniform_data_split = False  
 
 
 class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
