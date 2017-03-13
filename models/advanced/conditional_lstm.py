@@ -38,9 +38,19 @@ class Config(object):
         self.n_epochs = None
         self.lr = 0.001
         self.max_grad_norm = 5.
-        self.dropout_rate = 1.0
+        self.dropout_rate = 0.8
         self.beta = 0
-        
+
+        # Data Params
+        self.training_size = None
+        self.random_split = None
+        self.truncate_headlines = None
+        self.truncate_articles = None
+        self.classification_problem = None
+        self.max_headline_length = None
+        self.max_article_length = None       
+
+       
 class Conditonal_Encoding_LSTM_Model(Advanced_Model):
     """ Conditional Encoding LSTM Model.
     """
@@ -78,11 +88,6 @@ class Conditonal_Encoding_LSTM_Model(Advanced_Model):
             assert output_dropout.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], output_dropout.get_shape().as_list())
 
         with tf.variable_scope("final_projection"):
-            # U = tf.get_variable("U", shape=[self.config.hidden_size, self.config.num_classes],
-            #     initializer=tf.contrib.layers.xavier_initializer())
-            # b = tf.get_variable("b", shape=[self.config.num_classes],
-            #     initializer=tf.constant_initializer(0))
-
             # Compute predictions
             preds = tf.contrib.layers.fully_connected(
                 inputs=output_dropout,
@@ -124,20 +129,25 @@ def main(debug=True):
         config.n_epochs = args.epoch
 
     # Load Data
+    config.training_size = .80
+    config.random_split = False
+    config.truncate_headlines = False
+    config.truncate_articles = True
+    config.classification_problem = 3
+    config.max_headline_length = 500
+    config.max_article_length = 500
+
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
-        training_size=.80,
-        random_split=False,
-        truncate_headlines=False,
-        truncate_articles=True,
-        classification_problem=3,
-        max_headline_length=500,
-        max_article_length=200,
+        training_size=config.training_size,
+        random_split=config.random_split,
+        truncate_headlines=tconfig.runcate_headlines,
+        truncate_articles=config.truncate_articles,
+        classification_problem=config.classification_problem,
+        max_headline_length=config.max_headline_length,
+        max_article_length=config.max_article_length,
         glove_set=None,
         debug=debug
-    )
-
-    # TODO: Remove This
-    # X, y = produce_uniform_data_split(X, y)
+    )   
 
     train_examples, dev_set, test_set = create_data_sets_for_model(X, y)
     print "Distribution of Train {}".format(np.sum(train_examples[4], axis=0))

@@ -106,7 +106,6 @@ class Two_LSTM_Encoders_Model(Advanced_Model):
             b = tf.get_variable("b", shape=[self.config.num_classes],
                 initializer=tf.constant_initializer(0))
 
-
             # Compute dropout on both headlines and articles
             headline_output_dropout = tf.nn.dropout(headline_output, dropout_rate)
             article_output_dropout = tf.nn.dropout(article_output, dropout_rate)

@@ -31,7 +31,7 @@ class Config(object):
     instantiation. Use self.config.? instead of Config.?
     """
     def __init__(self):
-        self.num_classes = 2 # Number of classses for classification task.
+        self.num_classes = 3 # Number of classses for classification task.
         self.embed_size = 300 # Size of Glove Vectors
 
         # Hyper Parameters
@@ -42,6 +42,15 @@ class Config(object):
         self.max_grad_norm = 5.
         self.dropout_rate = 0.8
         self.beta = 0
+
+        # Data Params
+        self.training_size = None
+        self.random_split = None
+        self.truncate_headlines = None
+        self.truncate_articles = None
+        self.classification_problem = None
+        self.max_headline_length = None
+        self.max_article_length = None       
 
 
 class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
@@ -128,20 +137,25 @@ def main(debug=True):
         config.n_epochs = args.epoch
 
     # Load Data
+    config.training_size = .80
+    config.random_split = False
+    config.truncate_headlines = False
+    config.truncate_articles = True
+    config.classification_problem = 3
+    config.max_headline_length = 500
+    config.max_article_length = 800
+
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
-        training_size=.80,
-        random_split=False,
-        truncate_headlines=False,
-        truncate_articles=True,
-        classification_problem=2,
-        max_headline_length=500,
-        max_article_length=800,
+        training_size=config.training_size,
+        random_split=config.random_split,
+        truncate_headlines=tconfig.runcate_headlines,
+        truncate_articles=config.truncate_articles,
+        classification_problem=config.classification_problem,
+        max_headline_length=config.max_headline_length,
+        max_article_length=config.max_article_length,
         glove_set=None,
         debug=debug
     )   
-
-    # TODO: Remove This
-    #X, y = produce_uniform_data_split(X, y)
 
     # Each set is of the form:
     # [headline_glove_index_matrix, article_glove_index_matrix, h_seq_lengths, a_seq_lengths, labels]
@@ -190,8 +204,9 @@ def main(debug=True):
                 saver.restore(session, model.best_weights_fn)
 
                 print "Final evaluation on test set",
-                test_score, _, _= model.predict(session, test_set, save_preds=True)
-                print "- test Score: {:.2f}".format(test_score)
+                test_score, _, test_confusion_matrix_str = model.predict(session, test_set, save_preds=True)
+                with open(model.test_confusion_matrix_fn, 'w') as file:
+                    file.write(test_confusion_matrix_str)
 
 
 if __name__ == '__main__':
