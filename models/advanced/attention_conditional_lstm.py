@@ -31,7 +31,7 @@ class Config(object):
     instantiation. Use self.config.? instead of Config.?
     """
     def __init__(self):
-        self.num_classes = 3 # Number of classses for classification task.
+        self.num_classes = 2 # Number of classses for classification task.
         self.embed_size = 300 # Size of Glove Vectors
 
         # Hyper Parameters
@@ -133,15 +133,15 @@ def main(debug=True):
         random_split=False,
         truncate_headlines=False,
         truncate_articles=True,
-        classification_problem=3,
-        max_headline_length=300,
-        max_article_length=300,
+        classification_problem=2,
+        max_headline_length=500,
+        max_article_length=800,
         glove_set=None,
         debug=debug
     )   
 
     # TODO: Remove This
-    X, y = produce_uniform_data_split(X, y)
+    #X, y = produce_uniform_data_split(X, y)
 
     # Each set is of the form:
     # [headline_glove_index_matrix, article_glove_index_matrix, h_seq_lengths, a_seq_lengths, labels]
