@@ -36,10 +36,20 @@ class Config(object):
         self.hidden_size = 300 # Hidden State Size
         self.batch_size = 50
         self.n_epochs = None
-        self.lr = 0.001
+        self.lr = 0.0001
         self.max_grad_norm = 5.
-        self.dropout_rate = 1.0
+        self.dropout_rate = 0.8
         self.beta = 0
+
+        # Data Params
+        self.training_size = .80
+        self.random_split = False
+        self.truncate_headlines = False
+        self.truncate_articles = True
+        self.classification_problem = 3
+        self.max_headline_length = 500
+        self.max_article_length = 800
+        self.uniform_data_split = False  
         
 class Bidirectional_Conditonal_Encoding_LSTM_Model(Advanced_Model):
     """ Bidirectional Conditional Encoding LSTM Model.
@@ -67,15 +77,33 @@ class Bidirectional_Conditonal_Encoding_LSTM_Model(Advanced_Model):
 
         with tf.variable_scope("headline_cell"):
             # run first headline LSTM
-            headline_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
-            headline_outputs, headline_states = tf.nn.bidirectional_dynamic_rnn(headline_cell, headline_cell, headline_x, dtype=tf.float32, sequence_length=self.h_seq_lengths_placeholder)
+            headline_fw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
+            headline_bw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)           
+            headline_outputs, headline_states = tf.nn.bidirectional_dynamic_rnn(
+                headline_fw_cell,
+                headline_bw_cell,
+                headline_x,
+                dtype=tf.float32,
+                sequence_length=self.h_seq_lengths_placeholder
+            )
 
         with tf.variable_scope("article_cell"):
-            article_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
-            outputs, article_state = tf.nn.bidirectional_dynamic_rnn(article_cell, article_cell, body_x, initial_state_fw=headline_states[0], initial_state_bw=headline_states[1], dtype=tf.float32, sequence_length= self.a_seq_lengths_placeholder)
-            output = tf.concat(article_state, 1)
+            article_fw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
+            article_bw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
+            outputs, article_states = tf.nn.bidirectional_dynamic_rnn(
+                article_fw_cell,
+                article_bw_cell,
+                body_x,
+                initial_state_fw=headline_states[0],
+                initial_state_bw=headline_states[1],
+                dtype=tf.float32,
+                sequence_length= self.a_seq_lengths_placeholder
+            )
+            fw_output = outputs[0][:, -1, :]
+            bw_output = outputs[1][:, -1, :]
+            output = tf.concat([fw_output, bw_output], 1)
             output_dropout = tf.nn.dropout(output, dropout_rate)
-            assert output_dropout.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], output_dropout.get_shape().as_list())
+            assert output_dropout.get_shape().as_list() == [None, self.config.hidden_size * 2], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size * 2], output_dropout.get_shape().as_list())
 
         with tf.variable_scope("final_projection"):
             # Compute predictions
@@ -86,21 +114,15 @@ class Bidirectional_Conditonal_Encoding_LSTM_Model(Advanced_Model):
                 weights_initializer=tf.contrib.layers.xavier_initializer(),
                 biases_initializer=tf.constant_initializer(0),
             )
-            # preds = tf.matmul(output_dropout, U) + b
             assert preds.get_shape().as_list() == [None, self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.num_classes], preds.get_shape().as_list())
 
         # Debugging Ops
         if debug:
             headline_x = tf.Print(headline_x, [headline_x], 'headline_x',summarize=20)
-            debug_ops = [headline_x]
             body_x = tf.Print(body_x, [body_x], 'body_x', summarize=24)
             h_seq_lengths = tf.Print(self.h_seq_lengths_placeholder, [self.h_seq_lengths_placeholder],'h_seq_lengths', summarize=3)
             a_seq_lengths = tf.Print(self.a_seq_lengths_placeholder, [self.a_seq_lengths_placeholder],'a_seq_lengths', summarize=3)
-            headline_outputs = tf.Print(headline_outputs, [headline_outputs], 'headline_outputs', summarize=20)
-            headline_state = tf.Print(headline_state, [headline_state], 'headline_state', summarize=20)
-            article_state = tf.Print(article_state, [article_state], 'article_state', summarize=20)
-            debug_ops = [headline_x, body_x, h_seq_lengths, a_seq_lengths, headline_outputs, headline_state, article_state]
-            debug_ops = [headline_x]
+            debug_ops = [headline_x, body_x, h_seq_lengths, a_seq_lengths]
         else:
             debug_ops = None
 
@@ -120,19 +142,19 @@ def main(debug=True):
 
     # Load Data
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
-        training_size=.80,
-        random_split=False,
-        truncate_headlines=False,
-        truncate_articles=True,
-        classification_problem=3,
-        max_headline_length=500,
-        max_article_length=800,
+        training_size=config.training_size,
+        random_split=config.random_split,
+        truncate_headlines=config.truncate_headlines,
+        truncate_articles=config.truncate_articles,
+        classification_problem=config.classification_problem,
+        max_headline_length=config.max_headline_length,
+        max_article_length=config.max_article_length,
         glove_set=None,
         debug=debug
-    )
+    )   
 
-    # TODO: Remove This
-    # X, y = produce_uniform_data_split(X, y)
+    if config.uniform_data_split:
+        X, y = produce_uniform_data_split(X, y)
 
     train_examples, dev_set, test_set = create_data_sets_for_model(X, y)
     print "Distribution of Train {}".format(np.sum(train_examples[4], axis=0))
