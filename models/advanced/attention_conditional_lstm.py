@@ -38,7 +38,7 @@ class Config(object):
         self.hidden_size = 300 # Hidden State Size
         self.batch_size = 50
         self.n_epochs = None
-        self.lr = 0.001
+        self.lr = 0.0001
         self.max_grad_norm = 5.
         self.dropout_rate = 0.8
         self.beta = 0
@@ -134,8 +134,8 @@ def main(debug=True):
         truncate_headlines=False,
         truncate_articles=True,
         classification_problem=3,
-        max_headline_length=500,
-        max_article_length=500,
+        max_headline_length=300,
+        max_article_length=300,
         glove_set=None,
         debug=debug
     )   
