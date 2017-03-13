@@ -40,7 +40,7 @@ class Config(object):
         self.n_epochs = None
         self.lr = 0.001
         self.max_grad_norm = 5.
-        self.dropout_rate = 1.0
+        self.dropout_rate = 0.8
         self.beta = 0
 
 
@@ -89,8 +89,16 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
 
         # Compute predictions
         output_dropout = tf.nn.dropout(output, dropout_rate)
-        class_squash_layer = ClassSquashLayer(self.config.hidden_size, self.config.num_classes)
-        preds = class_squash_layer(output_dropout)
+        preds = tf.contrib.layers.fully_connected(
+                inputs=output_dropout,
+                num_outputs=self.config.num_classes,
+                activation_fn=tf.nn.relu,
+                weights_initializer=tf.contrib.layers.xavier_initializer(),
+                biases_initializer=tf.constant_initializer(0),
+        )
+
+        # class_squash_layer = ClassSquashLayer(self.config.hidden_size, self.config.num_classes)
+        # preds = class_squash_layer(output_dropout)
 
         # Debugging Ops
         if debug:
