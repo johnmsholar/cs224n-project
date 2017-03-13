@@ -64,6 +64,10 @@ def create_embeddings(
     glove_matrix: embeddings matrix of words -> glove vectors
     word_to_glove:index: mapping from word to index in glove_matrix (row number)
     """
+    if debug:
+        global GLOVE_SIZE
+        GLOVE_SIZE = 2
+
     # X is [X_train, X_dev, X_test] where each is of the format [(headline id, body id)]
     # y is [y_train, y_dev, y_test] where each is of the format [stance]
     # b_id_to_article = {b_id} -> ['list', 'rep', 'of', 'article', 'tokens']

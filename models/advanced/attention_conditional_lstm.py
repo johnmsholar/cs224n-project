@@ -47,6 +47,9 @@ class Config(object):
 class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
     """ Conditional Encoding LSTM Model.
     """
+    def get_model_name(self):
+        return 'attention_conditional_lstm'
+
     def get_fn_names(self):
         """ Retrieve file names.
             fn_names = [best_weights_fn, curr_weights_fn, preds_fn]

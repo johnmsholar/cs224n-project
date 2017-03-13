@@ -56,9 +56,13 @@ class Two_LSTM_Encoders_Model(Advanced_Model):
         Concatenate final hidden representations and feed through and MLP
         to determine final prediction.
     """
+
+    def get_model_name(self):
+        return 'two_lstm_encoders'
+
     def get_fn_names(self):
         """ Retrieve file names.
-            fn_names = [best_weights_fn, curr_weights_fn, preds_fn]
+            fn_names = [best_weights_fn, curr_weights_fn, preds_fn, best_train_weights_fn]
         """
         best_weights_fn = 'two_lstm_encoders_best_stance.weights'
         curr_weights_fn = 'two_lstm_encoders_curr_stance.weights'

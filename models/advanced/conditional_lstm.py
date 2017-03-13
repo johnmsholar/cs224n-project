@@ -44,9 +44,12 @@ class Config(object):
 class Conditonal_Encoding_LSTM_Model(Advanced_Model):
     """ Conditional Encoding LSTM Model.
     """
+    def get_model_name(self):
+        return 'conditional_lstm'
+
     def get_fn_names(self):
         """ Retrieve file names.
-            fn_names = [best_weights_fn, curr_weights_fn, preds_fn]
+            fn_names = [best_weights_fn, curr_weights_fn, preds_fn, best_train_weights_fn]
         """
         best_weights_fn = 'conditional_lstm_best_stance.weights'
         curr_weights_fn = 'conditional_lstm_curr_stance.weights'

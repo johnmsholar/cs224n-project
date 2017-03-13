@@ -16,6 +16,7 @@ import numpy as np
 import tensorflow as tf
 from util import Progbar, minibatches, vectorize_stances, create_tensorflow_saver
 
+from pprint import pprint
 import json
 import time
 import os
@@ -50,13 +51,14 @@ class Advanced_Model(object):
             name="embedding_matrix"
         )
         
-        # Save Files -- "./data/{time_stamp}/{specific_dir}"
+        # Save Files -- "./data/{model_name}/{time_stamp}/{specific_dir}"
+        model_name = self.get_model_name()
         fn_names = self.get_fn_names()
         init_time = time.time()
-        self.weights_path = './data/{}/weights'.format(init_time)
-        self.preds_path = './data/{}/predictions'.format(init_time)
-        self.plots_path = './data/{}/plots'.format(init_time)
-        self.logs_path = './data/{}/logs'.format(init_time)
+        self.weights_path = './data/{}/{}/weights'.format(model_name, init_time)
+        self.preds_path = './data/{}/{}/predictions'.format(model_name, init_time)
+        self.plots_path = './data/{}/{}/plots'.format(model_name, init_time)
+        self.logs_path = './data/{}/{}/logs'.format(model_name, init_time)
         self.best_weights_fn = '{}/{}'.format(self.weights_path, fn_names[0])
         self.curr_weights_fn = '{}/{}'.format(self.weights_path, fn_names[1])
         self.preds_fn = '{}/{}'.format(self.preds_path, fn_names[2])
@@ -65,6 +67,7 @@ class Advanced_Model(object):
         self.train_confusion_matrix_fn = '{}/best_train_confusion_matrix'.format(self.logs_path)
         self.dev_confusion_matrix_fn = '{}/best_dev_confusion_matrix'.format(self.logs_path)
         self.test_confusion_matrix_fn = '{}/best_test_confusion_matrix'.format(self.logs_path)
+        self.exclude_names = set([])
 
         # Create Necessary Directories 
         if not os.path.exists(self.weights_path):
@@ -81,7 +84,7 @@ class Advanced_Model(object):
 
         # Save hyperparameters in file
         with open(self.hyper_parameters_fn, 'w') as f:
-            json.dump(self.config.__dict__, f)
+            pprint(json.dumps(self.config.__dict__), stream=f)
 
         # Scoring Function for Evaluation
         self.scoring_function = scoring_function
@@ -100,14 +103,22 @@ class Advanced_Model(object):
         self.loss, self.debug_loss_ops = self.add_loss_op(self.pred)
         self.train_op = self.add_training_op(self.loss)
 
+        # Tensorboard writer
+        self.summary_writer =  tf.summary.FileWriter(self.logs_path)
+        self.loss_summary = tf.summary.scalar("loss", self.loss)
+        self.merged_summary_op = tf.summary.merge_all()
+
     def print_params(self):
-        print "PRINTING PARAMS OF MODEL"
+        print "\nPRINTING PARAMS OF MODEL"
         print "Headline Max Length {}".format(self.h_max_length)
         print "Article Max Length {}".format(self.a_max_length)
 
+    def get_model_name(self):
+         raise NotImplementedError("Each Model must re-implement this method.")       
+
     def get_fn_names(self):
         """ Retrieve file names.
-            fn_names = [best_weights_fn, curr_weights_fn, preds_fn]
+            fn_names = [best_weights_fn, curr_weights_fn, preds_fn, best_train_weights_fn]
         """
         raise NotImplementedError("Each Model must re-implement this method.")
 
@@ -206,15 +217,7 @@ class Advanced_Model(object):
             reg += tf.nn.l2_loss(var)
         reg *= self.config.beta
         loss += reg
-
-        debug_ops = None
-        if self.debug:
-            pass
-            # preds_print = tf.Print(preds, [preds], 'preds', summarize=1200)
-            # onehot_print = tf.Print(self.labels_placeholder, [self.labels_placeholder], 'labels_placeholder', summarize=1200)
-            # class_preds_print = tf.Print(self.class_predictions, [self.class_predictions], 'class_predictions', summarize=1200)
-            # debug_ops = [preds_print, onehot_print, class_preds_print]        
-        return loss, debug_ops
+        return loss, None
 
     def add_training_op(self, loss):
         """Sets up the training Ops.
@@ -236,10 +239,11 @@ class Advanced_Model(object):
             a_seq_lengths
         )
 
-        _, loss = sess.run([self.train_op, self.loss], feed_dict=feed)
+        _, loss, summary_str = sess.run([self.train_op, self.loss, self.merged_summary_op], feed_dict=feed)
+
         if self.debug and self.debug_loss_ops is not None:
             sess.run(self.debug_loss_ops, feed_dict=feed)
-        return loss
+        return loss, summary_str
 
     def predict_on_batch(self, sess, headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths):
         """Make predictions for the provided batch of data.
@@ -282,7 +286,7 @@ class Advanced_Model(object):
         score, confusion_matrix_str = self.scoring_function(actual, preds)
         return score, preds, confusion_matrix_str   
 
-    def run_epoch(self, sess, train_examples, dev_set):
+    def run_epoch(self, sess, train_examples, dev_set, epoc_num):
         """ Run a single epoch on the given train_examples. 
             Then evaluate on the dev_set.
             Both train_examples and dev_set should be of format:
@@ -291,15 +295,16 @@ class Advanced_Model(object):
         # Train the Epoch
         prog = Progbar(target=1+len(train_examples[0])/self.config.batch_size)
         for i, (headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch) in enumerate(minibatches(train_examples, self.config.batch_size)):
-            loss = self.train_on_batch(sess, headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch)
+            loss, summary_str = self.train_on_batch(sess, headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch)
+            self.summary_writer.add_summary(summary_str, (epoc_num + 1) * len(train_examples[0])/self.config.batch_size)
             prog.update(i + 1, [("train loss", loss)])
 
         # Evaluate on the Dev Set
-        print "Evaluating on dev set"
+        print "\nEvaluating on dev set"
         dev_score, _, dev_confusion_matrix_str = self.predict(sess, dev_set)
         print "- dev Score: {:.2f}".format(dev_score)
 
-        print "Evaluating on train set"
+        print "\nEvaluating on train set"
         train_score, _, train_confusion_matrix_str = self.predict(sess, train_examples)
         print "- train Score: {:.2f}".format(train_score)
         return dev_score, train_score, dev_confusion_matrix_str, train_confusion_matrix_str
@@ -311,21 +316,21 @@ class Advanced_Model(object):
         best_train_score = 0
         for epoch in range(self.config.n_epochs):
             print "Epoch {:} out of {:}".format(epoch + 1, self.config.n_epochs)
-            dev_score, tain_score, dev_confusion_matrix_str, train_confusion_matrix_str = self.run_epoch(sess, train_examples, dev_set)
+            dev_score, train_score, dev_confusion_matrix_str, train_confusion_matrix_str = self.run_epoch(sess, train_examples, dev_set, epoch)
             if dev_score > best_dev_score:
                 best_dev_score = dev_score
                 if saver:
                     print "New best dev! Saving model in {}".format(self.best_weights_fn)
                     saver.save(sess, self.best_weights_fn)
-                    with open(self.dev_confusion_matrix_str, 'w') as file:
+                    with open(self.dev_confusion_matrix_fn, 'w') as file:
                         file.write(dev_confusion_matrix_str)
 
             if train_score > best_train_score:
                 best_train_score = train_score
                 if saver:
-                    print "New best rain! Saving model in {}".format(self.best_train_weights_fn)
+                    print "New best train! Saving model in {}".format(self.best_train_weights_fn)
                     saver.save(sess, self.best_train_weights_fn)
-                    with open(self.train_confusion_matrix_str, 'w') as file:
+                    with open(self.train_confusion_matrix_fn, 'w') as file:
                         file.write(train_confusion_matrix_str)
 
             if saver:
@@ -333,16 +338,20 @@ class Advanced_Model(object):
                 saver.save(sess, self.curr_weights_fn)
             print    
 
-def create_data_sets_for_model(X, y):
+def create_data_sets_for_model(X, y, debug=False):
     """ Given train, dev, and test splits for input, sequnce lengths, labels,
         construct the arrays that can be processed by the model.
         X: [X_train, X_dev, X_test] X_train, X_dev, X_test are tuples consisting of (headline matrix of glove indices, article matrix of glove indices, h_seq_lengths, article_seq_lengths)
         y: [y_train, y_dev, y_test] y_train, y_dev, y_test are matrices where each row is a 1 hot vector represntation of the class label
 
+        Note: Replicate examples if in debug mode.
+
         Returns lists in the form of [headline_glove_index_matrix, article_glove_index_matrix, h_seq_lengths, a_seq_lengths, labels]
     """
-    train_examples = [X[0][0], X[0][1], X[0][2], X[0][3], y[0]]
-    # train_examples = [np.repeat(X[0][0], 400, axis=0), np.repeat(X[0][1], 400, axis=0), X[0][2]*400, X[0][3]*400, np.repeat(y[0], 400, axis=0)]
+    if debug:
+        train_examples = [np.repeat(X[0][0], 400, axis=0), np.repeat(X[0][1], 400, axis=0), X[0][2]*400, X[0][3]*400, np.repeat(y[0], 400, axis=0)]
+    else:    
+        train_examples = [X[0][0], X[0][1], X[0][2], X[0][3], y[0]]
 
     dev_set = [X[1][0], X[1][1], X[1][2], X[1][3], y[1]]
     test_set = [X[2][0], X[2][1], X[2][2], X[2][3], y[2]]

@@ -11,6 +11,7 @@ import argparse
 import tensorflow as tf
 import numpy as np
 
+import pprint
 import time
 import os
 import sys
@@ -37,13 +38,13 @@ class Config(object):
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
         self.batch_size = 50
-        self.n_epochs = 1
+        self.n_epochs = 5
         self.lr = 0.001
         self.max_grad_norm = 5.
-        self.dropout_rate = 1.0
+        self.dropout_rate = 0.8
         self.beta = 0
 
-def run_model(config, max_input_lengths, glove_matrix):
+def run_model(config, max_input_lengths, glove_matrix, args, train_examples, dev_set, test_set):
     """ Run the model.
     """
     with tf.Graph().as_default():
@@ -86,11 +87,12 @@ def run_model(config, max_input_lengths, glove_matrix):
 
             print "Final evaluation on test set",
             test_score, _, test_confusion_matrix_str = model.predict(session, test_set, save_preds=True)
-            with open(model.test_confusion_matrix_str, 'w') as file:
+            with open(model.test_confusion_matrix_fn, 'w') as file:
                 file.write(test_confusion_matrix_str)
             print "- test Score: {:.2f}".format(test_score)
+            return test_score, test_confusion_matrix_str
 
-def main():
+def main(debug=False):
     # Parse Arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--restore', action='store_true')
@@ -99,16 +101,17 @@ def main():
     # Load Data
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=.80,
-        random_split=False,
+        random_split=True,
         truncate_headlines=False,
         truncate_articles=True,
         classification_problem=3,
         max_headline_length=500,
         max_article_length=500,
         glove_set=None,
+        debug=debug
     )
 
-    train_examples, dev_set, test_set = create_data_sets_for_model(X, y)
+    train_examples, dev_set, test_set = create_data_sets_for_model(X, y, debug)
     print "Distribution of Train {}".format(np.sum(train_examples[4], axis=0))
     print "Distribtion of Dev {}".format(np.sum(dev_set[4], axis=0))
     print "Distribution of Test{}".format(np.sum(test_set[4], axis=0))
@@ -116,24 +119,39 @@ def main():
     # Define hyperparameters
     hyperparameters = {
         'lr': [.1, .01, .001],
-        'dropout_rate': [.5, .8, 1],
+        # 'dropout_rate': [.5, .8],
         'beta': [0, .5, 1, 10],
-        # 'n_epochs': 5,
     }
 
     # Run model over all these hyper parameters
-    for hyperparam in hyperparameters.keys():
+    pp = pprint.PrettyPrinter(indent=4)
+    best_test_score = -1
+    best_config = None
+    best_test_confusion_matrix = ''
+    for lr in hyperparameters['lr']:
         config = Config()
-        for val in hyperparameters[hyperparam]:
-            if hyperparam == 'lr':
-                config.lr = val
-            elif hyperparam == 'dropout_rate':
-                config.dropout_rate = val
-            elif hyperparam == 'beta':
-                config.beta = val
-            elif hyperparam == 'n_epochs':
-                config.n_epochs = val
-            run_model(config, max_input_lengths, glove_matrix)
+        config.lr = lr
+        if debug:
+            config.embed_size = 2
+        for beta in hyperparameters['beta']:
+            config.beta = beta
+            print "-"*80
+            print "Using Configs:"
+            pp.pprint(config.__dict__)
+            print "-"*80
+            test_score, test_confusion_matrix = run_model(config, max_input_lengths, glove_matrix, args, train_examples, dev_set, test_set)
+            if test_score > best_test_score:
+                best_test_score = test_score
+                best_config = config
+                best_test_confusion_matrix = test_confusion_matrix
 
+    print '-'*80
+    print "Best Config:"
+    pp.pprint(best_config.__dict__)
+    print "Best Test Score:"
+    print best_test_score
+    print "Confusion Matrix"
+    print best_test_confusion_matrix
+    print '-'*80
 if __name__ == '__main__':
-    main()
+    main(False)

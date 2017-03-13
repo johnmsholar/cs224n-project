@@ -34,7 +34,7 @@ def score_submission(gold_labels, test_labels):
 
 def print_confusion_matrix(cm):
     lines = []
-    header = "|{:^11}|{:^11}|{:^11}|{:^11}|{:^11}|".format('', *LABELS_HEADER)
+    header = "\n|{:^11}|{:^11}|{:^11}|{:^11}|{:^11}|".format('', *LABELS_HEADER)
     line_len = len(header)
     lines.append("-"*line_len)
     lines.append(header)
@@ -63,7 +63,7 @@ def report_score(actual,predicted):
     score,cm = score_submission(actual,predicted)
     best_score, _ = score_submission(actual,actual)
 
-    lines = print_confusion_matrix(cm, filename)
+    lines = print_confusion_matrix(cm)
     print("Score: " +str(score) + " out of " + str(best_score) + "\t("+str(score*100/best_score) + "%)")
     lines += '\n' + ("Score: " +str(score) + " out of " + str(best_score) + "\t("+str(score*100/best_score) + "%)")
     return score*100/best_score, lines
