@@ -51,7 +51,7 @@ class Config(object):
         self.max_article_length = 800
         self.uniform_data_split = False  
         
-class Bidirectional_Conditonal_Encoding_LSTM_Model(Advanced_Model):
+class Conditional_Encoding_Bidirectional_LSTM_Model(Advanced_Model):
     """ Bidirectional Conditional Encoding LSTM Model.
     """
     def get_model_name(self):
@@ -61,10 +61,10 @@ class Bidirectional_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         """ Retrieve file names.
             fn_names = [best_weights_fn, curr_weights_fn, preds_fn, best_train_weights_fn]
         """
-        best_weights_fn = 'bidirectional_conditional_lstm_best_stance.weights'
-        curr_weights_fn = 'bidirectional_conditional_lstm_curr_stance.weights'
-        preds_fn = 'bidirectional_conditional_encoding_lstm_predicted.pkl'
-        best_train_weights_fn = 'bidirectional_conditional_encoding_lstm_predicted_best_train_stance.weights'
+        best_weights_fn = 'Conditional_Encoding_Bidirectional_LSTM_Model_best_stance.weights'
+        curr_weights_fn = 'Conditional_Encoding_Bidirectional_LSTM_Model_curr_stance.weights'
+        preds_fn = 'Conditional_Encoding_Bidirectional_LSTM_Model_predicted.pkl'
+        best_train_weights_fn = 'Conditional_Encoding_Bidirectional_LSTM_Model_predicted_best_train_stance.weights'
         return [best_weights_fn, curr_weights_fn, preds_fn, best_train_weights_fn]
 
     def add_prediction_op(self, debug):
@@ -169,7 +169,7 @@ def main(debug=True):
         # Create and configure model
         print "Building model...",
         start = time.time()
-        model = Bidirectional_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug=debug)
+        model = Conditional_Encoding_Bidirectional_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug=debug)
         model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 

@@ -32,7 +32,7 @@ class Config(object):
     """
     def __init__(self):
         self.num_classes = 3 # Number of classses for classification task.
-        self.embed_size = 300 # Size of Glove Vectors
+        self.embed_size = 2 # Size of Glove Vectors
 
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
@@ -45,7 +45,7 @@ class Config(object):
 
         # Data Params
         self.training_size = .80
-        self.random_split = False
+        self.random_split = True
         self.truncate_headlines = False
         self.truncate_articles = True
         self.classification_problem = 3
@@ -82,24 +82,29 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         # headline_x_list = [headline_x[:, i, :] for i in range(headline_x.get_shape()[1].value)]
         with tf.variable_scope("headline_cell"):
             cell_headline = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
-            # headline_outputs, headline_state = tf.contrib.rnn.static_rnn(cell_headline, headline_x_list, dtype=tf.float32)
             headline_outputs, headline_state = tf.nn.dynamic_rnn(cell_headline, headline_x, dtype=tf.float32, sequence_length = self.h_seq_lengths_placeholder)
 
         # run second LSTM that accept state from first LSTM
         # body_x_list = [body_x[:, i, :] for i in range(body_x.get_shape()[1].value)]
         with tf.variable_scope("body_cell"):
             cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
-            # _, article_state = tf.contrib.rnn.static_rnn(cell_body, body_x_list, initial_state=headline_state, dtype=tf.float32)
-            outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
+            article_outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
         
-        # Apply attention
-        with tf.variable_scope("attention"):
-            article_state = outputs[:,-1,:]
-            attention_layer = AttentionLayer(self.config.hidden_size, self.h_max_length)
-            output = attention_layer(headline_outputs, article_state)
+        # Apply attention from headline -> article
+        with tf.variable_scope("headline_to_article_attention"):
+            article_output = article_outputs[:,-1,:]
+            attention_layer_1 = AttentionLayer(self.config.hidden_size, self.h_max_length)
+            output_1 = attention_layer_1(headline_outputs, article_output)
+
+        # Apply attentin from article -> headline
+        with tf.variable_scope("article_to_headline_attention"):
+            headline_output = headline_outputs[:, -1, :]
+            attention_layer_2 = AttentionLayer(self.config.hidden_size, self.a_max_length)
+            output_2 = attention_layer_2(article_outputs, headline_output)
 
         # Compute predictions
         with tf.variable_scope("final_projection"):
+            output = tf.concat([output_1, output_2], 1)
             output_dropout = tf.nn.dropout(output, dropout_rate)
             preds = tf.contrib.layers.fully_connected(
                     inputs=output_dropout,
@@ -115,10 +120,7 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
             body_x = tf.Print(body_x, [body_x], 'body_x', summarize=24)
             h_seq_lengths = tf.Print(self.h_seq_lengths_placeholder, [self.h_seq_lengths_placeholder], 'h_seq_lengths', summarize=3)
             a_seq_lengths = tf.Print(self.a_seq_lengths_placeholder, [self.a_seq_lengths_placeholder], 'a_seq_lengths', summarize=3)            
-            headline_outputs = tf.Print(headline_outputs, [headline_outputs], 'headline_outputs', summarize=20)
-            headline_state = tf.Print(headline_state, [headline_state], 'headline_state', summarize=20)
-            article_state = tf.Print(article_state, [article_state], 'article_state', summarize=20)
-            debug_ops = [headline_x, body_x, h_seq_lengths, a_seq_lengths, headline_outputs, headline_state, article_state]
+            debug_ops = [headline_x, body_x, h_seq_lengths, a_seq_lengths]
         else:
             debug_ops = None
 
@@ -204,4 +206,4 @@ def main(debug=True):
 
 
 if __name__ == '__main__':
-    main(False)
+    main(True)
