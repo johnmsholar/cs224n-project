@@ -21,13 +21,13 @@ import random
 
 sys.path.insert(0, '../../')
 from models.util import plot_confusion_matrix, save_confusion_matrix
-from models.fnc1_utils.featurizer import construct_data_set
+from models.fnc1_utils.generate_test_splits import compute_splits
 from models.fnc1_utils.score import report_score
 
 rgen = random.Random()
 rgen.seed(1489215)
 
-
+""""
 # Compute train-test-dev split in a sanitary way
 def compute_splits(id_id_stance, training=0.8):
     training_ids, hold_out_ids = generate_random_hold_out_split(id_id_stance, training)
@@ -57,7 +57,7 @@ def compute_splits(id_id_stance, training=0.8):
             x_test.append(id_pair)
             y_test.append(stance)
     return x_train, x_dev, x_test, y_train, y_dev, y_test
-
+"""
 
 # generate random article split
 # pass in the number of articles
@@ -183,7 +183,7 @@ def generate_cross_gram_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_st
         all_cross_gram_features[(h_id, b_id)] = map_ids_to_feature_vector((h_id, b_id))
     return all_cross_gram_features
 
-def join_features_on_key(feature_maps, h_id_b_id_to_stance, h_id_b_id_keys):
+def join_features_on_key(feature_maps, h_id_b_id_keys):
     all_keys_aggregated_features_dict = []
     for (h_id, b_id) in h_id_b_id_keys:
         key = (h_id, b_id)
@@ -194,13 +194,14 @@ def join_features_on_key(feature_maps, h_id_b_id_to_stance, h_id_b_id_keys):
     return all_keys_aggregated_features_dict
 
 def generate_feature_vectors(feature_matrix_filename, output_class_filename, full=False):
-    b_id_to_body, h_id_to_headline, h_id_b_id_to_stance_superset = construct_data_set()
-    h_id_to_headline = dict([(k, v.split()) for k, v in h_id_to_headline.items()])
+    (_, _, b_id_to_body, h_id_to_headline, h_id_b_id_to_stance_superset,
+     raw_article_id_to_b_id, headline_to_h_id) = compute_splits()
+    h_id_to_headline = dict([(k, v) for k, v in h_id_to_headline.items()])
     if not full:
         h_id_b_id_to_stance = dict(h_id_b_id_to_stance_superset.items()[:200])
     else:
         h_id_b_id_to_stance = h_id_b_id_to_stance_superset
-    h_id_b_id_keys = h_id_b_id_to_stance.keys()
+    h_id_b_id_keys = sorted(h_id_b_id_to_stance.keys())
     print('DATASET CONSTRUCTED')
 
     bleu_score_features = generate_bleu_score_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
@@ -212,18 +213,16 @@ def generate_feature_vectors(feature_matrix_filename, output_class_filename, ful
     print('INDIVIDUAL FEATURE VECTORS GENERATED')
 
     feature_maps = [bleu_score_features, headline_gram_features, cross_gram_features]
-    all_keys_aggregated_features_dict = join_features_on_key(feature_maps, h_id_b_id_to_stance, h_id_b_id_keys)
+    all_keys_aggregated_features_dict = join_features_on_key(feature_maps, h_id_b_id_keys)
     print('GLOBAL FEATURE VECTORS GENERATED')
 
     v = sklearn.feature_extraction.DictVectorizer(sparse=True)
     X = v.fit_transform(all_keys_aggregated_features_dict)
-    Y = np.array([(key, h_id_b_id_to_stance[key]) for key in h_id_b_id_keys])
-    #Y = np.array(h_id_b_id_keys.items())
+    Y = np.array([h_id_b_id_keys])
     scipy.io.mmwrite(feature_matrix_filename, X)
     np.save(output_class_filename, Y)
     print('FEATURE MATRIX SAVED TO {0}'.format(feature_matrix_filename))
     print('OUTPUT CLASS MATRIX SAVED TO {0}'.format(output_class_filename))
-
 
 def train_model(X_train, y_train, model=None):
     if model == 'mnb':
@@ -232,7 +231,6 @@ def train_model(X_train, y_train, model=None):
         clf = sklearn.naive_bayes.MultinomialNB()
     clf.fit(X_train, y_train)
     return clf
-
 
 def retrieve_feature_vectors(feature_matrix_filename, output_class_filename):
     X = scipy.io.mmread(feature_matrix_filename).tocsr()
@@ -258,6 +256,10 @@ def retrieve_feature_vectors(feature_matrix_filename, output_class_filename):
     y_test = y[x_test_indices]
 
     return X_train, X_dev, X_test, y_train, y_dev, y_test
+
+def retrieve_feature_vectors(feature_matrix_filename):
+    X = scipy.io.mmread(feature_matrix_filename).tocsr()
+    return X
 
 
 def evaluate_model(clf, X_train, X_test, y_train, y_test):
