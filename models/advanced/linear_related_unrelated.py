@@ -60,13 +60,13 @@ def evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test, y_dev):
     classes = ['RELATED', 'UNRELATED']
     # plot_confusion_matrix(cm, classes, normalize=True)
     save_confusion_matrix(cm_train, classes,
-                          'data/plots/linear_related_unrelated_train_cm.png',
+                          'data/linear_related_unrelated/linear_related_unrelated_train_cm.png',
                           normalize=True)
     save_confusion_matrix(cm_test, classes,
-                          'data/plots/linear_related_unrelated_test_cm.png',
+                          'data/linear_related_unrelated/linear_related_unrelated_test_cm.png',
                           normalize=True)
     save_confusion_matrix(cm_dev, classes,
-                          'data/plots/linear_related_unrelated_dev_cm.png',
+                          'data/linear_related_unrelated/linear_related_unrelated_dev_cm.png',
                           normalize=True)
     # Compute and print 5-Fold Cross Validation F1 Score
     weighted_f1 = sklearn.metrics.make_scorer(sklearn.metrics.f1_score, average='weighted')
