@@ -94,7 +94,7 @@ def generate_tfidf_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
         headline_tfidf_vector = headline_tfidf_vectors[headline_id_mapping[h_id]]
         body_tfidf_vector = body_tfidf_vectors[body_id_mapping[b_id]]
         cos = cosine_similarity(headline_tfidf_vector, body_tfidf_vector)
-        tfidf_features[(h_id, b_id)] = (TFIDF_FEATURE_NAME, cos)
+        tfidf_features[(h_id, b_id)] = {TFIDF_FEATURE_NAME: cos.item()}
     return tfidf_features
 
 
@@ -156,7 +156,7 @@ def generate_overlap_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stanc
         headline = set(h_id_to_headline[h_id])
         body = set(b_id_to_body[b_id])
         overlap = float(len(headline.intersection(body))) / len(headline.union(body))
-        overlap_features[(h_id, b_id)] = (OVERLAP_FEATURE_NAME, overlap)
+        overlap_features[(h_id, b_id)] = {OVERLAP_FEATURE_NAME: overlap}
     return overlap_features
 
 # Generates indicator features for all unigrams and bigrams in the headline
