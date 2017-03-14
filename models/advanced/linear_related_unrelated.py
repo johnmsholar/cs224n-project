@@ -59,15 +59,39 @@ def evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test, y_dev):
     print(cm_test)
     classes = ['RELATED', 'UNRELATED']
     # plot_confusion_matrix(cm, classes, normalize=True)
-    save_confusion_matrix(cm_train, classes, 'data/plots/linear_related_unrelated_train_cm.png', normalize=True)
-    save_confusion_matrix(cm_test, classes, 'data/plots/linear_related_unrelated_test_cm.png', normalize=True)
+    save_confusion_matrix(cm_train, classes,
+                          'data/plots/linear_related_unrelated_train_cm.png',
+                          normalize=True)
+    save_confusion_matrix(cm_test, classes,
+                          'data/plots/linear_related_unrelated_test_cm.png',
+                          normalize=True)
+    save_confusion_matrix(cm_dev, classes,
+                          'data/plots/linear_related_unrelated_dev_cm.png',
+                          normalize=True)
     # Compute and print 5-Fold Cross Validation F1 Score
     weighted_f1 = sklearn.metrics.make_scorer(sklearn.metrics.f1_score, average='weighted')
-    score = sklearn.model_selection.cross_val_score(clf, X_train, y_train, scoring=weighted_f1, cv=5)
-    print('CROSS VALIDATION F1 SCORE')
-    print(score)
-    print('FNC1 Official Score:')
-    report_score(y_test, y_predicted)
+    train_score = sklearn.model_selection.cross_val_score(clf, X_train, y_train,
+                                                          scoring=weighted_f1,
+                                                          cv=5)
+    test_score = sklearn.model_selection.cross_val_score(clf, X_test, y_test,
+                                                          scoring=weighted_f1,
+                                                          cv=5)
+    dev_score = sklearn.model_selection.cross_val_score(clf, X_dev, y_dev,
+                                                         scoring=weighted_f1,
+                                                         cv=5)
+
+    print('TRAIN CROSS VALIDATION F1 SCORE')
+    print(train_score)
+    print('TRAIN FNC1 Official Score:')
+    report_score(y_train, y_train_predicted)
+    print('TEST CROSS VALIDATION F1 SCORE')
+    print(test_score)
+    print('TEST FNC1 Official Score:')
+    report_score(y_test, y_test_predicted)
+    print('DEV CROSS VALIDATION F1 SCORE')
+    print(dev_score)
+    print('DEV FNC1 Official Score:')
+    report_score(y_dev, y_dev_predicted)
 
 def train_model(X_train, y_train, model=None):
     if model == 'mnb':
@@ -93,6 +117,7 @@ def main(args):
             X_train_indices, X_test_indices, X_dev_indices,
             h_id_b_id_to_stance, X_vectors)
         clf = train_model(X_train, y_train)
+        evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test, y_dev)
 
 def create_feature_matrices(X_train_indices, X_test_indices, X_dev_indices,
                             h_id_b_id_to_stance, X_vectors):
