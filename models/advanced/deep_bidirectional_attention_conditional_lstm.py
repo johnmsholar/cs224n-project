@@ -42,6 +42,7 @@ class Config(object):
         self.max_grad_norm = 5.
         self.dropout_rate = 0.8
         self.beta = 0
+        self.number_of_layers = 2
 
         # Data Params
         self.training_size = .80
@@ -54,20 +55,20 @@ class Config(object):
         self.uniform_data_split = False  
 
 
-class Bidirectional_Conditonal_Encoding_LSTM_Model(Advanced_Model):
+class Deep_Bidirectional_Conditonal_Encoding_LSTM_Model(Advanced_Model):
     """ Conditional Encoding LSTM Model.
     """
     def get_model_name(self):
-        return 'bidirectional_attention_conditional_lstm'
+        return 'deep_bidirectional_attention_conditional_lstm'
 
     def get_fn_names(self):
         """ Retrieve file names.
             fn_names = [best_weights_fn, curr_weights_fn, preds_fn]
         """
-        best_weights_fn = 'bidirectional_attention_conditional_lstm_best_stance.weights'
-        curr_weights_fn = 'bidirectional_attention_conditional_lstm_curr_stance.weights'
-        preds_fn = 'bidirectional_attention_conditional_encoding_lstm_predicted.pkl'
-        best_train_weights_fn = 'bidirectional_attention_conditional_encoding_lstm_best_train_stance.weights'
+        best_weights_fn = 'deep_bidirectional_attention_conditional_lstm_best_stance.weights'
+        curr_weights_fn = 'deep_bidirectional_attention_conditional_lstm_curr_stance.weights'
+        preds_fn = 'deep_bidirectional_attention_conditional_encoding_lstm_predicted.pkl'
+        best_train_weights_fn = 'deep_bidirectional_attention_conditional_encoding_lstm_best_train_stance.weights'
         return [best_weights_fn, curr_weights_fn, preds_fn, best_train_weights_fn]
 
     def add_prediction_op(self, debug): 
@@ -82,13 +83,26 @@ class Bidirectional_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         # headline_x_list = [headline_x[:, i, :] for i in range(headline_x.get_shape()[1].value)]
         with tf.variable_scope("headline_cell"):
             cell_headline = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
-            headline_outputs, headline_state = tf.nn.dynamic_rnn(cell_headline, headline_x, dtype=tf.float32, sequence_length = self.h_seq_lengths_placeholder)
+            stacked_headline_lstm = tf.contrib.rnn.MultiRNNCell([cell_headline] * self.config.number_of_layers)
+            headline_outputs, headline_state = tf.nn.dynamic_rnn(
+                stacked_headline_lstm,
+                headline_x,
+                dtype=tf.float32,
+                sequence_length = self.h_seq_lengths_placeholder
+            )
 
         # run second LSTM that accept state from first LSTM
         # body_x_list = [body_x[:, i, :] for i in range(body_x.get_shape()[1].value)]
         with tf.variable_scope("body_cell"):
             cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
-            article_outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
+            stacked_body_lstm = tf.contrib.rnn.MultiRNNCell([cell_body] * self.config.number_of_layers)
+            article_outputs, _ = tf.nn.dynamic_rnn(
+                stacked_body_lstm,
+                body_x,
+                initial_state=headline_state,
+                dtype=tf.float32,
+                sequence_length = self.a_seq_lengths_placeholder
+            )
         
         # Apply attention from headline -> article
         with tf.variable_scope("headline_to_article_attention"):
@@ -168,7 +182,7 @@ def main(debug=True):
         # Create and configure model
         print "Building model...",
         start = time.time()
-        model = Bidirectional_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
+        model = Deep_Bidirectional_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
         model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
