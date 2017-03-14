@@ -19,8 +19,11 @@ sys.path.insert(0, '../')
 
 from advanced_model import Advanced_Model, create_data_sets_for_model, produce_uniform_data_split
 from fnc1_utils.score import report_score
-from fnc1_utils.featurizer import create_inputs_by_glove, create_embeddings
+from fnc1_utils.featurizer import create_embeddings
 from util import create_tensorflow_saver
+from layers.attention_layer import AttentionLayer
+from layers.wbw_attention_layer import WBWAttentionLayer
+from layers.class_squash_layer import ClassSquashLayer
 
 class Config(object):
     """Holds model hyperparams and data information.
@@ -50,79 +53,72 @@ class Config(object):
         self.max_headline_length = 500
         self.max_article_length = 800
         self.uniform_data_split = False  
-        
-class Bidirectional_Conditonal_Encoding_LSTM_Model(Advanced_Model):
-    """ Bidirectional Conditional Encoding LSTM Model.
+
+
+class WBW_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
+    """ Conditional Encoding LSTM Model.
     """
     def get_model_name(self):
-        return 'bidirectional_conditional_lstm'
+        return 'attention_conditional_lstm'
 
     def get_fn_names(self):
         """ Retrieve file names.
-            fn_names = [best_weights_fn, curr_weights_fn, preds_fn, best_train_weights_fn]
+            fn_names = [best_weights_fn, curr_weights_fn, preds_fn]
         """
-        best_weights_fn = 'bidirectional_conditional_lstm_best_stance.weights'
-        curr_weights_fn = 'bidirectional_conditional_lstm_curr_stance.weights'
-        preds_fn = 'bidirectional_conditional_encoding_lstm_predicted.pkl'
-        best_train_weights_fn = 'bidirectional_conditional_encoding_lstm_predicted_best_train_stance.weights'
+        best_weights_fn = 'wbw_attention_conditional_lstm_best_stance.weights'
+        curr_weights_fn = 'wbw_attention_conditional_lstm_curr_stance.weights'
+        preds_fn = 'wbw_attention_conditional_encoding_lstm_predicted.pkl'
+        best_train_weights_fn = 'wbw_attention_conditional_encoding_lstm_best_train_stance.weights'
         return [best_weights_fn, curr_weights_fn, preds_fn, best_train_weights_fn]
 
-    def add_prediction_op(self, debug):
-        """Runs RNN on the input. 
+    def add_prediction_op(self, debug): 
+        """ Runs RNN on the input. 
         """
         # Lookup Glove Embeddings for the headline words (e.g. one at each time step)
         headline_x = self.add_embedding(headline_embedding=True)
         body_x = self.add_embedding(headline_embedding=False)
         dropout_rate = self.dropout_placeholder
 
+        # run first headline LSTM
+        # headline_x_list = [headline_x[:, i, :] for i in range(headline_x.get_shape()[1].value)]
         with tf.variable_scope("headline_cell"):
-            # run first headline LSTM
-            headline_fw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
-            headline_bw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)           
-            headline_outputs, headline_states = tf.nn.bidirectional_dynamic_rnn(
-                headline_fw_cell,
-                headline_bw_cell,
-                headline_x,
-                dtype=tf.float32,
-                sequence_length=self.h_seq_lengths_placeholder
-            )
+            cell_headline = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
+            # headline_outputs, headline_state = tf.contrib.rnn.static_rnn(cell_headline, headline_x_list, dtype=tf.float32)
+            headline_outputs, headline_state = tf.nn.dynamic_rnn(cell_headline, headline_x, dtype=tf.float32, sequence_length = self.h_seq_lengths_placeholder)
 
-        with tf.variable_scope("article_cell"):
-            article_fw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
-            article_bw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
-            outputs, article_states = tf.nn.bidirectional_dynamic_rnn(
-                article_fw_cell,
-                article_bw_cell,
-                body_x,
-                initial_state_fw=headline_states[0],
-                initial_state_bw=headline_states[1],
-                dtype=tf.float32,
-                sequence_length= self.a_seq_lengths_placeholder
-            )
-            fw_output = outputs[0][:, -1, :]
-            bw_output = outputs[1][:, -1, :]
-            output = tf.concat([fw_output, bw_output], 1)
-            output_dropout = tf.nn.dropout(output, dropout_rate)
-            assert output_dropout.get_shape().as_list() == [None, self.config.hidden_size * 2], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size * 2], output_dropout.get_shape().as_list())
+        # run second LSTM that accept state from first LSTM
+        # body_x_list = [body_x[:, i, :] for i in range(body_x.get_shape()[1].value)]
+        with tf.variable_scope("body_cell"):
+            cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
+            # _, article_state = tf.contrib.rnn.static_rnn(cell_body, body_x_list, initial_state=headline_state, dtype=tf.float32)
+            body_outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
+        
+        # Apply attention
+        attention_layer = WBWAttentionLayer(self.config.hidden_size, self.h_max_length)
+        output = attention_layer(headline_outputs, body_outputs)
 
-        with tf.variable_scope("final_projection"):
-            # Compute predictions
-            preds = tf.contrib.layers.fully_connected(
+        # Compute predictions
+        output_dropout = tf.nn.dropout(output, dropout_rate)
+        preds = tf.contrib.layers.fully_connected(
                 inputs=output_dropout,
                 num_outputs=self.config.num_classes,
                 activation_fn=tf.nn.relu,
                 weights_initializer=tf.contrib.layers.xavier_initializer(),
                 biases_initializer=tf.constant_initializer(0),
-            )
-            assert preds.get_shape().as_list() == [None, self.config.num_classes], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.num_classes], preds.get_shape().as_list())
+        )
+
+        # class_squash_layer = ClassSquashLayer(self.config.hidden_size, self.config.num_classes)
+        # preds = class_squash_layer(output_dropout)
 
         # Debugging Ops
         if debug:
-            headline_x = tf.Print(headline_x, [headline_x], 'headline_x',summarize=20)
+            headline_x = tf.Print(headline_x, [headline_x], 'headline_x', summarize=20)
             body_x = tf.Print(body_x, [body_x], 'body_x', summarize=24)
-            h_seq_lengths = tf.Print(self.h_seq_lengths_placeholder, [self.h_seq_lengths_placeholder],'h_seq_lengths', summarize=3)
-            a_seq_lengths = tf.Print(self.a_seq_lengths_placeholder, [self.a_seq_lengths_placeholder],'a_seq_lengths', summarize=3)
-            debug_ops = [headline_x, body_x, h_seq_lengths, a_seq_lengths]
+            h_seq_lengths = tf.Print(self.h_seq_lengths_placeholder, [self.h_seq_lengths_placeholder], 'h_seq_lengths', summarize=3)
+            a_seq_lengths = tf.Print(self.a_seq_lengths_placeholder, [self.a_seq_lengths_placeholder], 'a_seq_lengths', summarize=3)            
+            headline_outputs = tf.Print(headline_outputs, [headline_outputs], 'headline_outputs', summarize=20)
+            headline_state = tf.Print(headline_state, [headline_state], 'headline_state', summarize=20)
+            debug_ops = [headline_x, body_x, h_seq_lengths, a_seq_lengths, headline_outputs, headline_state]
         else:
             debug_ops = None
 
@@ -140,7 +136,6 @@ def main(debug=True):
     if args.epoch:
         config.n_epochs = args.epoch
 
-    # Load Data
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=config.training_size,
         random_split=config.random_split,
@@ -156,6 +151,8 @@ def main(debug=True):
     if config.uniform_data_split:
         X, y = produce_uniform_data_split(X, y)
 
+    # Each set is of the form:
+    # [headline_glove_index_matrix, article_glove_index_matrix, h_seq_lengths, a_seq_lengths, labels]
     train_examples, dev_set, test_set = create_data_sets_for_model(X, y)
     print "Distribution of Train {}".format(np.sum(train_examples[4], axis=0))
     print "Distribtion of Dev {}".format(np.sum(dev_set[4], axis=0))
@@ -169,7 +166,7 @@ def main(debug=True):
         # Create and configure model
         print "Building model...",
         start = time.time()
-        model = Bidirectional_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug=debug)
+        model = WBW_Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
         model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
@@ -201,8 +198,10 @@ def main(debug=True):
                 saver.restore(session, model.best_weights_fn)
 
                 print "Final evaluation on test set",
-                test_score, _, _ = model.predict(session, test_set, save_preds=True)
-                print "- test Score: {:.2f}".format(test_score)
+                test_score, _, test_confusion_matrix_str = model.predict(session, test_set, save_preds=True)
+                with open(model.test_confusion_matrix_fn, 'w') as file:
+                    file.write(test_confusion_matrix_str)
+
 
 if __name__ == '__main__':
     main(False)
