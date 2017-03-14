@@ -23,6 +23,8 @@ sys.path.insert(0, '../../')
 from models.util import plot_confusion_matrix, save_confusion_matrix
 from models.fnc1_utils.generate_test_splits import compute_splits
 from models.fnc1_utils.score import report_score
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 rgen = random.Random()
 rgen.seed(1489215)
@@ -69,6 +71,31 @@ def generate_random_hold_out_split (id_id_stance, training = 0.8):
     training_ids = article_ids[:int(training * num_articles)]
     hold_out_ids = article_ids[int(training * num_articles):]
     return training_ids, hold_out_ids
+
+def generate_tfidf_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance):
+    tfidf_vectorizer = TfidfVectorizer(use_idf=False)
+    x = 1
+    bodies = [' '.join(body) for b_id, body in sorted(b_id_to_body.items())]
+    headlines = [' '.join(body) for h_id, headline in sorted(h_id_to_headline.items())]
+    body_id_mapping = dict((key, index) for index, key in
+                              enumerate(sorted(b_id_to_body.keys())))
+    headline_id_mapping = dict((key, index) for index, key in
+                                  enumerate(sorted(h_id_to_headline.keys())))
+    all_text = bodies + headlines
+    text_tfidf_vectors = tfidf_vectorizer.fit_transform(all_text)
+    body_tfidf_vectors = text_tfidf_vectors[:len(bodies)]
+    headline_tfidf_vectors = text_tfidf_vectors[len(bodies):]
+    TFIDF_FEATURE_NAME = 'tfidf'
+    tfidf_features = {}
+    num_pairs = len(h_id_b_id_to_stance)
+    for index, (h_id, b_id) in enumerate(h_id_b_id_to_stance):
+        if index % 100 == 0:
+            print(float(index) / num_pairs)
+        headline_tfidf_vector = headline_tfidf_vectors[headline_id_mapping[h_id]]
+        body_tfidf_vector = body_tfidf_vectors[body_id_mapping[b_id]]
+        cos = cosine_similarity(headline_tfidf_vector, body_tfidf_vector)
+        tfidf_features[(h_id, b_id)] = (TFIDF_FEATURE_NAME, cos)
+    return tfidf_features
 
 
 # Generate modified BLEU scores for each (healdine, article) pair, in which BLEU
@@ -120,8 +147,17 @@ def generate_bleu_score_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_st
 
 # Not yet implemented
 def generate_overlap_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance):
-    pass
-
+    OVERLAP_FEATURE_NAME = 'overlap'
+    overlap_features = {}
+    num_pairs = len(h_id_b_id_to_stance)
+    for index, (h_id, b_id) in enumerate(h_id_b_id_to_stance):
+        if index % 100 == 0:
+            print(float(index) / num_pairs)
+        headline = set(h_id_to_headline[h_id])
+        body = set(b_id_to_body[b_id])
+        overlap = float(len(headline.intersection(body))) / len(headline.union(body))
+        overlap_features[(h_id, b_id)] = (OVERLAP_FEATURE_NAME, overlap)
+    return overlap_features
 
 # Generates indicator features for all unigrams and bigrams in the headline
 def generate_headline_gram_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance):
@@ -204,6 +240,13 @@ def generate_feature_vectors(feature_matrix_filename, output_class_filename, ful
     h_id_b_id_keys = sorted(h_id_b_id_to_stance.keys())
     print('DATASET CONSTRUCTED')
 
+    tfidf_features = generate_tfidf_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
+    print('TFIDF FEATURE VECTORS GENERATED')
+    overlap_features = generate_overlap_features(b_id_to_body,
+                                                 h_id_to_headline,
+                                                 h_id_b_id_to_stance)
+
+    print('JACCARD DISTANCE FEATURE VECTORS GENERATED')
     bleu_score_features = generate_bleu_score_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
     print('BLEU SCORE FEATURE VECTORS GENERATED')
     headline_gram_features = generate_headline_gram_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
@@ -212,7 +255,7 @@ def generate_feature_vectors(feature_matrix_filename, output_class_filename, ful
     print('CROSS GRAM FEATURE VECTORS GENERATED')
     print('INDIVIDUAL FEATURE VECTORS GENERATED')
 
-    feature_maps = [bleu_score_features, headline_gram_features, cross_gram_features]
+    feature_maps = [bleu_score_features, overlap_features, cross_gram_features, tfidf_features]
     all_keys_aggregated_features_dict = join_features_on_key(feature_maps, h_id_b_id_keys)
     print('GLOBAL FEATURE VECTORS GENERATED')
 
