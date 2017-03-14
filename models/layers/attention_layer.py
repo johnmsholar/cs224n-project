@@ -37,13 +37,11 @@ class AttentionLayer:
             multiplications = tf.constant([self.A_time_steps, 1])
             mult_h_n = tf.tile(mult_h_n, multiplications)
             M_component_2 = tf.reshape(mult_h_n, shape=[-1, self.A_time_steps, self.hidden_size])
-
             
             M = tf.tanh(M_component_1 + M_component_2) #dim: batch x time_steps x hidden_size
-
-            alpha = tf.nn.softmax(multiply_3d_by_2d(M, w)) # dim: batch x time_steps
-
+            alpha = tf.nn.softmax(multiply_3d_by_2d(M, w)) # dim: batch x time_steps x 1
             Y_t = tf.transpose(Y, perm=[0,2,1]) # dim: batch x hidden_size x A_time_steps
+
             r= tf.matmul(Y_t, alpha) # dim: batch x hidden x 1
             r = tf.reshape(r, [tf.shape(r)[0], r.get_shape().as_list()[1]]) # collapse. dim: batch x hidden
 
