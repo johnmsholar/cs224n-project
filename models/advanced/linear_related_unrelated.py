@@ -136,7 +136,7 @@ def parse_args():
     parser.add_argument('--y-output')
     parser.add_argument('--x-input')
     parser.add_argument('--y-input')
-    parsser.add_argument('--cm-prefix')
+    parser.add_argument('--cm-prefix')
     feature_names = ['--overlap-features', '--bleu-score-features',
                      '--tfidf-features', '--headline-gram-features',
                      '--cross-gram-features']
