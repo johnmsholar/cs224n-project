@@ -32,7 +32,7 @@ class Config(object):
     """
     def __init__(self):
         self.num_classes = 3 # Number of classses for classification task.
-        self.embed_size = 2 # Size of Glove Vectors
+        self.embed_size = 300 # Size of Glove Vectors
 
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
@@ -45,7 +45,7 @@ class Config(object):
 
         # Data Params
         self.training_size = .80
-        self.random_split = True
+        self.random_split = False
         self.truncate_headlines = False
         self.truncate_articles = True
         self.classification_problem = 3
@@ -206,4 +206,4 @@ def main(debug=True):
 
 
 if __name__ == '__main__':
-    main(True)
+    main(False)
