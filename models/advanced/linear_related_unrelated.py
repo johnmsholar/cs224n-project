@@ -103,7 +103,7 @@ def train_model(X_train, y_train, model=None):
 
 def main(args):
     if args.x_output and args.y_output:
-        generate_feature_vectors(args.x_output, args.y_output, args.full)
+        generate_feature_vectors(args.x_output, args.y_output, args.full, args)
     if args.x_input and args.y_input:
         (X_indices, y, b_id_to_article, h_id_to_headline,
          h_id_b_id_to_stance, raw_article_id_to_b_id,
@@ -138,6 +138,11 @@ def parse_args():
     parser.add_argument('--y-output')
     parser.add_argument('--x-input')
     parser.add_argument('--y-input')
+    feature_names = ['--overlap-features', '--bleu-score-features',
+                     '--tfidf-features', '--headline-gram-features',
+                     '--cross-gram-features']
+    for name in feature_names:
+        parser.add_argument(name, action = 'store_true')
     args = parser.parse_args()
     if not args.full:
         args.full = False
