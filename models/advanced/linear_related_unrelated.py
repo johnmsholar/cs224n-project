@@ -115,7 +115,8 @@ def main(args):
             X_train_indices, X_test_indices, X_dev_indices,
             h_id_b_id_to_stance, X_vectors)
         clf = train_model(X_train, y_train)
-        evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test, y_dev)
+        evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test, y_dev,
+                       args.cm_prefix)
 
 def create_feature_matrices(X_train_indices, X_test_indices, X_dev_indices,
                             h_id_b_id_to_stance, X_vectors):
