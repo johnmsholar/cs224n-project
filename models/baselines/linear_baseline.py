@@ -150,7 +150,31 @@ def generate_bleu_score_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_st
         bleu_score_feature_vectors[ids] = map_ids_to_feature_vector(ids)
     return bleu_score_feature_vectors
 
-# Not yet implemented
+def generate_overlap_features_clean(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance):
+    OVERLAP_FEATURE_NAME = 'overlap'
+    overlap_features = {}
+    num_pairs = len(h_id_b_id_to_stance)
+    english_stopwords = stopwords.words('english')
+    stemmer = nltk.stem.porter.PorterStemmer()
+    for index, (h_id, b_id) in enumerate(h_id_b_id_to_stance):
+        if index % 100 == 0:
+            print(float(index) / num_pairs)
+        headline = h_id_to_headline[h_id]
+        body = b_id_to_body[b_id]
+        headline = filter(lambda x: x not in english_stopwords and
+                                    x not in string.punctuation, headline)
+        body = filter(lambda x: x not in english_stopwords and
+                                   x not in string.punctuation, body)
+        headline = [stemmer.stem(w) for w in headline]
+        body = [stemmer.stem(w) for w in body]
+        headline_set = set(headline)
+        body_set = set(body)
+        overlap = float(len(headline_set.intersection(body_set))) / len(
+            headline_set.union(body_set))
+        overlap_features[(h_id, b_id)] = {OVERLAP_FEATURE_NAME: overlap}
+    return overlap_features
+
+
 def generate_overlap_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance):
     OVERLAP_FEATURE_NAME = 'overlap'
     overlap_features = {}
@@ -306,6 +330,7 @@ def generate_feature_files(feature_directory, args, full=False):
     feature_functions = [
         generate_tfidf_features,
         generate_overlap_features,
+        generate_overlap_features_clean,
         generate_bleu_score_features,
         generate_headline_gram_features,
         generate_cross_gram_features,
@@ -314,6 +339,7 @@ def generate_feature_files(feature_directory, args, full=False):
     feature_args = [
         args.tfidf_features,
         args.overlap_features,
+        args.overlap_features_clean,
         args.bleu_score_features,
         args.headline_gram_features,
         args.cross_gram_features,
@@ -322,6 +348,7 @@ def generate_feature_files(feature_directory, args, full=False):
     feature_names = [
         'tfidf',
         'overlap',
+        'overlap_clean',
         'bleu',
         'headline_gram',
         'cross_gram',
@@ -330,6 +357,7 @@ def generate_feature_files(feature_directory, args, full=False):
     feature_messages = [
         'TFIDF',
         'JACCARD DISTANCE',
+        'JACCARD DISTANCE CLEAN',
         'BLEU SCORE',
         'HEADLINE GRAM',
         'CROSS GRAM',
@@ -368,6 +396,7 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
     feature_args = [
         args.tfidf_features,
         args.overlap_features,
+        args.overlap_features_clean,
         args.bleu_score_features,
         args.headline_gram_features,
         args.cross_gram_features,
@@ -376,6 +405,7 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
     feature_names = [
         'tfidf',
         'overlap',
+        'overlap_clean',
         'bleu',
         'headline_gram',
         'cross_gram',

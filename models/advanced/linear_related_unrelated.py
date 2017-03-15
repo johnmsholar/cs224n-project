@@ -143,7 +143,8 @@ def parse_args():
     parser.add_argument('--x-input')
     parser.add_argument('--y-input')
     parser.add_argument('--cm-prefix')
-    feature_names = ['--overlap-features', '--bleu-score-features',
+    feature_names = ['--overlap-features', '--overlap-features-clean',
+                     '--bleu-score-features',
                      '--tfidf-features', '--headline-gram-features',
                      '--cross-gram-features', '--cross-gram-features-clean']
     for name in feature_names:
