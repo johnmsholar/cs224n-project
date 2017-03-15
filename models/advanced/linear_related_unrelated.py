@@ -145,7 +145,7 @@ def parse_args():
     parser.add_argument('--cm-prefix')
     feature_names = ['--overlap-features', '--bleu-score-features',
                      '--tfidf-features', '--headline-gram-features',
-                     '--cross-gram-features']
+                     '--cross-gram-features', '--cross-gram-features-clean']
     for name in feature_names:
         parser.add_argument(name, action = 'store_true')
     args = parser.parse_args()

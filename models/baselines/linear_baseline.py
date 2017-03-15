@@ -20,7 +20,9 @@ import numpy as np
 import scipy
 import random
 import pickle
+import string
 import nltk.stem.porter
+from nltk.corpus import stopwords
 
 sys.path.insert(0, '../../')
 from models.util import plot_confusion_matrix, save_confusion_matrix
@@ -186,17 +188,24 @@ def generate_cross_gram_features_clean(b_id_to_body, h_id_to_headline, h_id_b_id
     # matching the conditions described above
     def single_pair_cross_ngram_features(headline, article, n):
         CROSS_NGRAM_FEATURE_NAME = 'clean_cross_ngram'
+        result = {}
+        stemmer = nltk.stem.porter.PorterStemmer()
+        english_stopwords = stopwords.words('english')
+        if n == 1:
+            headline = filter(lambda x: x not in english_stopwords and
+                                        x not in string.punctuation, headline)
+            article = filter(lambda x: x not in english_stopwords and
+                                       x not in string.punctuation, headline)
+        if n == 2:
+            headline = filter(lambda x: x not in string.punctuation, headline)
+            article = filter(lambda x: x not in string.punctuation, article)
+        headline = [stemmer.stem(w) for w in headline]
+        article = [stemmer.stem(w) for w in article]
         headline_pos = nltk.pos_tag(headline)
         article_pos = nltk.pos_tag(article)
         all_pos = headline_pos + article_pos
         unique_pos_classes = set([token_pos[1] for token_pos in all_pos])
-        result = {}
-        stemmer = nltk.stem.porter.PorterStemmer()
-        # Remove stop words first?
-        headline = [stemmer.stem(w) for w in headline]
-        article = [stemmer.stem(w) for w in article]
         for pos_class in unique_pos_classes:
-
             headline_matches = [g for i, g in
                                 enumerate(nltk.ngrams(headline, n)) if
                                 headline_pos[i + n - 1][1] == pos_class]
@@ -299,28 +308,32 @@ def generate_feature_files(feature_directory, args, full=False):
         generate_overlap_features,
         generate_bleu_score_features,
         generate_headline_gram_features,
-        generate_cross_gram_features
+        generate_cross_gram_features,
+        generate_cross_gram_features_clean
     ]
     feature_args = [
         args.tfidf_features,
         args.overlap_features,
         args.bleu_score_features,
         args.headline_gram_features,
-        args.cross_gram_features
+        args.cross_gram_features,
+        args.cross_gram_features_clean
     ]
     feature_names = [
         'tfidf',
         'overlap',
         'bleu',
         'headline_gram',
-        'cross_gram'
+        'cross_gram',
+        'cross_gram_clean'
     ]
     feature_messages = [
         'TFIDF',
         'JACCARD DISTANCE',
         'BLEU SCORE',
         'HEADLINE GRAM',
-        'CROSS GRAM'
+        'CROSS GRAM',
+        'CROSS GRAM CLEAN'
     ]
 
     included_feature_maps = []
@@ -357,14 +370,16 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
         args.overlap_features,
         args.bleu_score_features,
         args.headline_gram_features,
-        args.cross_gram_features
+        args.cross_gram_features,
+        args.cross_gram_features_clean
     ]
     feature_names = [
         'tfidf',
         'overlap',
         'bleu',
         'headline_gram',
-        'cross_gram'
+        'cross_gram',
+        'cross_gram_clean'
     ]
 
     if feature_directory:
