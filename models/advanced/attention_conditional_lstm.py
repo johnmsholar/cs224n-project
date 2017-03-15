@@ -20,7 +20,7 @@ sys.path.insert(0, '../')
 from advanced_model import Advanced_Model, create_data_sets_for_model, produce_uniform_data_split
 from fnc1_utils.score import report_score
 from fnc1_utils.featurizer import create_embeddings
-from util import create_tensorflow_saver
+from util import create_tensorflow_saver, parse_args
 from layers.attention_layer import AttentionLayer
 from layers.class_squash_layer import ClassSquashLayer
 
@@ -126,15 +126,12 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
 
 def main(debug=True):
     # Parse Arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--epoch', type=int, default=5)
-    parser.add_argument('--restore', action='store_true')
-    args = parser.parse_args()
+    arg_epoch, arg_restore = parse_args()
 
     # Create Config
     config = Config()
-    if args.epoch:
-        config.n_epochs = args.epoch
+    if arg_epoch:
+        config.n_epochs = arg_epoch
 
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=config.training_size,
@@ -178,7 +175,9 @@ def main(debug=True):
             # Load weights if necessary
             session.run(init)
             saver = create_tensorflow_saver(model.exclude_names)
-            if args.restore:
+            if arg_restore != None:
+                weights_path = './data/{}/{}/weights'.format(model.get_model_name(), arg_restore)
+                restore_path = '{}/{}'.format(weights_path, model.get_fn_names()[1])
                 saver.restore(session, model.curr_weights_fn)
 
             # Finalize graph
