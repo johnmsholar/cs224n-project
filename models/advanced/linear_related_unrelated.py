@@ -26,6 +26,8 @@ from models.util import save_confusion_matrix
 
 from models.fnc1_utils.score import report_score
 
+from models.advanced_model import produce_uniform_data_split
+
 
 def convert_to_two_class_problem(y_train, y_test, y_dev):
     inverted_label_mapping = dict(
@@ -117,6 +119,10 @@ def main(args):
         X_train, X_dev, X_test = create_feature_matrices(
             X_train_indices, X_test_indices, X_dev_indices,
             h_id_b_id_to_stance, X_vectors)
+        if args.uniform_split:
+            X, y = (X_train, X_dev, X_test), (y_train, y_dev, y_test)
+            X, y = produce_uniform_data_split(X, y)
+            (X_train, X_dev, X_test), (y_train, y_dev, y_test) = X, y
         clf = train_model(X_train, y_train)
         evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test, y_dev,
                        args.cm_prefix)
@@ -136,6 +142,7 @@ def create_feature_matrices(X_train_indices, X_test_indices, X_dev_indices,
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and Test Linear Model')
     parser.add_argument('--full', action='store_true')
+    parser.add_argument('--uniform-split', action = 'store_true')
     parser.add_argument('--feature-output')
     parser.add_argument('--feature-input')
     parser.add_argument('--x-output')
