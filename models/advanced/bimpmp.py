@@ -20,7 +20,7 @@ sys.path.insert(0, '../')
 from advanced_model import Advanced_Model, create_data_sets_for_model, produce_uniform_data_split
 from fnc1_utils.score import report_score
 from fnc1_utils.featurizer import create_embeddings
-from util import create_tensorflow_saver
+from util import create_tensorflow_saver, parse_args
 from layers.attention_layer import AttentionLayer
 from layers.class_squash_layer import ClassSquashLayer
 
@@ -35,7 +35,9 @@ class Config(object):
         self.embed_size = 300 # Size of Glove Vectors
 
         # Hyper Parameters
-        self.hidden_size = 300 # Hidden State Size
+        self.context_hidden_size = 300 # Hidden State Size
+        self.aggregate_hidden_size = 300
+        self.squashing_layer_hidden_size = 150
         self.batch_size = 50
         self.n_epochs = None
         self.lr = 0.0001
@@ -54,20 +56,20 @@ class Config(object):
         self.uniform_data_split = False  
 
 
-class Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
+class Bimpmp(Advanced_Model):
     """ Conditional Encoding LSTM Model.
     """
     def get_model_name(self):
-        return 'bidirectional_attention_conditional_lstm'
+        return 'bimpmp'
 
     def get_fn_names(self):
         """ Retrieve file names.
             fn_names = [best_weights_fn, curr_weights_fn, preds_fn]
         """
-        best_weights_fn = 'bidirectional_attention_conditional_lstm_best_stance.weights'
-        curr_weights_fn = 'bidirectional_attention_conditional_lstm_curr_stance.weights'
-        preds_fn = 'bidirectional_attention_conditional_encoding_lstm_predicted.pkl'
-        best_train_weights_fn = 'bidirectional_attention_conditional_encoding_lstm_best_train_stance.weights'
+        best_weights_fn = 'bimpmp_best_stance.weights'
+        curr_weights_fn = 'bimpmp_curr_stance.weights'
+        preds_fn = 'bimpmp_predicted.pkl'
+        best_train_weights_fn = 'bimpmp_best_train_stance.weights'
         return [best_weights_fn, curr_weights_fn, preds_fn, best_train_weights_fn]
 
     def add_prediction_op(self, debug): 
@@ -78,65 +80,87 @@ class Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         body_x = self.add_embedding(headline_embedding=False)
         dropout_rate = self.dropout_placeholder
 
-        # run first headline LSTM
-        # headline_x_list = [headline_x[:, i, :] for i in range(headline_x.get_shape()[1].value)]
-        with tf.variable_scope("headline_cell"):
-            cell_headline = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
-            headline_outputs, headline_state = tf.nn.dynamic_rnn(cell_headline, headline_x, dtype=tf.float32, sequence_length = self.h_seq_lengths_placeholder)
+        # Context Layer
+        with tf.variable_scope("context_layer"):
+            # run first headline LSTM
+            fw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.context_hidden_size)
+            bw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.context_hidden_size)           
+            headline_context_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                fw_cell,
+                bw_cell,
+                headline_x,
+                dtype=tf.float32,
+                sequence_length=self.h_seq_lengths_placeholder
+            )
+            article_context_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                fw_cell,
+                bw_cell,
+                body_x,
+                dtype=tf.float32,
+                sequence_length=self.a_seq_lengths_placeholder
+            )           
 
-        # run second LSTM that accept state from first LSTM
-        # body_x_list = [body_x[:, i, :] for i in range(body_x.get_shape()[1].value)]
-        with tf.variable_scope("body_cell"):
-            cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
-            article_outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
-        
-        # Apply attention from headline -> article
-        with tf.variable_scope("headline_to_article_attention"):
-            article_output = article_outputs[:,-1,:]
-            attention_layer_1 = AttentionLayer(self.config.hidden_size, self.h_max_length)
-            output_1 = attention_layer_1(headline_outputs, article_output)
+        # Matching Layer -- assume output is concatenated (fw and bw together)
+        # Output Dimensionality: batch_size x time steps x (hidden_size x 2)
+        with tf.variable_scope("matching_headline_to_article"):
+            matching_layer_headline_to_article = Multiperspective_Matching_A_to_B_Layer()
+            post_matching_h_to_a = matching_layer_headline_to_article(headline_context_outputs, article_context_outputs)
 
-        # Apply attentin from article -> headline
-        with tf.variable_scope("article_to_headline_attention"):
-            headline_output = headline_outputs[:, -1, :]
-            attention_layer_2 = AttentionLayer(self.config.hidden_size, self.a_max_length)
-            output_2 = attention_layer_2(article_outputs, headline_output)
+        with tf.variable_scope("matching_article_to_headline"):
+            matching_layer_article_to_headline = Multiperspective_Matching_A_to_B_Layer()
+            post_matching_a_to_h = matching_layer_article_to_headline(article_context_outputs, headline_context_outputs)
 
-        # Compute predictions
-        with tf.variable_scope("final_projection"):
-            output = tf.concat([output_1, output_2], 1)
+        # Aggregation Layer 
+        with tf.variable_scope("aggregation_layer"):
+            # run first headline LSTM
+            fw_cell_aggregation = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.aggregate_hidden_size)
+            bw_cell_aggregation = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.aggregate_hidden_size)           
+            headline_aggregate_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                fw_cell_aggregation,
+                bw_cell_aggregation,
+                post_matching_h_to_a,
+                dtype=tf.float32,
+                sequence_length=self.h_seq_lengths_placeholder
+            )
+            article_aggregate_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                fw_cell_aggregation,
+                bw_cell_aggregation,
+                post_matching_a_to_h,
+                dtype=tf.float32,
+                sequence_length=self.a_seq_lengths_placeholder
+            )           
+
+        # Final Prediction Layer
+        with tf.variable_scope("final_prediction_layer"):
+            headline_output = tf.concat([headline_aggregate_outputs[0][:, -1, :], headline_aggregate_outputs[1][:, -1, :]])
+            article_output = tf.concat([article_aggregate_outputs[0][:, -1, :], article_aggregate_outputs[1][:, -1, :]]) 
+            output = tf.concat([headline_output, article_output], 1)
             output_dropout = tf.nn.dropout(output, dropout_rate)
-            preds = tf.contrib.layers.fully_connected(
+            squash = tf.contrib.layers.fully_connected(
                     inputs=output_dropout,
+                    num_outputs=self.config.squashing_layer_hidden_size,
+                    activation_fn=tf.nn.relu,
+                    weights_initializer=tf.contrib.layers.xavier_initializer(),
+                    biases_initializer=tf.constant_initializer(0),
+            )
+            preds = tf.contrib.layers.fully_connected(
+                    inputs=squash,
                     num_outputs=self.config.num_classes,
                     activation_fn=tf.nn.relu,
                     weights_initializer=tf.contrib.layers.xavier_initializer(),
                     biases_initializer=tf.constant_initializer(0),
             )
 
-        # Debugging Ops
-        if debug:
-            headline_x = tf.Print(headline_x, [headline_x], 'headline_x', summarize=20)
-            body_x = tf.Print(body_x, [body_x], 'body_x', summarize=24)
-            h_seq_lengths = tf.Print(self.h_seq_lengths_placeholder, [self.h_seq_lengths_placeholder], 'h_seq_lengths', summarize=3)
-            a_seq_lengths = tf.Print(self.a_seq_lengths_placeholder, [self.a_seq_lengths_placeholder], 'a_seq_lengths', summarize=3)            
-            debug_ops = [headline_x, body_x, h_seq_lengths, a_seq_lengths]
-        else:
-            debug_ops = None
-
         return preds, debug_ops
 
 def main(debug=True):
     # Parse Arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--epoch', type=int, default=5)
-    parser.add_argument('--restore', action='store_true')
-    args = parser.parse_args()
+    arg_epoch, arg_restore = parse_args()
 
     # Create Config
     config = Config()
-    if args.epoch:
-        config.n_epochs = args.epoch
+    if arg_epoch:
+        config.n_epochs = arg_epoch
 
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=config.training_size,
@@ -168,7 +192,7 @@ def main(debug=True):
         # Create and configure model
         print "Building model...",
         start = time.time()
-        model = Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
+        model = Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
         model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
@@ -180,7 +204,9 @@ def main(debug=True):
             # Load weights if necessary
             session.run(init)
             saver = create_tensorflow_saver(model.exclude_names)
-            if args.restore:
+            if arg_restore != None:
+                weights_path = './data/{}/{}/weights'.format(model.get_model_name(), arg_restore)
+                restore_path = '{}/{}'.format(weights_path, model.get_fn_names()[1])
                 saver.restore(session, model.curr_weights_fn)
 
             # Finalize graph

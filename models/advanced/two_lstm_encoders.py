@@ -100,7 +100,7 @@ class Two_LSTM_Encoders_Model(Advanced_Model):
 
         # Create final layer to project the output from th RNN onto
         # the four classification labels.
-        with tf.variable_scope("projection_layer")
+        with tf.variable_scope("projection_layer"):
             U = tf.get_variable("U", shape=[self.config.hidden_size * 2, self.config.num_classes],
                 initializer=tf.contrib.layers.xavier_initializer())
             b = tf.get_variable("b", shape=[self.config.num_classes],

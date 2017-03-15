@@ -17,6 +17,7 @@ import os
 import sys
 sys.path.insert(0, '../')
 
+from advanced.bidirectional_attention_bidirectional_conditional_lstm import Bidirectional_Attention_Conditonal_Encoding_LSTM_Model
 from advanced.attention_conditional_lstm import Attention_Conditonal_Encoding_LSTM_Model
 from advanced.conditional_lstm import Conditonal_Encoding_LSTM_Model
 from advanced.two_lstm_encoders import Two_LSTM_Encoders_Model
@@ -38,11 +39,22 @@ class Config(object):
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
         self.batch_size = 50
-        self.n_epochs = 5
-        self.lr = 0.001
+        self.n_epochs = None
+        self.lr = 0.0001
         self.max_grad_norm = 5.
         self.dropout_rate = 0.8
         self.beta = 0
+
+        # Data Params
+        self.training_size = .80
+        self.random_split = False
+        self.truncate_headlines = False
+        self.truncate_articles = True
+        self.classification_problem = 3
+        self.max_headline_length = 500
+        self.max_article_length = 800
+        self.uniform_data_split = False  
+
 
 def run_model(config, max_input_lengths, glove_matrix, args, train_examples, dev_set, test_set):
     """ Run the model.
@@ -55,7 +67,7 @@ def run_model(config, max_input_lengths, glove_matrix, args, train_examples, dev
         # Create and configure model
         print "Building model...",
         start = time.time()
-        model = Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix)
+        model = Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix)
         model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
@@ -99,17 +111,18 @@ def main(debug=False):
     args = parser.parse_args()
 
     # Load Data
+    config = Config()
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
-        training_size=.80,
-        random_split=False,
-        truncate_headlines=False,
-        truncate_articles=True,
-        classification_problem=3,
-        max_headline_length=500,
-        max_article_length=500,
+        training_size=config.training_size,
+        random_split=config.random_split,
+        truncate_headlines=config.truncate_headlines,
+        truncate_articles=config.truncate_articles,
+        classification_problem=config.classification_problem,
+        max_headline_length=config.max_headline_length,
+        max_article_length=config.max_article_length,
         glove_set=None,
         debug=debug
-    )
+    )   
 
     train_examples, dev_set, test_set = create_data_sets_for_model(X, y, debug)
     print "Distribution of Train {}".format(np.sum(train_examples[4], axis=0))
@@ -118,9 +131,8 @@ def main(debug=False):
 
     # Define hyperparameters
     hyperparameters = {
-        'lr': [.1, .01, .001],
-        # 'dropout_rate': [.5, .8],
-        'beta': [0, .5, 1, 10],
+        'lr': [0.001, 0.0001, 0.00001],
+        'dropout_rate': [.6, .8, .9],
     }
 
     # Run model over all these hyper parameters
@@ -133,8 +145,8 @@ def main(debug=False):
         config.lr = lr
         if debug:
             config.embed_size = 2
-        for beta in hyperparameters['beta']:
-            config.beta = beta
+        for dropout_rate in hyperparameters['dropout_rate']:
+            config.dropout_rate = dropout_rate
             print "-"*80
             print "Using Configs:"
             pp.pprint(config.__dict__)
