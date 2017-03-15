@@ -13,6 +13,7 @@ import sys
 import argparse
 import sklearn.naive_bayes
 import sklearn.model_selection
+import sklearn.svm
 import sklearn
 import nltk
 import itertools
@@ -611,9 +612,13 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
     else:
         raise Exception('--feature-input is required to load feature matrices')
 
-def train_model(X_train, y_train, model=None):
-    if model == 'mnb':
+def train_model(X_train, y_train, args):
+    if args.classifier == 'mnb':
         clf = sklearn.naive_bayes.MultinomialNB()
+    elif args.classifer == 'svm':
+        clf = sklearn.svm.SVC()
+    elif args.classifier == 'randomforest':
+        clf = sklearn.ensemble.RandomForestClassifier()
     else:
         clf = sklearn.naive_bayes.MultinomialNB()
     clf.fit(X_train, y_train)
