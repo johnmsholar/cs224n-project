@@ -20,7 +20,7 @@ sys.path.insert(0, '../')
 from fnc1_utils.generate_test_splits import compute_splits
 from fnc1_utils import RELATED_UNRELATED_MAPPING, LABEL_MAPPING
 
-from baselines.linear_baseline import generate_feature_vectors, retrieve_feature_vectors
+from baselines.linear_baseline import generate_feature_files, generate_feature_matrices
 
 from models.util import save_confusion_matrix
 
@@ -100,8 +100,11 @@ def train_model(X_train, y_train, model=None):
     return clf
 
 def main(args):
-    if args.x_output and args.y_output:
-        generate_feature_vectors(args.x_output, args.y_output, args.full, args)
+    if args.feature_output:
+        generate_feature_files(args.feature_output, args, args.full)
+    if args.feature_input and args.x_output and args.y_output:
+        generate_feature_matrices(args.feature_input, args.x_output,
+                                  args.y_output, args.full)
     if args.x_input and args.y_input:
         (X_indices, y, b_id_to_article, h_id_to_headline,
          h_id_b_id_to_stance, raw_article_id_to_b_id,
@@ -133,6 +136,8 @@ def create_feature_matrices(X_train_indices, X_test_indices, X_dev_indices,
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and Test Linear Model')
     parser.add_argument('--full', action='store_true')
+    parser.add_argument('--feature-output')
+    parser.add_argument('--feature-input')
     parser.add_argument('--x-output')
     parser.add_argument('--y-output')
     parser.add_argument('--x-input')
@@ -140,7 +145,7 @@ def parse_args():
     parser.add_argument('--cm-prefix')
     feature_names = ['--overlap-features', '--bleu-score-features',
                      '--tfidf-features', '--headline-gram-features',
-                     '--cross-gram-features']
+                     '--cross-gram-features', '--cross-gram-features-clean']
     for name in feature_names:
         parser.add_argument(name, action = 'store_true')
     args = parser.parse_args()

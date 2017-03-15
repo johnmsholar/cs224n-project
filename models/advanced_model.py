@@ -325,18 +325,18 @@ class Advanced_Model(object):
                     with open(self.dev_confusion_matrix_fn, 'w') as file:
                         file.write(dev_confusion_matrix_str)
 
-            if train_score > best_train_score:
-                best_train_score = train_score
-                if saver:
-                    print "New best train! Saving model in {}".format(self.best_train_weights_fn)
-                    saver.save(sess, self.best_train_weights_fn)
-                    with open(self.train_confusion_matrix_fn, 'w') as file:
-                        file.write(train_confusion_matrix_str)
+            # if train_score > best_train_score:
+            #     best_train_score = train_score
+            #     if saver:
+            #         print "New best train! Saving model in {}".format(self.best_train_weights_fn)
+            #         saver.save(sess, self.best_train_weights_fn)
+            #         with open(self.train_confusion_matrix_fn, 'w') as file:
+            #             file.write(train_confusion_matrix_str)
 
-            if saver:
-                print "Finished Epoch ... Saving model in {}".format(self.curr_weights_fn)
-                saver.save(sess, self.curr_weights_fn)
-            print    
+            # if saver:
+            #     print "Finished Epoch ... Saving model in {}".format(self.curr_weights_fn)
+            #     saver.save(sess, self.curr_weights_fn)
+            # print    
 
 def create_data_sets_for_model(X, y, debug=False):
     """ Given train, dev, and test splits for input, sequnce lengths, labels,

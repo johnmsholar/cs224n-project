@@ -1,0 +1,4 @@
+Edits to BIMPM:
+- Changing Scoring Function from Cosine to Rocktaschael
+- Conditional LSTMs rather then Siamese
+- 2 BiLSTMs per layer (as appropraite)

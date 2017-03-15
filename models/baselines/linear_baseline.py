@@ -8,6 +8,7 @@ Sahil Chopra <schopra8@cs.stanford.edu>
 Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
+import os
 import sys
 import argparse
 import sklearn.naive_bayes
@@ -18,6 +19,10 @@ import itertools
 import numpy as np
 import scipy
 import random
+import pickle
+import string
+import nltk.stem.porter
+from nltk.corpus import stopwords
 
 sys.path.insert(0, '../../')
 from models.util import plot_confusion_matrix, save_confusion_matrix
@@ -176,6 +181,64 @@ def generate_headline_gram_features(b_id_to_body, h_id_to_headline, h_id_b_id_to
         headline_gram_features[(h_id, b_id)] = pair_headline_gram_features
     return headline_gram_features
 
+# Cross-Gram features with porter stemming and stop word removal
+def generate_cross_gram_features_clean(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance):
+
+    # For a single (headline, article) pair, generate a single feature vector composed of all cross-ngrams
+    # matching the conditions described above
+    def single_pair_cross_ngram_features(headline, article, n):
+        CROSS_NGRAM_FEATURE_NAME = 'clean_cross_ngram'
+        result = {}
+        stemmer = nltk.stem.porter.PorterStemmer()
+        english_stopwords = stopwords.words('english')
+        if n == 1:
+            headline = filter(lambda x: x not in english_stopwords and
+                                        x not in string.punctuation, headline)
+            article = filter(lambda x: x not in english_stopwords and
+                                       x not in string.punctuation, headline)
+        if n == 2:
+            headline = filter(lambda x: x not in string.punctuation, headline)
+            article = filter(lambda x: x not in string.punctuation, article)
+        headline = [stemmer.stem(w) for w in headline]
+        article = [stemmer.stem(w) for w in article]
+        headline_pos = nltk.pos_tag(headline)
+        article_pos = nltk.pos_tag(article)
+        all_pos = headline_pos + article_pos
+        unique_pos_classes = set([token_pos[1] for token_pos in all_pos])
+        for pos_class in unique_pos_classes:
+            headline_matches = [g for i, g in
+                                enumerate(nltk.ngrams(headline, n)) if
+                                headline_pos[i + n - 1][1] == pos_class]
+            article_matches = [g for i, g in enumerate(nltk.ngrams(article, n))
+                               if article_pos[i + n - 1][1] == pos_class]
+            for cross_gram in itertools.product(headline_matches,
+                                                article_matches):
+                result[(CROSS_NGRAM_FEATURE_NAME, cross_gram)] = 1.0
+        return result
+
+    def map_ids_to_feature_vector(ids):
+        h_id, b_id = ids
+        headline = h_id_to_headline[h_id]
+        body = b_id_to_body[b_id]
+        unigram_features = single_pair_cross_ngram_features(headline, body, 1)
+        bigram_features = single_pair_cross_ngram_features(headline, body, 2)
+        gram_features = dict(unigram_features.items() + bigram_features.items())
+        return gram_features
+
+    all_cross_gram_features = {}
+    """
+    # Attempts to parallelize this process gave no efficiency boost
+    f = lambda k: (k, map_ids_to_feature_vector(k))
+    all_cross_gram_features = dict(map(f, h_id_b_id_to_stance.keys()))
+    """
+    num_pairs = len(h_id_b_id_to_stance)
+    for index, (h_id, b_id) in enumerate(h_id_b_id_to_stance):
+        if index % 100 == 0:
+            print(float(index) / num_pairs)
+        all_cross_gram_features[(h_id, b_id)] = map_ids_to_feature_vector(
+            (h_id, b_id))
+    return all_cross_gram_features
+
 # For every (headline, article) pair, Generate a feature vector containing indicator features for:
     #   1. Cross-Unigrams: every pair of words across the headline and article which share a POS tag
     #   2. Cross-Bigrams: every pair of bigrams across the healdine and article which share a POS tag on the second word
@@ -229,7 +292,7 @@ def join_features_on_key(feature_maps, h_id_b_id_keys):
         all_keys_aggregated_features_dict.append(aggregated_features_dict)
     return all_keys_aggregated_features_dict
 
-def generate_feature_vectors(feature_matrix_filename, output_class_filename, full=False, args=None):
+def generate_feature_files(feature_directory, args, full=False):
     (_, _, b_id_to_body, h_id_to_headline, h_id_b_id_to_stance_superset,
      raw_article_id_to_b_id, headline_to_h_id) = compute_splits()
     h_id_to_headline = dict([(k, v) for k, v in h_id_to_headline.items()])
@@ -239,41 +302,107 @@ def generate_feature_vectors(feature_matrix_filename, output_class_filename, ful
         h_id_b_id_to_stance = h_id_b_id_to_stance_superset
     h_id_b_id_keys = sorted(h_id_b_id_to_stance.keys())
     print('DATASET CONSTRUCTED')
-    feature_maps = []
-    if not args or (args and args.tfidf_features):
-        tfidf_features = generate_tfidf_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
-        feature_maps.append(tfidf_features)
-        print('TFIDF FEATURE VECTORS GENERATED')
-    if not args or (args and args.overlap_features):
-        overlap_features = generate_overlap_features(b_id_to_body,
-                                                 h_id_to_headline,
-                                                 h_id_b_id_to_stance)
-        feature_maps.append(overlap_features)
-        print('JACCARD DISTANCE FEATURE VECTORS GENERATED')
-    if not args or (args and args.bleu_score_features):
-        bleu_score_features = generate_bleu_score_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
-        feature_maps.append(bleu_score_features)
-        print('BLEU SCORE FEATURE VECTORS GENERATED')
-    if not args or (args and args.headline_gram_features):
-        headline_gram_features = generate_headline_gram_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
-        feature_maps.append(headline_gram_features)
-        print('HEADLINE GRAM FEATURE VECTORS GENERATED')
-    if not args or (args and args.cross_gram_features):
-        cross_gram_features = generate_cross_gram_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
-        feature_maps.append(cross_gram_features)
-        print('CROSS GRAM FEATURE VECTORS GENERATED')
+
+    feature_functions = [
+        generate_tfidf_features,
+        generate_overlap_features,
+        generate_bleu_score_features,
+        generate_headline_gram_features,
+        generate_cross_gram_features,
+        generate_cross_gram_features_clean
+    ]
+    feature_args = [
+        args.tfidf_features,
+        args.overlap_features,
+        args.bleu_score_features,
+        args.headline_gram_features,
+        args.cross_gram_features,
+        args.cross_gram_features_clean
+    ]
+    feature_names = [
+        'tfidf',
+        'overlap',
+        'bleu',
+        'headline_gram',
+        'cross_gram',
+        'cross_gram_clean'
+    ]
+    feature_messages = [
+        'TFIDF',
+        'JACCARD DISTANCE',
+        'BLEU SCORE',
+        'HEADLINE GRAM',
+        'CROSS GRAM',
+        'CROSS GRAM CLEAN'
+    ]
+
+    included_feature_maps = []
+    included_feature_names = []
+    for (function, arg, name, message) in zip(feature_functions,
+                                                feature_args,
+                                                feature_names,
+                                                feature_messages):
+        if not arg:
+            continue
+        features = function(b_id_to_body, h_id_to_headline,
+                            h_id_b_id_to_stance)
+        included_feature_maps.append(features)
+        included_feature_names.append(name)
+        print('{0} FEATURE VECTORS GENERATED').format(message)
     print('INDIVIDUAL FEATURE VECTORS GENERATED')
+    for map, name in zip(included_feature_maps, included_feature_names):
+        filename = os.path.join(feature_directory, name + '.pkl')
+        with open(filename, 'w+') as outfile:
+            pickle.dump(map, outfile)
 
-    all_keys_aggregated_features_dict = join_features_on_key(feature_maps, h_id_b_id_keys)
-    print('GLOBAL FEATURE VECTORS GENERATED')
+def generate_feature_matrices(feature_directory, feature_matrix_filename, output_class_filename, args, full=False):
+    (_, _, b_id_to_body, h_id_to_headline, h_id_b_id_to_stance_superset,
+     raw_article_id_to_b_id, headline_to_h_id) = compute_splits()
+    if not full:
+        h_id_b_id_to_stance = dict(h_id_b_id_to_stance_superset.items()[:200])
+    else:
+        h_id_b_id_to_stance = h_id_b_id_to_stance_superset
+    h_id_b_id_keys = sorted(h_id_b_id_to_stance.keys())
+    print('DATASET CONSTRUCTED')
 
-    v = sklearn.feature_extraction.DictVectorizer(sparse=True)
-    X = v.fit_transform(all_keys_aggregated_features_dict)
-    Y = np.array([h_id_b_id_keys])
-    scipy.io.mmwrite(feature_matrix_filename, X)
-    np.save(output_class_filename, Y)
-    print('FEATURE MATRIX SAVED TO {0}'.format(feature_matrix_filename))
-    print('OUTPUT CLASS MATRIX SAVED TO {0}'.format(output_class_filename))
+    feature_args = [
+        args.tfidf_features,
+        args.overlap_features,
+        args.bleu_score_features,
+        args.headline_gram_features,
+        args.cross_gram_features,
+        args.cross_gram_features_clean
+    ]
+    feature_names = [
+        'tfidf',
+        'overlap',
+        'bleu',
+        'headline_gram',
+        'cross_gram',
+        'cross_gram_clean'
+    ]
+
+    if feature_directory:
+        feature_maps = []
+        for arg, name in zip(feature_args, feature_names):
+            if not arg:
+                continue
+            filename = os.path.join(feature_directory, name + '.pkl')
+            with open(filename, 'r') as infile:
+                feature_mapping = pickle.load(infile)
+                feature_maps.append(feature_mapping)
+        all_keys_aggregated_features_dict = join_features_on_key(feature_maps, h_id_b_id_keys)
+        print('GLOBAL FEATURE VECTORS GENERATED')
+
+        v = sklearn.feature_extraction.DictVectorizer(sparse=True)
+        X = v.fit_transform(all_keys_aggregated_features_dict)
+        Y = np.array([h_id_b_id_keys])
+        scipy.io.mmwrite(feature_matrix_filename, X)
+        np.save(output_class_filename, Y)
+        print('FEATURE MATRIX SAVED TO {0}'.format(feature_matrix_filename))
+        print('OUTPUT CLASS MATRIX SAVED TO {0}'.format(output_class_filename))
+    else:
+        raise Exception('--feature-input is required to load feature matrices')
 
 def train_model(X_train, y_train, model=None):
     if model == 'mnb':
