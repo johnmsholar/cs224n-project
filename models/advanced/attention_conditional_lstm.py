@@ -36,6 +36,7 @@ class Config(object):
 
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
+        self.squashing_layer_hidden_size = 150
         self.batch_size = 50
         self.n_epochs = None
         self.lr = 0.0001
@@ -101,8 +102,15 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         # Compute predictions
         with tf.variable_scope("final_projection"):
             output_dropout = tf.nn.dropout(output, dropout_rate)
-            preds = tf.contrib.layers.fully_connected(
+            squash = tf.contrib.layers.fully_connected(
                     inputs=output_dropout,
+                    num_outputs=self.config.squashing_layer_hidden_size,
+                    activation_fn=tf.nn.relu,
+                    weights_initializer=tf.contrib.layers.xavier_initializer(),
+                    biases_initializer=tf.constant_initializer(0),
+            )
+            preds = tf.contrib.layers.fully_connected(
+                    inputs=squash,
                     num_outputs=self.config.num_classes,
                     activation_fn=tf.nn.relu,
                     weights_initializer=tf.contrib.layers.xavier_initializer(),
