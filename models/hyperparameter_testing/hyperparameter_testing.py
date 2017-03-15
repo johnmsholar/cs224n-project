@@ -39,7 +39,7 @@ class Config(object):
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
         self.batch_size = 50
-        self.n_epochs = None
+        self.n_epochs = 30
         self.lr = 0.0001
         self.max_grad_norm = 5.
         self.dropout_rate = 0.8
