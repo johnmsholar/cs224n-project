@@ -21,6 +21,7 @@ import scipy
 import random
 import pickle
 import string
+import json
 import nltk.stem.porter
 from nltk.corpus import stopwords
 from ast import literal_eval
@@ -546,7 +547,7 @@ def generate_feature_files(feature_directory, args, full=False):
         filename = os.path.join(feature_directory, name + '.json')
         with open(filename, 'w+') as outfile:
             json_data = prepare_json_format(map)
-            pickle.dump(json_data, outfile)
+            json.dump(json_data, outfile)
 
 def prepare_json_format(d):
     return dict((str(key), value) for key, value in d.items())
@@ -596,7 +597,8 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
                 continue
             filename = os.path.join(feature_directory, name + '.json')
             with open(filename, 'r') as infile:
-                feature_mapping_json = pickle.load(infile)
+                feature_mapping_json = json.load(infile)
+                # feature_mapping_json = pickle.load(infile)
                 feature_mapping = retrieve_json_format(feature_mapping_json)
                 feature_maps.append(feature_mapping)
         all_keys_aggregated_features_dict = join_features_on_key(feature_maps, h_id_b_id_keys)
