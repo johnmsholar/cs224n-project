@@ -265,3 +265,19 @@ def parse_args():
     parser.add_argument('--restore', type=str, default=None)
     args = parser.parse_args()
     return args.epoch, args.restore
+
+# given two matrices of same dimensions (a,b) compute cosine similarity
+# broadcasted over y_dim
+# adapted from tensorflow's word2vec implementation
+# Args:
+#   a, b: tensor of hidden x batch
+def cosine_similarity(a, b):
+    a_norm = tf.norm(a, axis=1)
+    b_norm = tf.norm(b, axis=1)
+    hidden_size = a.get_shape()[0]
+    a_expand = tf.reshape(a, shape=[-1, 1, hidden_size]) # batch, 1, hidden
+    b_expand = tf.reshape(b, shape=[-1, hidden_size, 1]) # bath, hidden, 1
+    a_b_expand = tf.matmul(a_expand, b_expand)
+    a_b = tf.reshape(a_b_expand, shape=[-1])
+    a_b_norm = tf.norm(a_b)
+    return a_b_norm/(a_norm*b_norm)
