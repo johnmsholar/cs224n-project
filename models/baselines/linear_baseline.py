@@ -558,10 +558,7 @@ def retrieve_json_format(d):
 def generate_feature_matrices(feature_directory, feature_matrix_filename, output_class_filename, args, full=False):
     (_, _, b_id_to_body, h_id_to_headline, h_id_b_id_to_stance_superset,
      raw_article_id_to_b_id, headline_to_h_id) = compute_splits()
-    if not full:
-        h_id_b_id_to_stance = dict(h_id_b_id_to_stance_superset.items()[:200])
-    else:
-        h_id_b_id_to_stance = h_id_b_id_to_stance_superset
+    h_id_b_id_to_stance = h_id_b_id_to_stance_superset
     h_id_b_id_keys = sorted(h_id_b_id_to_stance.keys())
     print('DATASET CONSTRUCTED')
 
