@@ -46,7 +46,7 @@ class Config(object):
         self.random_split = False
         self.truncate_headlines = False
         self.truncate_articles = True
-        self.classification_problem = 3
+        self.classification_problem = 1
         self.max_headline_length = 500
         self.max_article_length = 800
         self.uniform_data_split = False  
