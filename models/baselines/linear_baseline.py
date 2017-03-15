@@ -8,6 +8,7 @@ Sahil Chopra <schopra8@cs.stanford.edu>
 Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
+import os
 import sys
 import argparse
 import sklearn.naive_bayes
@@ -18,6 +19,7 @@ import itertools
 import numpy as np
 import scipy
 import random
+import pickle
 
 sys.path.insert(0, '../../')
 from models.util import plot_confusion_matrix, save_confusion_matrix
@@ -229,7 +231,7 @@ def join_features_on_key(feature_maps, h_id_b_id_keys):
         all_keys_aggregated_features_dict.append(aggregated_features_dict)
     return all_keys_aggregated_features_dict
 
-def generate_feature_vectors(feature_matrix_filename, output_class_filename, full=False, args=None):
+def generate_feature_files(feature_directory, args, full=False):
     (_, _, b_id_to_body, h_id_to_headline, h_id_b_id_to_stance_superset,
      raw_article_id_to_b_id, headline_to_h_id) = compute_splits()
     h_id_to_headline = dict([(k, v) for k, v in h_id_to_headline.items()])
@@ -239,41 +241,101 @@ def generate_feature_vectors(feature_matrix_filename, output_class_filename, ful
         h_id_b_id_to_stance = h_id_b_id_to_stance_superset
     h_id_b_id_keys = sorted(h_id_b_id_to_stance.keys())
     print('DATASET CONSTRUCTED')
-    feature_maps = []
-    if not args or (args and args.tfidf_features):
-        tfidf_features = generate_tfidf_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
-        feature_maps.append(tfidf_features)
-        print('TFIDF FEATURE VECTORS GENERATED')
-    if not args or (args and args.overlap_features):
-        overlap_features = generate_overlap_features(b_id_to_body,
-                                                 h_id_to_headline,
-                                                 h_id_b_id_to_stance)
-        feature_maps.append(overlap_features)
-        print('JACCARD DISTANCE FEATURE VECTORS GENERATED')
-    if not args or (args and args.bleu_score_features):
-        bleu_score_features = generate_bleu_score_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
-        feature_maps.append(bleu_score_features)
-        print('BLEU SCORE FEATURE VECTORS GENERATED')
-    if not args or (args and args.headline_gram_features):
-        headline_gram_features = generate_headline_gram_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
-        feature_maps.append(headline_gram_features)
-        print('HEADLINE GRAM FEATURE VECTORS GENERATED')
-    if not args or (args and args.cross_gram_features):
-        cross_gram_features = generate_cross_gram_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
-        feature_maps.append(cross_gram_features)
-        print('CROSS GRAM FEATURE VECTORS GENERATED')
+
+    feature_functions = [
+        generate_tfidf_features,
+        generate_overlap_features,
+        generate_bleu_score_features,
+        generate_headline_gram_features,
+        generate_cross_gram_features
+    ]
+    feature_args = [
+        args.tfidf_features,
+        args.overlap_features,
+        args.bleu_score_features,
+        args.headline_gram_features,
+        args.cross_gram_features
+    ]
+    feature_names = [
+        'tfidf',
+        'overlap',
+        'bleu',
+        'headline_gram',
+        'cross_gram'
+    ]
+    feature_messages = [
+        'TFIDF',
+        'JACCARD DISTANCE',
+        'BLEU SCORE',
+        'HEADLINE GRAM',
+        'CROSS GRAM'
+    ]
+
+    included_feature_maps = []
+    included_feature_names = []
+    for (function, arg, name, message) in zip(feature_functions,
+                                                feature_args,
+                                                feature_names,
+                                                feature_messages):
+        if not arg:
+            continue
+        features = function(b_id_to_body, h_id_to_headline,
+                            h_id_b_id_to_stance)
+        included_feature_maps.append(features)
+        included_feature_names.append(name)
+        print('{0} FEATURE VECTORS GENERATED').format(message)
     print('INDIVIDUAL FEATURE VECTORS GENERATED')
+    for map, name in zip(included_feature_maps, included_feature_names):
+        filename = os.path.join(feature_directory, name + '.pkl')
+        with open(filename, 'w+') as outfile:
+            pickle.dump(map, outfile)
 
-    all_keys_aggregated_features_dict = join_features_on_key(feature_maps, h_id_b_id_keys)
-    print('GLOBAL FEATURE VECTORS GENERATED')
+def generate_feature_matrices(feature_directory, feature_matrix_filename, output_class_filename, args, full=False):
+    (_, _, b_id_to_body, h_id_to_headline, h_id_b_id_to_stance_superset,
+     raw_article_id_to_b_id, headline_to_h_id) = compute_splits()
+    if not full:
+        h_id_b_id_to_stance = dict(h_id_b_id_to_stance_superset.items()[:200])
+    else:
+        h_id_b_id_to_stance = h_id_b_id_to_stance_superset
+    h_id_b_id_keys = sorted(h_id_b_id_to_stance.keys())
+    print('DATASET CONSTRUCTED')
 
-    v = sklearn.feature_extraction.DictVectorizer(sparse=True)
-    X = v.fit_transform(all_keys_aggregated_features_dict)
-    Y = np.array([h_id_b_id_keys])
-    scipy.io.mmwrite(feature_matrix_filename, X)
-    np.save(output_class_filename, Y)
-    print('FEATURE MATRIX SAVED TO {0}'.format(feature_matrix_filename))
-    print('OUTPUT CLASS MATRIX SAVED TO {0}'.format(output_class_filename))
+    feature_args = [
+        args.tfidf_features,
+        args.overlap_features,
+        args.bleu_score_features,
+        args.headline_gram_features,
+        args.cross_gram_features
+    ]
+    feature_names = [
+        'tfidf',
+        'overlap',
+        'bleu',
+        'headline_gram',
+        'cross_gram'
+    ]
+
+    if feature_directory:
+        feature_maps = []
+        for arg, name in zip(feature_args, feature_names):
+            if not arg:
+                continue
+            filename = os.path.join(feature_directory, name + '.pkl')
+            with open(filename, 'r') as infile:
+                feature_mapping = pickle.load(infile)
+                feature_maps.append(feature_mapping)
+        all_keys_aggregated_features_dict = join_features_on_key(feature_maps, h_id_b_id_keys)
+        print('GLOBAL FEATURE VECTORS GENERATED')
+
+        v = sklearn.feature_extraction.DictVectorizer(sparse=True)
+        X = v.fit_transform(all_keys_aggregated_features_dict)
+        Y = np.array([h_id_b_id_keys])
+        scipy.io.mmwrite(feature_matrix_filename, X)
+        np.save(output_class_filename, Y)
+        print('FEATURE MATRIX SAVED TO {0}'.format(feature_matrix_filename))
+        print('OUTPUT CLASS MATRIX SAVED TO {0}'.format(output_class_filename))
+    else:
+        raise Exception('--feature-input is required to load feature matrices')
 
 def train_model(X_train, y_train, model=None):
     if model == 'mnb':
