@@ -147,7 +147,8 @@ def parse_args():
                      '--bleu-score-features', '--bleu-score-features-clean',
                      '--tfidf-features', '--tfidf-features-clean',
                      '--headline-gram-features',
-                     '--cross-gram-features', '--cross-gram-features-clean']
+                     '--cross-gram-features', '--cross-gram-features-clean',
+                     '--cross-gram-features-count']
     for name in feature_names:
         parser.add_argument(name, action = 'store_true')
     args = parser.parse_args()
