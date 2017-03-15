@@ -77,6 +77,41 @@ def generate_random_hold_out_split (id_id_stance, training = 0.8):
     hold_out_ids = article_ids[int(training * num_articles):]
     return training_ids, hold_out_ids
 
+
+def generate_tfidf_features_clean(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance):
+
+    english_stopwords = stopwords.words('english')
+    stemmer = nltk.stem.porter.PorterStemmer()
+    def tfidf_preprocess(text):
+        text = filter(lambda x: x not in string.punctuation and
+                                x not in english_stopwords, text)
+        text = [stemmer.stem(w) for w in text]
+        return text
+
+    tfidf_vectorizer = TfidfVectorizer(preprocessor=tfidf_preprocess)
+    bodies = [' '.join(body) for b_id, body in sorted(b_id_to_body.items())]
+    headlines = [' '.join(body) for h_id, headline in sorted(h_id_to_headline.items())]
+    body_id_mapping = dict((key, index) for index, key in
+                              enumerate(sorted(b_id_to_body.keys())))
+    headline_id_mapping = dict((key, index) for index, key in
+                                  enumerate(sorted(h_id_to_headline.keys())))
+    all_text = bodies + headlines
+    text_tfidf_vectors = tfidf_vectorizer.fit_transform(all_text)
+    body_tfidf_vectors = text_tfidf_vectors[:len(bodies)]
+    headline_tfidf_vectors = text_tfidf_vectors[len(bodies):]
+    TFIDF_FEATURE_NAME = 'tfidf_clean'
+    tfidf_features = {}
+    num_pairs = len(h_id_b_id_to_stance)
+    for index, (h_id, b_id) in enumerate(h_id_b_id_to_stance):
+        if index % 100 == 0:
+            print(float(index) / num_pairs)
+        headline_tfidf_vector = headline_tfidf_vectors[headline_id_mapping[h_id]]
+        body_tfidf_vector = body_tfidf_vectors[body_id_mapping[b_id]]
+        cos = cosine_similarity(headline_tfidf_vector, body_tfidf_vector)
+        tfidf_features[(h_id, b_id)] = {TFIDF_FEATURE_NAME: cos.item()}
+    return tfidf_features
+
+
 def generate_tfidf_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance):
     tfidf_vectorizer = TfidfVectorizer(use_idf=False)
     x = 1
@@ -151,7 +186,7 @@ def generate_bleu_score_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_st
     return bleu_score_feature_vectors
 
 def generate_overlap_features_clean(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance):
-    OVERLAP_FEATURE_NAME = 'overlap'
+    OVERLAP_FEATURE_NAME = 'overlap_clean'
     overlap_features = {}
     num_pairs = len(h_id_b_id_to_stance)
     english_stopwords = stopwords.words('english')
@@ -329,6 +364,7 @@ def generate_feature_files(feature_directory, args, full=False):
 
     feature_functions = [
         generate_tfidf_features,
+        generate_tfidf_features_clean,
         generate_overlap_features,
         generate_overlap_features_clean,
         generate_bleu_score_features,
@@ -338,6 +374,7 @@ def generate_feature_files(feature_directory, args, full=False):
     ]
     feature_args = [
         args.tfidf_features,
+        args.tfidf_features_clean,
         args.overlap_features,
         args.overlap_features_clean,
         args.bleu_score_features,
@@ -347,6 +384,7 @@ def generate_feature_files(feature_directory, args, full=False):
     ]
     feature_names = [
         'tfidf',
+        'tfidf_clean',
         'overlap',
         'overlap_clean',
         'bleu',
@@ -356,6 +394,7 @@ def generate_feature_files(feature_directory, args, full=False):
     ]
     feature_messages = [
         'TFIDF',
+        'TFIDF_CLEAN',
         'JACCARD DISTANCE',
         'JACCARD DISTANCE CLEAN',
         'BLEU SCORE',
@@ -395,6 +434,7 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
 
     feature_args = [
         args.tfidf_features,
+        args.tfidf_features_clean,
         args.overlap_features,
         args.overlap_features_clean,
         args.bleu_score_features,
@@ -404,6 +444,7 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
     ]
     feature_names = [
         'tfidf',
+        'tfidf_clean'
         'overlap',
         'overlap_clean',
         'bleu',
