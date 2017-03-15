@@ -290,7 +290,7 @@ def generate_feature_files(feature_directory, args, full=False):
         with open(filename, 'w+') as outfile:
             pickle.dump(map, outfile)
 
-def generate_feature_matrices(feature_directory, feature_matrix_filename, output_class_filename, full=False):
+def generate_feature_matrices(feature_directory, feature_matrix_filename, output_class_filename, args, full=False):
     (_, _, b_id_to_body, h_id_to_headline, h_id_b_id_to_stance_superset,
      raw_article_id_to_b_id, headline_to_h_id) = compute_splits()
     if not full:
@@ -308,8 +308,8 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
         args.cross_gram_features
     ]
     feature_names = [
-        'tfidf'
-        'overlap'
+        'tfidf',
+        'overlap',
         'bleu',
         'headline_gram',
         'cross_gram'
