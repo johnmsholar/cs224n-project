@@ -43,7 +43,8 @@ def convert_to_two_class_problem(y_train, y_test, y_dev):
             group[index] = RELATED_UNRELATED_MAPPING[two_class_mapping[label]]
     return y_train, y_test, y_dev
 
-def evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test, y_dev):
+def evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test,
+                   y_dev, cm_output_prefix):
     # Compute and print confusion matrix
     y_train_predicted = clf.predict(X_train)
     y_test_predicted = clf.predict(X_test)
@@ -60,14 +61,11 @@ def evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test, y_dev):
     classes = ['RELATED', 'UNRELATED']
     # plot_confusion_matrix(cm, classes, normalize=True)
     save_confusion_matrix(cm_train, classes,
-                          'data/linear_related_unrelated/linear_related_unrelated_train_cm.png',
-                          normalize=True)
+                          cm_output_prefix + '_train.png', normalize=True)
     save_confusion_matrix(cm_test, classes,
-                          'data/linear_related_unrelated/linear_related_unrelated_test_cm.png',
-                          normalize=True)
+                          cm_output_prefix + '_test.png', normalize=True)
     save_confusion_matrix(cm_dev, classes,
-                          'data/linear_related_unrelated/linear_related_unrelated_dev_cm.png',
-                          normalize=True)
+                          cm_output_prefix + '_dev.png', normalize=True)
     # Compute and print 5-Fold Cross Validation F1 Score
     weighted_f1 = sklearn.metrics.make_scorer(sklearn.metrics.f1_score, average='weighted')
     train_score = sklearn.model_selection.cross_val_score(clf, X_train, y_train,
@@ -103,7 +101,7 @@ def train_model(X_train, y_train, model=None):
 
 def main(args):
     if args.x_output and args.y_output:
-        generate_feature_vectors(args.x_output, args.y_output, args.full)
+        generate_feature_vectors(args.x_output, args.y_output, args.full, args)
     if args.x_input and args.y_input:
         (X_indices, y, b_id_to_article, h_id_to_headline,
          h_id_b_id_to_stance, raw_article_id_to_b_id,
@@ -117,7 +115,8 @@ def main(args):
             X_train_indices, X_test_indices, X_dev_indices,
             h_id_b_id_to_stance, X_vectors)
         clf = train_model(X_train, y_train)
-        evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test, y_dev)
+        evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test, y_dev,
+                       args.cm_prefix)
 
 def create_feature_matrices(X_train_indices, X_test_indices, X_dev_indices,
                             h_id_b_id_to_stance, X_vectors):
@@ -138,6 +137,12 @@ def parse_args():
     parser.add_argument('--y-output')
     parser.add_argument('--x-input')
     parser.add_argument('--y-input')
+    parser.add_argument('--cm-prefix')
+    feature_names = ['--overlap-features', '--bleu-score-features',
+                     '--tfidf-features', '--headline-gram-features',
+                     '--cross-gram-features']
+    for name in feature_names:
+        parser.add_argument(name, action = 'store_true')
     args = parser.parse_args()
     if not args.full:
         args.full = False

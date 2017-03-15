@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 CS 224N 2016-2017 
-conditional_lstm.py: Conditional LSTM Implementation
+attention_conditional_related_unrelated.py: Conditional LSTM with attention for
+    the RELATED/UNRELATED classification problem.
 Sahil Chopra <schopra8@cs.stanford.edu>
 Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
@@ -20,7 +21,7 @@ sys.path.insert(0, '../')
 from advanced_model import Advanced_Model, create_data_sets_for_model, produce_uniform_data_split
 from fnc1_utils.score import report_score
 from fnc1_utils.featurizer import create_embeddings
-from util import create_tensorflow_saver, parse_args
+from util import create_tensorflow_saver
 from layers.attention_layer import AttentionLayer
 from layers.class_squash_layer import ClassSquashLayer
 
@@ -31,7 +32,7 @@ class Config(object):
     instantiation. Use self.config.? instead of Config.?
     """
     def __init__(self):
-        self.num_classes = 3 # Number of classses for classification task.
+        self.num_classes = 2 # Number of classses for classification task.
         self.embed_size = 300 # Size of Glove Vectors
 
         # Hyper Parameters
@@ -48,7 +49,7 @@ class Config(object):
         self.random_split = False
         self.truncate_headlines = False
         self.truncate_articles = True
-        self.classification_problem = 3
+        self.classification_problem = 2
         self.max_headline_length = 500
         self.max_article_length = 800
         self.uniform_data_split = False  
@@ -58,16 +59,16 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
     """ Conditional Encoding LSTM Model.
     """
     def get_model_name(self):
-        return 'attention_conditional_lstm'
+        return 'attention_conditional_lstm_related_unrelated'
 
     def get_fn_names(self):
         """ Retrieve file names.
             fn_names = [best_weights_fn, curr_weights_fn, preds_fn]
         """
-        best_weights_fn = 'attention_conditional_lstm_best_stance.weights'
-        curr_weights_fn = 'attention_conditional_lstm_curr_stance.weights'
-        preds_fn = 'attention_conditional_encoding_lstm_predicted.pkl'
-        best_train_weights_fn = 'attention_conditional_encoding_lstm_best_train_stance.weights'
+        best_weights_fn = 'attention_conditional_related_unrelated_best_stance.weights'
+        curr_weights_fn = 'attention_conditional_related_unrelated_curr_stance.weights'
+        preds_fn = 'attention_conditional_related_unrelated_predicted.pkl'
+        best_train_weights_fn = 'attention_conditional_related_unrelated_best_train_stance.weights'
         return [best_weights_fn, curr_weights_fn, preds_fn, best_train_weights_fn]
 
     def add_prediction_op(self, debug): 
@@ -126,12 +127,15 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
 
 def main(debug=True):
     # Parse Arguments
-    arg_epoch, arg_restore = parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--epoch', type=int, default=5)
+    parser.add_argument('--restore', action='store_true')
+    args = parser.parse_args()
 
     # Create Config
     config = Config()
-    if arg_epoch:
-        config.n_epochs = arg_epoch
+    if args.epoch:
+        config.n_epochs = args.epoch
 
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=config.training_size,
@@ -175,9 +179,7 @@ def main(debug=True):
             # Load weights if necessary
             session.run(init)
             saver = create_tensorflow_saver(model.exclude_names)
-            if arg_restore != None:
-                weights_path = './data/{}/{}/weights'.format(model.get_model_name(), arg_restore)
-                restore_path = '{}/{}'.format(weights_path, model.get_fn_names()[1])
+            if args.restore:
                 saver.restore(session, model.curr_weights_fn)
 
             # Finalize graph

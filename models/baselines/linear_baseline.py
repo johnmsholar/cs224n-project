@@ -229,7 +229,7 @@ def join_features_on_key(feature_maps, h_id_b_id_keys):
         all_keys_aggregated_features_dict.append(aggregated_features_dict)
     return all_keys_aggregated_features_dict
 
-def generate_feature_vectors(feature_matrix_filename, output_class_filename, full=False):
+def generate_feature_vectors(feature_matrix_filename, output_class_filename, full=False, args=None):
     (_, _, b_id_to_body, h_id_to_headline, h_id_b_id_to_stance_superset,
      raw_article_id_to_b_id, headline_to_h_id) = compute_splits()
     h_id_to_headline = dict([(k, v) for k, v in h_id_to_headline.items()])
@@ -239,23 +239,31 @@ def generate_feature_vectors(feature_matrix_filename, output_class_filename, ful
         h_id_b_id_to_stance = h_id_b_id_to_stance_superset
     h_id_b_id_keys = sorted(h_id_b_id_to_stance.keys())
     print('DATASET CONSTRUCTED')
-
-    tfidf_features = generate_tfidf_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
-    print('TFIDF FEATURE VECTORS GENERATED')
-    overlap_features = generate_overlap_features(b_id_to_body,
+    feature_maps = []
+    if not args or (args and args.tfidf_features):
+        tfidf_features = generate_tfidf_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
+        feature_maps.append(tfidf_features)
+        print('TFIDF FEATURE VECTORS GENERATED')
+    if not args or (args and args.overlap_features):
+        overlap_features = generate_overlap_features(b_id_to_body,
                                                  h_id_to_headline,
                                                  h_id_b_id_to_stance)
-
-    print('JACCARD DISTANCE FEATURE VECTORS GENERATED')
-    bleu_score_features = generate_bleu_score_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
-    print('BLEU SCORE FEATURE VECTORS GENERATED')
-    headline_gram_features = generate_headline_gram_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
-    print('HEADLINE GRAM FEATURE VECTORS GENERATED')
-    cross_gram_features = generate_cross_gram_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
-    print('CROSS GRAM FEATURE VECTORS GENERATED')
+        feature_maps.append(overlap_features)
+        print('JACCARD DISTANCE FEATURE VECTORS GENERATED')
+    if not args or (args and args.bleu_score_features):
+        bleu_score_features = generate_bleu_score_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
+        feature_maps.append(bleu_score_features)
+        print('BLEU SCORE FEATURE VECTORS GENERATED')
+    if not args or (args and args.headline_gram_features):
+        headline_gram_features = generate_headline_gram_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
+        feature_maps.append(headline_gram_features)
+        print('HEADLINE GRAM FEATURE VECTORS GENERATED')
+    if not args or (args and args.cross_gram_features):
+        cross_gram_features = generate_cross_gram_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
+        feature_maps.append(cross_gram_features)
+        print('CROSS GRAM FEATURE VECTORS GENERATED')
     print('INDIVIDUAL FEATURE VECTORS GENERATED')
 
-    feature_maps = [bleu_score_features, overlap_features, cross_gram_features, tfidf_features]
     all_keys_aggregated_features_dict = join_features_on_key(feature_maps, h_id_b_id_keys)
     print('GLOBAL FEATURE VECTORS GENERATED')
 
