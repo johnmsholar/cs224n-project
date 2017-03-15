@@ -1,23 +1,33 @@
 import pickle
 import json
 import os
+from ast import literal_eval
+import argparse
 
 filenames = [
     'bleu.pkl',
-    'headline_gram.pkl',
     'overlap_clean.pkl',
     'tfidf.pkl',
-    'cross_gram_count.pkl'
     'overlap.pkl',
     'tfidf_clean.pkl'
 ]
 
-for index, filename in enumerate(filenames):
-    print 'Evaluating file {0} ({1} of {2})'.format(
-        filename, index + 1, len(filenames))
-    raw_filename = os.path.splittext(filename)[0]
-    output_filename = os.path.join(raw_filename, '.json')
-    with open(filename, 'r') as infile:
-        data = pickle.load(file)
-    with open(output_filename, 'w+') as outfile:
-        json.dump(data, outfile)
+def prepare_json_format(d):
+    return dict((str(key), value) for key, value in d.items())
+
+def retrieve_json_format(d):
+    return dict((literal_eval(key), value) for key, value in d.items())
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--file')
+args = parser.parse_args()
+filename = args.file
+
+raw_filename = os.path.splitext(filename)[0]
+output_filename = raw_filename + '.json'
+with open(filename, 'r') as infile:
+    data = pickle.load(infile)
+data = prepare_json_format(data)
+with open(output_filename, 'w+') as outfile:
+    json.dump(data, outfile)
+

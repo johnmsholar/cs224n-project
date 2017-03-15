@@ -23,6 +23,8 @@ import pickle
 import string
 import nltk.stem.porter
 from nltk.corpus import stopwords
+from ast import literal_eval
+
 
 sys.path.insert(0, '../../')
 from models.util import plot_confusion_matrix, save_confusion_matrix
@@ -541,9 +543,16 @@ def generate_feature_files(feature_directory, args, full=False):
         print('{0} FEATURE VECTORS GENERATED').format(message)
     print('INDIVIDUAL FEATURE VECTORS GENERATED')
     for map, name in zip(included_feature_maps, included_feature_names):
-        filename = os.path.join(feature_directory, name + '.pkl')
+        filename = os.path.join(feature_directory, name + '.json')
         with open(filename, 'w+') as outfile:
-            pickle.dump(map, outfile)
+            json_data = prepare_json_format(map)
+            pickle.dump(json_data, outfile)
+
+def prepare_json_format(d):
+    return dict((str(key), value) for key, value in d.items())
+
+def retrieve_json_format(d):
+    return dict((literal_eval(key), value) for key, value in d.items())
 
 def generate_feature_matrices(feature_directory, feature_matrix_filename, output_class_filename, args, full=False):
     (_, _, b_id_to_body, h_id_to_headline, h_id_b_id_to_stance_superset,
@@ -585,9 +594,10 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
         for arg, name in zip(feature_args, feature_names):
             if not arg:
                 continue
-            filename = os.path.join(feature_directory, name + '.pkl')
+            filename = os.path.join(feature_directory, name + '.json')
             with open(filename, 'r') as infile:
-                feature_mapping = pickle.load(infile)
+                feature_mapping_json = pickle.load(infile)
+                feature_mapping = retrieve_json_format(feature_mapping_json)
                 feature_maps.append(feature_mapping)
         all_keys_aggregated_features_dict = join_features_on_key(feature_maps, h_id_b_id_keys)
         print('GLOBAL FEATURE VECTORS GENERATED')
