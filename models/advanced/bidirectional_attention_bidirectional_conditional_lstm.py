@@ -20,7 +20,7 @@ sys.path.insert(0, '../')
 from advanced_model import Advanced_Model, create_data_sets_for_model, produce_uniform_data_split
 from fnc1_utils.score import report_score
 from fnc1_utils.featurizer import create_embeddings
-from util import create_tensorflow_saver, parse_args
+from util import create_tensorflow_saver
 from layers.attention_layer import AttentionLayer
 from layers.class_squash_layer import ClassSquashLayer
 
@@ -54,20 +54,20 @@ class Config(object):
         self.uniform_data_split = False  
 
 
-class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
+class Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
     """ Conditional Encoding LSTM Model.
     """
     def get_model_name(self):
-        return 'attention_conditional_lstm'
+        return 'bidirectional_attention_bidirectional_conditional_lstm'
 
     def get_fn_names(self):
         """ Retrieve file names.
             fn_names = [best_weights_fn, curr_weights_fn, preds_fn]
         """
-        best_weights_fn = 'attention_conditional_lstm_best_stance.weights'
-        curr_weights_fn = 'attention_conditional_lstm_curr_stance.weights'
-        preds_fn = 'attention_conditional_encoding_lstm_predicted.pkl'
-        best_train_weights_fn = 'attention_conditional_encoding_lstm_best_train_stance.weights'
+        best_weights_fn = 'bidirectional_attention_bidirectional_conditional_lstm_best_stance.weights'
+        curr_weights_fn = 'bidirectional_attention_bidirectional_conditional_lstm_curr_stance.weights'
+        preds_fn = 'bidirectional_attention_bidirectional_conditional_encoding_lstm_predicted.pkl'
+        best_train_weights_fn = 'bidirectional_attention_bidirectional_conditional_encoding_lstm_best_train_stance.weights'
         return [best_weights_fn, curr_weights_fn, preds_fn, best_train_weights_fn]
 
     def add_prediction_op(self, debug): 
@@ -81,25 +81,56 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         # run first headline LSTM
         # headline_x_list = [headline_x[:, i, :] for i in range(headline_x.get_shape()[1].value)]
         with tf.variable_scope("headline_cell"):
-            cell_headline = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
-            # headline_outputs, headline_state = tf.contrib.rnn.static_rnn(cell_headline, headline_x_list, dtype=tf.float32)
-            headline_outputs, headline_state = tf.nn.dynamic_rnn(cell_headline, headline_x, dtype=tf.float32, sequence_length = self.h_seq_lengths_placeholder)
+            headline_fw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
+            headline_bw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)           
+            headline_outputs, headline_states = tf.nn.bidirectional_dynamic_rnn(
+                headline_fw_cell,
+                headline_bw_cell,
+                headline_x,
+                dtype=tf.float32,
+                sequence_length = self.h_seq_lengths_placeholder
+            )
 
         # run second LSTM that accept state from first LSTM
         # body_x_list = [body_x[:, i, :] for i in range(body_x.get_shape()[1].value)]
-        with tf.variable_scope("body_cell"):
-            cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
-            # _, article_state = tf.contrib.rnn.static_rnn(cell_body, body_x_list, initial_state=headline_state, dtype=tf.float32)
-            outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
-        
-        # Apply attention
-        with tf.variable_scope("attention"):
-            article_state = outputs[:,-1,:]
-            attention_layer = AttentionLayer(self.config.hidden_size, self.h_max_length)
-            output = attention_layer(headline_outputs, article_state)
+        with tf.variable_scope("article_cell"):
+            article_fw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
+            article_bw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
+            article_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                article_fw_cell,
+                article_bw_cell,
+                body_x,
+                initial_state_fw=headline_states[0],
+                initial_state_bw=headline_states[1],
+                dtype=tf.float32,
+                sequence_length= self.a_seq_lengths_placeholder
+            )
+
+        # Apply attention from headline -> article
+        with tf.variable_scope("headline_to_article_attention_fw"):
+            article_output = article_outputs[0][:,-1,:] 
+            attention_layer_1 = AttentionLayer(self.config.hidden_size, self.h_max_length)
+            output_1 = attention_layer_1(headline_outputs[0], article_output)
+
+        with tf.variable_scope("headline_to_article_attention_bw"):
+            article_output = article_outputs[1][:,-1,:] 
+            attention_layer_2 = AttentionLayer(self.config.hidden_size, self.h_max_length)
+            output_2 = attention_layer_2(headline_outputs[1], article_output)
+
+        # Apply attentin from article -> headline
+        with tf.variable_scope("article_to_headline_attention_f"):
+            headline_output = headline_outputs[0][:, -1, :]
+            attention_layer_3 = AttentionLayer(self.config.hidden_size, self.a_max_length)
+            output_3 = attention_layer_3(article_outputs[0], headline_output)
+
+        with tf.variable_scope("article_to_headline_attention_bw"):
+            headline_output = headline_outputs[1][:,-1,:]
+            attention_layer_4 = AttentionLayer(self.config.hidden_size, self.a_max_length)
+            output_4 = attention_layer_4(article_outputs[1], headline_output)
 
         # Compute predictions
         with tf.variable_scope("final_projection"):
+            output = tf.concat([output_1, output_2, output_3, output_4], 1)
             output_dropout = tf.nn.dropout(output, dropout_rate)
             preds = tf.contrib.layers.fully_connected(
                     inputs=output_dropout,
@@ -115,10 +146,7 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
             body_x = tf.Print(body_x, [body_x], 'body_x', summarize=24)
             h_seq_lengths = tf.Print(self.h_seq_lengths_placeholder, [self.h_seq_lengths_placeholder], 'h_seq_lengths', summarize=3)
             a_seq_lengths = tf.Print(self.a_seq_lengths_placeholder, [self.a_seq_lengths_placeholder], 'a_seq_lengths', summarize=3)            
-            headline_outputs = tf.Print(headline_outputs, [headline_outputs], 'headline_outputs', summarize=20)
-            headline_state = tf.Print(headline_state, [headline_state], 'headline_state', summarize=20)
-            article_state = tf.Print(article_state, [article_state], 'article_state', summarize=20)
-            debug_ops = [headline_x, body_x, h_seq_lengths, a_seq_lengths, headline_outputs, headline_state, article_state]
+            debug_ops = [headline_x, body_x, h_seq_lengths, a_seq_lengths]
         else:
             debug_ops = None
 
@@ -126,12 +154,15 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
 
 def main(debug=True):
     # Parse Arguments
-    arg_epoch, arg_restore = parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--epoch', type=int, default=5)
+    parser.add_argument('--restore', action='store_true')
+    args = parser.parse_args()
 
     # Create Config
     config = Config()
-    if arg_epoch:
-        config.n_epochs = arg_epoch
+    if args.epoch:
+        config.n_epochs = args.epoch
 
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=config.training_size,
@@ -163,7 +194,7 @@ def main(debug=True):
         # Create and configure model
         print "Building model...",
         start = time.time()
-        model = Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
+        model = Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
         model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
@@ -175,9 +206,7 @@ def main(debug=True):
             # Load weights if necessary
             session.run(init)
             saver = create_tensorflow_saver(model.exclude_names)
-            if arg_restore != None:
-                weights_path = './data/{}/{}/weights'.format(model.get_model_name(), arg_restore)
-                restore_path = '{}/{}'.format(weights_path, model.get_fn_names()[1])
+            if args.restore:
                 saver.restore(session, model.curr_weights_fn)
 
             # Finalize graph

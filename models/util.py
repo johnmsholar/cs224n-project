@@ -8,6 +8,7 @@ Saachi Jain <saachi@cs.stanford.edu>
 John Sholar <jmsholar@cs.stanford.edu>
 """
 
+import argparse
 import sys
 import time
 import numpy as np
@@ -257,3 +258,10 @@ def multiply_3d_by_2d(three_tensor, two_tensor, y_dim_flat=True):
     multiplied_tensor = tf.matmul(reshaped_three_tensor, two_tensor)
     packed_back_three_tensor = tf.reshape(multiplied_tensor, [x_dim, y_dim, z_dim])
     return packed_back_three_tensor
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--epoch', type=int, default=5)
+    parser.add_argument('--restore', type=str, default=None)
+    args = parser.parse_args()
+    return args.epoch, args.restore
