@@ -111,6 +111,7 @@ def main(debug=False):
     args = parser.parse_args()
 
     # Load Data
+    config = Config()
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=config.training_size,
         random_split=config.random_split,
@@ -145,6 +146,7 @@ def main(debug=False):
         if debug:
             config.embed_size = 2
         for dropout_rate in hyperparameters['dropout_rate']:
+            config.dropout_rate = dropout_rate
             print "-"*80
             print "Using Configs:"
             pp.pprint(config.__dict__)
