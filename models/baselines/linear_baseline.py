@@ -83,10 +83,11 @@ def generate_tfidf_features_clean(b_id_to_body, h_id_to_headline, h_id_b_id_to_s
     english_stopwords = stopwords.words('english')
     stemmer = nltk.stem.porter.PorterStemmer()
     def tfidf_preprocess(text):
+        text = text.split()
         text = filter(lambda x: x not in string.punctuation and
                                 x not in english_stopwords, text)
         text = [stemmer.stem(w) for w in text]
-        return text
+        return ' '.join(text)
 
     tfidf_vectorizer = TfidfVectorizer(preprocessor=tfidf_preprocess)
     bodies = [' '.join(body) for b_id, body in sorted(b_id_to_body.items())]
@@ -136,6 +137,60 @@ def generate_tfidf_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
         cos = cosine_similarity(headline_tfidf_vector, body_tfidf_vector)
         tfidf_features[(h_id, b_id)] = {TFIDF_FEATURE_NAME: cos.item()}
     return tfidf_features
+
+
+def generate_bleu_score_features_clean(b_id_to_body, h_id_to_headline,
+                                       h_id_b_id_to_stance):
+    # Slice the body text into overlapping segments of length BLEU_SEGMENT_LENGTH,
+    #   such that each segment overlaps with half of the next segment (to ensure that
+    #   no phrase shorter than BLEU_SEGMENT_LENGTH is scliced in two
+    # For every segment, compute the BLEU score of the headline with respect to the segment,
+    #   and return the maximum such score
+    # Ideally, this allows us to examine if at any point, the short headline matches a
+    #   segment of the much longer reference text, while avoiding the brevity penalty
+    #   associated with comparing a short hypothesis to a long reference text.
+    def max_segment_bleu_score(head, body):
+        BLEU_SEGMENT_LENGTH = 2 * len(head)
+        SEGMENT_INCREMENT = len(head)
+        max_bleu_score = 0.0
+        smoothing_function = nltk.translate.bleu_score.SmoothingFunction()
+        for start_index in range(0, len(body), SEGMENT_INCREMENT):
+            body_segment = body[start_index:start_index + BLEU_SEGMENT_LENGTH]
+            score = nltk.translate.bleu_score.sentence_bleu(
+                [body_segment], head,
+                smoothing_function=smoothing_function.method1,
+                weights=(0.333, 0.333, 0.333))
+            max_bleu_score = max(score, max_bleu_score)
+        return max_bleu_score
+
+    english_stopwords = stopwords.words('english')
+    stemmer = nltk.stem.porter.PorterStemmer()
+    def map_ids_to_feature_vector(ids):
+        h_id, b_id = ids
+        headline = h_id_to_headline[h_id]
+        body = b_id_to_body[b_id]
+        headline = filter(lambda x: x not in english_stopwords and
+                                    x not in string.punctuation, headline)
+        body = filter(lambda x: x not in english_stopwords and
+                                x not in string.punctuation, body)
+        headline = [stemmer.stem(w) for w in headline]
+        body = [stemmer.stem(w) for w in body]
+        score = max_segment_bleu_score(headline, body)
+        return {BLEU_FEATURE_NAME: score}
+
+    num_pairs = len(h_id_b_id_to_stance.keys())
+    bleu_score_feature_vectors = {}
+    BLEU_FEATURE_NAME = 'max_segment_bleu_score'
+    """
+    # Attempts to parallelize this process gave no efficiency boost
+    f = lambda k : (k, map_ids_to_feature_vector(k))
+    bleu_score_feature_vectors = dict(map(f, h_id_b_id_to_stance.keys()))
+    """
+    for index, ids in enumerate(h_id_b_id_to_stance):
+        if index % 100 == 0:
+            print(float(index) / num_pairs)
+        bleu_score_feature_vectors[ids] = map_ids_to_feature_vector(ids)
+    return bleu_score_feature_vectors
 
 
 # Generate modified BLEU scores for each (healdine, article) pair, in which BLEU
@@ -368,6 +423,7 @@ def generate_feature_files(feature_directory, args, full=False):
         generate_overlap_features,
         generate_overlap_features_clean,
         generate_bleu_score_features,
+        generate_bleu_score_features_clean,
         generate_headline_gram_features,
         generate_cross_gram_features,
         generate_cross_gram_features_clean
@@ -378,6 +434,7 @@ def generate_feature_files(feature_directory, args, full=False):
         args.overlap_features,
         args.overlap_features_clean,
         args.bleu_score_features,
+        args.bleu_score_features_clean,
         args.headline_gram_features,
         args.cross_gram_features,
         args.cross_gram_features_clean
@@ -388,6 +445,7 @@ def generate_feature_files(feature_directory, args, full=False):
         'overlap',
         'overlap_clean',
         'bleu',
+        'bleu_clean'
         'headline_gram',
         'cross_gram',
         'cross_gram_clean'
@@ -398,6 +456,7 @@ def generate_feature_files(feature_directory, args, full=False):
         'JACCARD DISTANCE',
         'JACCARD DISTANCE CLEAN',
         'BLEU SCORE',
+        'BLEU SCORE CLEAN',
         'HEADLINE GRAM',
         'CROSS GRAM',
         'CROSS GRAM CLEAN'
@@ -438,6 +497,7 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
         args.overlap_features,
         args.overlap_features_clean,
         args.bleu_score_features,
+        args.bleu_score_features_clean,
         args.headline_gram_features,
         args.cross_gram_features,
         args.cross_gram_features_clean
@@ -448,6 +508,7 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
         'overlap',
         'overlap_clean',
         'bleu',
+        'bleu_clean',
         'headline_gram',
         'cross_gram',
         'cross_gram_clean'
