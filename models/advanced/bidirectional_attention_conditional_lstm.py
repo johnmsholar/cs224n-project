@@ -54,7 +54,7 @@ class Config(object):
         self.uniform_data_split = False  
 
 
-class Bidirectional_Conditonal_Encoding_LSTM_Model(Advanced_Model):
+class Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
     """ Conditional Encoding LSTM Model.
     """
     def get_model_name(self):
@@ -168,7 +168,7 @@ def main(debug=True):
         # Create and configure model
         print "Building model...",
         start = time.time()
-        model = Bidirectional_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
+        model = Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
         model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
