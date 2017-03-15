@@ -23,6 +23,8 @@ import pickle
 import string
 import nltk.stem.porter
 from nltk.corpus import stopwords
+from ast import literal_eval
+
 
 sys.path.insert(0, '../../')
 from models.util import plot_confusion_matrix, save_confusion_matrix
@@ -396,6 +398,66 @@ def generate_cross_gram_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_st
         all_cross_gram_features[(h_id, b_id)] = map_ids_to_feature_vector((h_id, b_id))
     return all_cross_gram_features
 
+def generate_cross_gram_count_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance):
+
+    # For a single (headline, article) pair, generate a single feature vector composed of all cross-ngrams
+    # matching the conditions described above
+    def single_pair_cross_ngram_features(headline, article, n):
+        CROSS_NGRAM_FEATURE_NAME = 'clean_cross_ngram_count'
+        result = {}
+        stemmer = nltk.stem.porter.PorterStemmer()
+        english_stopwords = stopwords.words('english')
+        if n == 1:
+            headline = filter(lambda x: x not in english_stopwords and
+                                        x not in string.punctuation, headline)
+            article = filter(lambda x: x not in english_stopwords and
+                                       x not in string.punctuation, headline)
+        if n == 2:
+            headline = filter(lambda x: x not in string.punctuation, headline)
+            article = filter(lambda x: x not in string.punctuation, article)
+        headline = [stemmer.stem(w) for w in headline]
+        article = [stemmer.stem(w) for w in article]
+        headline_pos = nltk.pos_tag(headline)
+        article_pos = nltk.pos_tag(article)
+        all_pos = headline_pos + article_pos
+        unique_pos_classes = set([token_pos[1] for token_pos in all_pos])
+        result = 0.0
+        for pos_class in unique_pos_classes:
+            headline_matches = [g for i, g in
+                                enumerate(nltk.ngrams(headline, n)) if
+                                headline_pos[i + n - 1][1] == pos_class]
+            article_matches = [g for i, g in enumerate(nltk.ngrams(article, n))
+                               if article_pos[i + n - 1][1] == pos_class]
+            for cross_gram in itertools.product(headline_matches,
+                                                article_matches):
+                result += 1.0
+        normalized_count = result / (len(headline) + len(article))
+        return {CROSS_NGRAM_FEATURE_NAME : normalized_count}
+
+    def map_ids_to_feature_vector(ids):
+        h_id, b_id = ids
+        headline = h_id_to_headline[h_id]
+        body = b_id_to_body[b_id]
+        unigram_features = single_pair_cross_ngram_features(headline, body, 1)
+        bigram_features = single_pair_cross_ngram_features(headline, body, 2)
+        gram_features = dict(unigram_features.items() + bigram_features.items())
+        return gram_features
+
+    all_cross_gram_features = {}
+    """
+    # Attempts to parallelize this process gave no efficiency boost
+    f = lambda k: (k, map_ids_to_feature_vector(k))
+    all_cross_gram_features = dict(map(f, h_id_b_id_to_stance.keys()))
+    """
+    num_pairs = len(h_id_b_id_to_stance)
+    for index, (h_id, b_id) in enumerate(h_id_b_id_to_stance):
+        if index % 100 == 0:
+            print(float(index) / num_pairs)
+        all_cross_gram_features[(h_id, b_id)] = map_ids_to_feature_vector(
+            (h_id, b_id))
+    return all_cross_gram_features
+
+
 def join_features_on_key(feature_maps, h_id_b_id_keys):
     all_keys_aggregated_features_dict = []
     for (h_id, b_id) in h_id_b_id_keys:
@@ -426,7 +488,8 @@ def generate_feature_files(feature_directory, args, full=False):
         generate_bleu_score_features_clean,
         generate_headline_gram_features,
         generate_cross_gram_features,
-        generate_cross_gram_features_clean
+        generate_cross_gram_features_clean,
+        generate_cross_gram_count_features
     ]
     feature_args = [
         args.tfidf_features,
@@ -437,7 +500,8 @@ def generate_feature_files(feature_directory, args, full=False):
         args.bleu_score_features_clean,
         args.headline_gram_features,
         args.cross_gram_features,
-        args.cross_gram_features_clean
+        args.cross_gram_features_clean,
+        args.cross_gram_features_count
     ]
     feature_names = [
         'tfidf',
@@ -445,10 +509,11 @@ def generate_feature_files(feature_directory, args, full=False):
         'overlap',
         'overlap_clean',
         'bleu',
-        'bleu_clean'
+        'bleu_clean',
         'headline_gram',
         'cross_gram',
-        'cross_gram_clean'
+        'cross_gram_clean',
+        'cross_gram_count'
     ]
     feature_messages = [
         'TFIDF',
@@ -459,7 +524,8 @@ def generate_feature_files(feature_directory, args, full=False):
         'BLEU SCORE CLEAN',
         'HEADLINE GRAM',
         'CROSS GRAM',
-        'CROSS GRAM CLEAN'
+        'CROSS GRAM CLEAN',
+        'CROSS GRAM COUNT'
     ]
 
     included_feature_maps = []
@@ -477,9 +543,16 @@ def generate_feature_files(feature_directory, args, full=False):
         print('{0} FEATURE VECTORS GENERATED').format(message)
     print('INDIVIDUAL FEATURE VECTORS GENERATED')
     for map, name in zip(included_feature_maps, included_feature_names):
-        filename = os.path.join(feature_directory, name + '.pkl')
+        filename = os.path.join(feature_directory, name + '.json')
         with open(filename, 'w+') as outfile:
-            pickle.dump(map, outfile)
+            json_data = prepare_json_format(map)
+            pickle.dump(json_data, outfile)
+
+def prepare_json_format(d):
+    return dict((str(key), value) for key, value in d.items())
+
+def retrieve_json_format(d):
+    return dict((literal_eval(key), value) for key, value in d.items())
 
 def generate_feature_matrices(feature_directory, feature_matrix_filename, output_class_filename, args, full=False):
     (_, _, b_id_to_body, h_id_to_headline, h_id_b_id_to_stance_superset,
@@ -500,18 +573,20 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
         args.bleu_score_features_clean,
         args.headline_gram_features,
         args.cross_gram_features,
-        args.cross_gram_features_clean
+        args.cross_gram_features_clean,
+        args.cross_gram_features_count
     ]
     feature_names = [
         'tfidf',
-        'tfidf_clean'
+        'tfidf_clean',
         'overlap',
         'overlap_clean',
         'bleu',
         'bleu_clean',
         'headline_gram',
         'cross_gram',
-        'cross_gram_clean'
+        'cross_gram_clean',
+        'cross_gram_count'
     ]
 
     if feature_directory:
@@ -519,9 +594,10 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
         for arg, name in zip(feature_args, feature_names):
             if not arg:
                 continue
-            filename = os.path.join(feature_directory, name + '.pkl')
+            filename = os.path.join(feature_directory, name + '.json')
             with open(filename, 'r') as infile:
-                feature_mapping = pickle.load(infile)
+                feature_mapping_json = pickle.load(infile)
+                feature_mapping = retrieve_json_format(feature_mapping_json)
                 feature_maps.append(feature_mapping)
         all_keys_aggregated_features_dict = join_features_on_key(feature_maps, h_id_b_id_keys)
         print('GLOBAL FEATURE VECTORS GENERATED')
