@@ -104,7 +104,7 @@ def main(args):
         generate_feature_files(args.feature_output, args, args.full)
     if args.feature_input and args.x_output and args.y_output:
         generate_feature_matrices(args.feature_input, args.x_output,
-                                  args.y_output, args, args.full)
+                                  args.y_output, args.full)
     if args.x_input and args.y_input:
         (X_indices, y, b_id_to_article, h_id_to_headline,
          h_id_b_id_to_stance, raw_article_id_to_b_id,

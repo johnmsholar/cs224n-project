@@ -20,6 +20,7 @@ import numpy as np
 import scipy
 import random
 import pickle
+import nltk.stem.porter
 
 sys.path.insert(0, '../../')
 from models.util import plot_confusion_matrix, save_confusion_matrix
@@ -177,6 +178,57 @@ def generate_headline_gram_features(b_id_to_body, h_id_to_headline, h_id_b_id_to
             pair_headline_gram_features[(HEADLINE_GRAM_FEATURE_NAME, gram)] = 1.0
         headline_gram_features[(h_id, b_id)] = pair_headline_gram_features
     return headline_gram_features
+
+# Cross-Gram features with porter stemming and stop word removal
+def generate_cross_gram_features_clean(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance):
+
+    # For a single (headline, article) pair, generate a single feature vector composed of all cross-ngrams
+    # matching the conditions described above
+    def single_pair_cross_ngram_features(headline, article, n):
+        CROSS_NGRAM_FEATURE_NAME = 'clean_cross_ngram'
+        headline_pos = nltk.pos_tag(headline)
+        article_pos = nltk.pos_tag(article)
+        all_pos = headline_pos + article_pos
+        unique_pos_classes = set([token_pos[1] for token_pos in all_pos])
+        result = {}
+        stemmer = nltk.stem.porter.PorterStemmer()
+        # Remove stop words first?
+        headline = [stemmer.stem(w) for w in headline]
+        article = [stemmer.stem(w) for w in article]
+        for pos_class in unique_pos_classes:
+
+            headline_matches = [g for i, g in
+                                enumerate(nltk.ngrams(headline, n)) if
+                                headline_pos[i + n - 1][1] == pos_class]
+            article_matches = [g for i, g in enumerate(nltk.ngrams(article, n))
+                               if article_pos[i + n - 1][1] == pos_class]
+            for cross_gram in itertools.product(headline_matches,
+                                                article_matches):
+                result[(CROSS_NGRAM_FEATURE_NAME, cross_gram)] = 1.0
+        return result
+
+    def map_ids_to_feature_vector(ids):
+        h_id, b_id = ids
+        headline = h_id_to_headline[h_id]
+        body = b_id_to_body[b_id]
+        unigram_features = single_pair_cross_ngram_features(headline, body, 1)
+        bigram_features = single_pair_cross_ngram_features(headline, body, 2)
+        gram_features = dict(unigram_features.items() + bigram_features.items())
+        return gram_features
+
+    all_cross_gram_features = {}
+    """
+    # Attempts to parallelize this process gave no efficiency boost
+    f = lambda k: (k, map_ids_to_feature_vector(k))
+    all_cross_gram_features = dict(map(f, h_id_b_id_to_stance.keys()))
+    """
+    num_pairs = len(h_id_b_id_to_stance)
+    for index, (h_id, b_id) in enumerate(h_id_b_id_to_stance):
+        if index % 100 == 0:
+            print(float(index) / num_pairs)
+        all_cross_gram_features[(h_id, b_id)] = map_ids_to_feature_vector(
+            (h_id, b_id))
+    return all_cross_gram_features
 
 # For every (headline, article) pair, Generate a feature vector containing indicator features for:
     #   1. Cross-Unigrams: every pair of words across the headline and article which share a POS tag
