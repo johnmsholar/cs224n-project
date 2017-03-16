@@ -1,4 +1,4 @@
-from attention_base_class import Attention_Base_Class, numpy_reference_compute_score
+from attention_base_class import Attention_Base_Class, numpy_reference_compute_score, numpy_generate_A_B_w
 import sys
 import numpy as np
 
@@ -31,7 +31,7 @@ class Full_Matching_Attention_Layer(Attention_Base_Class):
         def body(i, result):
             h_i = tf.expand_dims(a_perm[i, :, :], axis=0) # 1 x batch x hidden_size
             m_i = tf.expand_dims(self.compute_score(h_i, h_n, W), axis=0) # 1 x batch x perspectives (score returns 3D)
-            result = tf.concat([result, m_i], axis=0) # building batch x time_steps x persepctive
+            result = tf.concat([result, m_i], axis=0) # building time_steps x batch x persepctive
             return [i+1, result]
 
         batch_size = tf.shape(a_perm)[1]
@@ -59,24 +59,7 @@ if __name__ == "__main__":
         A_time_steps = 5
         B_time_steps = 6
 
-        A = np.zeros([batch_size, A_time_steps, hidden_size])
-        B = np.zeros([batch_size, B_time_steps, hidden_size])
-        W = np.zeros([hidden_size, num_perspectives])
-        counter = 0
-        for i in range(0, batch_size):
-            for j in range(0, A_time_steps):
-                for k in range(0, hidden_size):
-                    A[i,j,k] = counter
-                    counter += 1
-        for i in range(0, batch_size):
-            for j in range(0, B_time_steps):
-                for k in range(0, hidden_size):
-                    B[i,j,k] = counter
-                    counter += 1
-        for i in range(0, hidden_size):
-            for j in range(0, num_perspectives):
-                W[i,j] = counter
-                counter += 1
+        A, B, W  = numpy_generate_A_B_w(batch_size, hidden_size, A_time_steps, B_time_steps, num_perspectives)
         fma = Full_Matching_Attention_Layer(num_perspectives)
         score_fn = fma.compute_attention(tf.constant(A, dtype=tf.float32), tf.constant(B, dtype=tf.float32), tf.constant(W, dtype=tf.float32))
         score = session.run(score_fn)        
