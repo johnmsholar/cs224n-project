@@ -277,8 +277,8 @@ def cosine_similarity(a, b):
     b_norm = tf.norm(b, axis=0) # dim: batch x 1
     hidden_size = a.get_shape().as_list()[0]
     batch_size = tf.shape(a)[1]
-    a_expand = tf.reshape(a, shape=[batch_size, 1, hidden_size]) # batch, 1, hidden
-    b_expand = tf.reshape(b, shape=[batch_size, hidden_size, 1]) # bath, hidden, 1
+    a_expand = tf.expand_dims(tf.transpose(a), axis=1) # batch, 1, hidden
+    b_expand = tf.expand_dims(tf.transpose(b), axis=2) # bath, hidden, 1
     a_b_expand = tf.matmul(a_expand, b_expand) # batch x 1 x 1
     a_b = tf.reshape(a_b_expand, shape=[batch_size, 1]) #batch x 1
     a_b_norm = tf.norm(a_b, axis = 1) # batch x 1
