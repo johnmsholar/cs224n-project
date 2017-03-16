@@ -13,6 +13,7 @@ import sys
 import argparse
 import sklearn.naive_bayes
 import sklearn.model_selection
+import sklearn.svm
 import sklearn
 import nltk
 import itertools
@@ -558,10 +559,7 @@ def retrieve_json_format(d):
 def generate_feature_matrices(feature_directory, feature_matrix_filename, output_class_filename, args, full=False):
     (_, _, b_id_to_body, h_id_to_headline, h_id_b_id_to_stance_superset,
      raw_article_id_to_b_id, headline_to_h_id) = compute_splits()
-    if not full:
-        h_id_b_id_to_stance = dict(h_id_b_id_to_stance_superset.items()[:200])
-    else:
-        h_id_b_id_to_stance = h_id_b_id_to_stance_superset
+    h_id_b_id_to_stance = h_id_b_id_to_stance_superset
     h_id_b_id_keys = sorted(h_id_b_id_to_stance.keys())
     print('DATASET CONSTRUCTED')
 
@@ -614,9 +612,13 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
     else:
         raise Exception('--feature-input is required to load feature matrices')
 
-def train_model(X_train, y_train, model=None):
-    if model == 'mnb':
+def train_model(X_train, y_train, args):
+    if args.classifier == 'mnb':
         clf = sklearn.naive_bayes.MultinomialNB()
+    elif args.classifer == 'svm':
+        clf = sklearn.svm.SVC()
+    elif args.classifier == 'randomforest':
+        clf = sklearn.ensemble.RandomForestClassifier()
     else:
         clf = sklearn.naive_bayes.MultinomialNB()
     clf.fit(X_train, y_train)

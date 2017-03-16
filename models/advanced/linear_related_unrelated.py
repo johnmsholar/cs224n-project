@@ -14,6 +14,8 @@ import sys
 import argparse
 import scipy
 import sklearn
+import random
+import numpy as np
 
 sys.path.insert(0, '../')
 
@@ -117,9 +119,112 @@ def main(args):
         X_train, X_dev, X_test = create_feature_matrices(
             X_train_indices, X_test_indices, X_dev_indices,
             h_id_b_id_to_stance, X_vectors)
-        clf = train_model(X_train, y_train)
+        if args.uniform_split:
+            #y_train_matrix = dist_matrix(y_train)
+            #y_test_matrix = dist_matrix(y_test)
+            #y_dev_matrix = dist_matrix(y_dev)
+            X, y = ((X_train, X_dev, X_test),
+                    (y_train, y_dev, y_test))
+            X, y = produce_uniform_data_split(X, y)
+            ((X_train, X_dev, X_test),
+             (y_train, y_dev, y_test)) = X, y
+            #y_train = class_vector(y_train)
+            #y_test = class_vector(y_test)
+            #y_dev = class_vector(y_dev)
+        clf = train_model(X_train, y_train, args)
         evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test, y_dev,
                        args.cm_prefix)
+
+def produce_uniform_data_split(X, y):
+
+
+    X_train = X[0]
+    X_dev = X[1]
+    X_test = X[2]
+    y_train = y[0]
+    y_dev = y[1]
+    y_test = y[2]
+    target_variables = [
+        (X_train, y_train),
+        (X_dev, y_dev),
+        (X_test, y_test)
+    ]
+    result_X = []
+    result_y = []
+    for X, y in target_variables:
+        X = X.toarray()
+        X_new = X
+        y_new = y
+        for row in range(X.shape[0]):
+            if y[row] == 0:
+                new_row = X[row, :].reshape(1, X_new.shape[1])
+                X_new = np.concatenate([X_new, new_row], axis=0)
+                X_new = np.concatenate([X_new, new_row], axis=0)
+                y_new.append(0)
+                y_new.append(0)
+        result_X.append(X_new)
+        result_y.append(y_new)
+    X = tuple(result_X)
+    y = tuple(result_y)
+    return X, y
+
+"""
+def produce_uniform_data_split(X, y):
+    X_train = X[0]
+    X_dev = X[1]
+    X_test = X[2]
+    y_train = y[0]
+    y_dev = y[1]
+    y_test = y[2]
+
+    def get_dist(y_vector):
+        zero_count = len(filter(lambda v: v == 0, y))
+        one_count = len(filter(lambda v: v == 1, y))
+        return [zero_count, one_count]
+
+    train_dist = get_dist(y_train)
+    dev_dist = get_dist(y_dev)
+    test_dist = get_dist(y_test)
+    train_count = min(train_dist)
+    dev_count = min(dev_dist)
+    test_count = min(test_dist)
+
+    target_variables = [
+        (X_train, y_train, train_count),
+        (X_dev, y_dev, dev_count),
+        (X_test, y_test, test_count)
+    ]
+    finalized_variables = []
+    for X, y, count in target_variables:
+        dist = get_dist(y)
+        new_X, new_y = None, None
+        for i in range(2):
+            rows_in_class = [index for index in range(y.shape[0]) if y[index] == i]
+
+            rows_in_class = (y[:, i] == 1)
+            num_rows_in_class = np.sum(rows_in_class.astype(int))
+
+            X_h_seq_lengths = [l for i, l in enumerate(X[2]) if rows_in_class[i]]
+            X_a_seq_lengths = [l for i, l in enumerate(X[3]) if rows_in_class[i]]
+            X_local = (X[0][rows_in_class, :], X[1][rows_in_class, :], X_h_seq_lengths, X_a_seq_lengths)
+            y_local = y[rows_in_class, :]
+
+            random_indices = random.sample(range(num_rows_in_class), int(count))
+            X_local_h_seq_lengths = [l for i, l in enumerate(X_local[2]) if i in random_indices]
+            X_local_a_seq_lengths = [l for i, l in enumerate(X_local[3]) if i in random_indices]
+            X_local = (X_local[0][random_indices, :], X_local[1][random_indices, :], X_local_h_seq_lengths, X_local_a_seq_lengths)
+            y_local = y_local[random_indices, :]
+
+            if new_X is None and new_y is None:
+                new_X = X_local
+                new_y = y_local
+            else:
+                new_X = (np.concatenate([new_X[0], X_local[0]]), np.concatenate([new_X[1], X_local[1]]), new_X[2] + X_local[2], new_X[3] + X_local[3])
+                new_y = np.concatenate([new_y, y_local])
+        finalized_variables.append((new_X, new_y))
+    (X_train, y_train), (X_dev, y_dev), (X_test, y_test) = finalized_variables
+    # need to shuffle
+"""
 
 def create_feature_matrices(X_train_indices, X_test_indices, X_dev_indices,
                             h_id_b_id_to_stance, X_vectors):
@@ -136,6 +241,8 @@ def create_feature_matrices(X_train_indices, X_test_indices, X_dev_indices,
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and Test Linear Model')
     parser.add_argument('--full', action='store_true')
+    parser.add_argument('--uniform-split', action = 'store_true')
+    parser.add_argument('--classifier')
     parser.add_argument('--feature-output')
     parser.add_argument('--feature-input')
     parser.add_argument('--x-output')
