@@ -85,54 +85,42 @@ class Attention_Base_Class(object):
 
         return output
 
+def numpy_reference_compute_score(v1, v2, W, batch_size, hidden_size, num_perspectives):
+    result = np.zeros([batch_size,num_perspectives])
+    for i in range(0, num_perspectives):
+        w_sing = W[:, i] # hidden x 1
+        v1_wi = np.transpose(v1*w_sing)
+        v2_wi = np.transpose(v2*w_sing)
+        for j in range(0, batch_size):
+            result[j, i] = 1-sk_cosine(v1_wi[:, j], v2_wi[:, j])
+    return result        
+
 if __name__ == "__main__":
     with tf.Session() as session:
-        # batch_size: 3
-        # hidden_size: 4
-        # perspectives: 2
-        v1 = tf.constant([[
-            [1,2,3,4],
+        batch_size = 3
+        hidden_size = 4
+        num_perspectives = 2
+
+        v1 = [[1,2,3,4],
             [5,6,7,8],
-            [9,10,11,12]]], dtype=tf.float32) # 1 x batch x hidden
-        v2 = tf.constant([[
-            [1,2,10,4],
+            [9,10,11,12]]
+        v2 = [[1,2,10,4],
             [5,6,7,1],
-            [9,13,11,12]]], dtype=tf.float32) # 1 x batch x hidden
-        W = tf.constant([
-            [1,2],
+            [9,13,11,12]]
+        W = [[1,2],
             [3,4],
             [5,6],
-            [7,8]], dtype=tf.float32)
-        abc = Attention_Base_Class(2)
-        score_fn = abc.compute_score(v1, v2, W)
+            [7,8]]
+
+        v1_tf = tf.constant([v1], dtype=tf.float32) # 1 x batch x hidden
+        v2_tf = tf.constant([v2], dtype=tf.float32) # 1 x batch x hidden
+        W_tf = tf.constant(W, dtype=tf.float32)
+        abc = Attention_Base_Class(num_perspectives)
+        score_fn = abc.compute_score(v1_tf, v2_tf, W_tf)
         score = session.run(score_fn)
         # checking our work:
-        v1_w1 = np.array([
-            [1, 5, 9],
-            [6, 18, 30],
-            [15, 35, 55],
-            [28, 56, 84]])
-
-        v1_w2 = np.array([
-            [2, 10, 18],
-            [8, 24, 40],
-            [18, 42, 66],
-            [32, 64, 96]])
-
-        v2_w1 = np.array([
-            [1, 5, 9],
-            [6, 18, 39],
-            [50, 35, 55],
-            [28, 7, 84]])
-
-        v2_w2 = np.array([
-            [2, 10, 18],
-            [8, 24, 52],
-            [66, 42, 66],
-            [32, 8, 96]])
-
-        result = np.zeros([3,2])
-        for i in range(0, 3):
-            result[i, 0] = 1-sk_cosine(v1_w1[:, i], v2_w1[:, i])
-            result[i, 1] = 1-sk_cosine(v1_w2[:, i], v2_w2[:, i])
-        assert score.all() == result.all()
+        v1_np = np.array(v1) # 1 x batch x hidden
+        v2_np = np.array(v2) # 1 x batch x hidden
+        W_np = np.array(W)
+        ref_score = numpy_reference_compute_score(v1_np, v2_np, W_np, batch_size, hidden_size, num_perspectives)
+        assert ref_score.all() == score.all()
