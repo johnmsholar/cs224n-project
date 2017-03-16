@@ -1,4 +1,4 @@
-from attention_base_class import Attention_Base_Class, numpy_reference_compute_score, numpy_generate_A_B_w
+from attention_base_class import Attention_Base_Class, numpy_reference_compute_score, numpy_generate_A_B_w, numpy_check_equality
 import sys
 import numpy as np
 
@@ -27,12 +27,12 @@ class Full_Matching_Attention_Layer(Attention_Base_Class):
         h_n =  tf.transpose(tf.expand_dims(b[:, -1, :], axis=0), perm=[1, 0, 2])
 
         idx = tf.constant(0) # current time step index
-        cond = lambda i, result: i < a_time_steps
+        cond = lambda i, result: tf.less(i, a_time_steps)
         def body(i, result):
             h_i = tf.expand_dims(a_perm[i, :, :], axis=0) # 1 x batch x hidden_size
             m_i = tf.expand_dims(self.compute_score(h_i, h_n, W), axis=0) # 1 x batch x perspectives (score returns 3D)
-            result = tf.concat([result, m_i], axis=0) # building time_steps x batch x persepctive
-            return [i+1, result]
+            result = tf.concat([result, m_i], axis=0) # building batch x time_steps x persepctive
+            return [tf.add(i,1), result]
 
         batch_size = tf.shape(a_perm)[1]
         shape_invariants = [idx.get_shape(), tf.TensorShape([None, None, self.num_perspectives])]
@@ -43,7 +43,7 @@ class Full_Matching_Attention_Layer(Attention_Base_Class):
 def numpy_reference_fma(A, B, W, batch_size, A_time_steps, hidden_size, num_perspectives):
     result = np.zeros([A_time_steps, batch_size, num_perspectives])
     for i in range(0, A_time_steps):
-        a_slice = np.expand_dims(A[:, 1, :], axis=1)
+        a_slice = np.expand_dims(A[:, i, :], axis=1)
         b_slice = np.expand_dims(B[:, -1, :], axis=1)
         h_i = np.transpose(a_slice, (1, 0, 2))
         h_n = np.transpose(b_slice, (1, 0, 2))
@@ -62,6 +62,6 @@ if __name__ == "__main__":
         A, B, W  = numpy_generate_A_B_w(batch_size, hidden_size, A_time_steps, B_time_steps, num_perspectives)
         fma = Full_Matching_Attention_Layer(num_perspectives)
         score_fn = fma.compute_attention(tf.constant(A, dtype=tf.float32), tf.constant(B, dtype=tf.float32), tf.constant(W, dtype=tf.float32))
-        score = session.run(score_fn)        
+        score = session.run(score_fn)   
         reference = numpy_reference_fma(A, B, W, batch_size, A_time_steps, hidden_size, num_perspectives)
-        assert score.all() == reference.all()
+        assert numpy_check_equality(score, reference, 1e-7)
