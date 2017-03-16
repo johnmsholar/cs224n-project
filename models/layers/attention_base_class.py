@@ -38,7 +38,6 @@ class Attention_Base_Class(object):
             return [tf.add(i, 1), result]
         #shape invariants
         shape_invariants = [idx.get_shape(), tf.TensorShape([None, None])]
-        print "about to run"
         loop_perspectives = tf.while_loop(cond, body, [idx, result_init], shape_invariants = shape_invariants)
         return loop_perspectives[1][:, 1:]
 
