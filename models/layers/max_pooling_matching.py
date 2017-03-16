@@ -7,7 +7,7 @@ import tensorflow as tf
 from util import multiply_3d_by_2d
 
 
-class Full_Matching_Attention_Layer(Attention_Base_Class):
+class Max_Pooling_Attention_Layer(Attention_Base_Class):
     """
     """
     def compute_attention(self, a, b, W):
@@ -30,15 +30,38 @@ class Full_Matching_Attention_Layer(Attention_Base_Class):
         cond = lambda i, result: tf.less(i, a_time_steps)
         def body(i, result):
             h_i = tf.expand_dims(a_perm[i, :, :], axis=0) # 1 x batch x hidden_size
-            m_i = tf.expand_dims(self.compute_score(h_i, h_n, W), axis=0) # 1 x batch x perspectives (score returns 3D)
+            m_i = self.compute_max_elem_score(h_i, b, W) # 1 x batch x perspectives
             result = tf.concat([result, m_i], axis=0) # building batch x time_steps x persepctive
-            return [tf.add(i,1), result]
+            return [i+1, result]
 
         batch_size = tf.shape(a_perm)[1]
         shape_invariants = [idx.get_shape(), tf.TensorShape([None, None, self.num_perspectives])]
         result = tf.zeros(shape=[1, batch_size, self.num_perspectives])
         result = tf.while_loop(cond, body, [idx, result], shape_invariants=shape_invariants) # A_time_steps x batch x perspectives
         return tf.transpose(result[1][1:, :, :], perm=[1, 0, 2]) # batch x time_steps x perspective
+
+    def compute_max_elem_score(self, h_i, B, W, ):
+        # Args:
+        #   h_i is [1 x batch x hidden_size]
+        #   B is [B_time_steps, batch x hidden_size]
+        #   W is [hidden_size x num_perspectives]
+        # Returns:
+        #   1 x batch x perspectives which is max elem score over the scores on B
+        b_time_steps = B.get_shape()[0]
+        cond = lambda j, result: tf.less(i, b_time_steps)
+        def body(j, result):
+            h_j = tf.expand_dims(B[j, :, :], axis=0) # 1 x batch x hidden_size
+            m_i_j = tf.expand_dims(self.compute_score(h_i, h_j, W), axis=0) # 1 x batch x perspectives
+            result = tf.concat([result, m_i_j], axis=0)
+            return [tf.add(j,1), result]
+        batch_size = tf.shape(h_i)[1]
+        jdx = tf.constant(0) # current j time step index
+        shape_invariants = [jdx.get_shape(), tf.TensorShape([None, None, self.num_perspectives])]
+        result = tf.zeros(shape=[1, batch_size, self.num_perspectives])
+        result = tf.while_loop(cond, body, [jdx, result], shape_invariants=shape_invariants) # B_time_steps x batch x perspectives
+        result = result[1][1:, :, :] # B_time_steps x batch x perspective
+        result = tf.reduce_max(result, axis=0) # take elementwise maxx
+        return result # 1 x batch x perspective
 
 def numpy_reference_fma(A, B, W, batch_size, A_time_steps, hidden_size, num_perspectives):
     result = np.zeros([A_time_steps, batch_size, num_perspectives])
@@ -77,7 +100,7 @@ if __name__ == "__main__":
             for j in range(0, num_perspectives):
                 W[i,j] = counter
                 counter += 1
-        fma = Full_Matching_Attention_Layer(num_perspectives)
+        fma = Max_Pooling_Attention_Layer(num_perspectives)
         score_fn = fma.compute_attention(tf.constant(A, dtype=tf.float32), tf.constant(B, dtype=tf.float32), tf.constant(W, dtype=tf.float32))
         score = session.run(score_fn)        
         reference = numpy_reference_fma(A, B, W, batch_size, A_time_steps, hidden_size, num_perspectives)
