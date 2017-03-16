@@ -1,8 +1,9 @@
 import sys
+import numpy as np
 sys.path.insert(0, '../')
 import tensorflow as tf
 from util import multiply_3d_by_2d, cosine_similarity
-from sklearn.metrics.pairwise import cosine_similarity as sk_cosine_similarity
+from scipy.spatial.distance import cosine as sk_cosine
 
 class Attention_Base_Class(object):
     """
@@ -20,32 +21,26 @@ class Attention_Base_Class(object):
             score: batch x perspectives
         """
         hidden_size = v1.get_shape().as_list()[2]
-        batch_size = tf.shape(v1)[1]
-        # assert hidden_size == v2.get_shape()[2]
-        print v1.get_shape()
-        print v2.get_shape()
-        # assert batch_size == tf.shape(v2)[1]
-        v1_collapse = tf.reshape(v1, shape=[hidden_size, batch_size]) # hidden x batch
-        v2_collapse = tf.reshape(v2, shape=[hidden_size, batch_size]) # hidden x batch
-        result = []
+        batch_size = v1.get_shape().as_list()[1]
+        # batch_size = tf.shape(v1)[1]
+        v1_collapse = tf.transpose(tf.reshape(v1, shape=[batch_size, hidden_size])) # hidden x batch
+        v2_collapse = tf.transpose(tf.reshape(v2, shape=[batch_size, hidden_size])) # hidden x batch
+        result_init = tf.zeros(shape=[batch_size, 1])
         idx = tf.constant(0)
 
-        cond = lambda i: tf.less(i, self.num_perspectives)
-        def body(i):
-            print "run"
+        cond = lambda i, result: tf.less(i, self.num_perspectives)
+        def body(i, result):
             W_i = tf.expand_dims(W[:, i], axis=1) # hidden x 1
             v_1_w_i = tf.multiply(v1_collapse, W_i) # hidden x batch
             v_2_w_i = tf.multiply(v2_collapse, W_i) # hidden x batch
-            result.append(cosine_similarity(v_1_w_i, v_2_w_i)) # batch x 1
-            return tf.add(i, 1)
+            cos_sim = cosine_similarity(v_1_w_i, v_2_w_i) # batch x 1
+            result = tf.concat([result, cos_sim], axis=1)
+            return [tf.add(i, 1), result]
         #shape invariants
-        shape_invariants = [idx.get_shape()]
+        shape_invariants = [idx.get_shape(), tf.TensorShape([None, None])]
         print "about to run"
-        loop_perspectives = tf.while_loop(cond, body, [idx], shape_invariants = shape_invariants)
-        print "done_running"
-        result = tf.stack(result, axis=1)
-        print "done stacking"
-        return result
+        loop_perspectives = tf.while_loop(cond, body, [idx, result_init], shape_invariants = shape_invariants)
+        return loop_perspectives[1][:, 1:]
 
     def compute_attention(self, a, b, W):
         """
@@ -109,8 +104,8 @@ if __name__ == "__main__":
             [5,6],
             [7,8]], dtype=tf.float32)
         abc = Attention_Base_Class(2)
-        score = session.run(abc.compute_score(v1, v2, W))
-        print "out of session"
+        score_fn = abc.compute_score(v1, v2, W)
+        score = session.run(score_fn)
         # checking our work:
         v1_w1 = np.array([
             [1, 5, 9],
@@ -136,10 +131,8 @@ if __name__ == "__main__":
             [66, 42, 66],
             [32, 8, 96]])
 
-        print "computing similarities"
-        cos_sim_w1 = sk_cosine_similarity(v1_w1, v2_w1)
-    # cos_sim_w2 = sk_cosine_similarity(v1_w2, v2_w2)
-    # full = np.concat(cos_sim_w1, cos_sim_w2, axis=1)
-    # print score
-    # print full
-    # assert score == full
+        result = np.zeros([3,2])
+        for i in range(0, 3):
+            result[i, 0] = 1-sk_cosine(v1_w1[:, i], v2_w1[:, i])
+            result[i, 1] = 1-sk_cosine(v1_w2[:, i], v2_w2[:, i])
+        assert score.all() == result.all()
