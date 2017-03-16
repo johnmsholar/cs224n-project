@@ -1,4 +1,4 @@
-from attention_base_class import Attention_Base_Class, numpy_reference_compute_score, numpy_generate_A_B_w
+from attention_base_class import Attention_Base_Class, numpy_reference_compute_score, numpy_generate_A_B_w, numpy_check_equality
 import sys
 import numpy as np
 
@@ -43,7 +43,7 @@ class Full_Matching_Attention_Layer(Attention_Base_Class):
 def numpy_reference_fma(A, B, W, batch_size, A_time_steps, hidden_size, num_perspectives):
     result = np.zeros([A_time_steps, batch_size, num_perspectives])
     for i in range(0, A_time_steps):
-        a_slice = np.expand_dims(A[:, 1, :], axis=1)
+        a_slice = np.expand_dims(A[:, i, :], axis=1)
         b_slice = np.expand_dims(B[:, -1, :], axis=1)
         h_i = np.transpose(a_slice, (1, 0, 2))
         h_n = np.transpose(b_slice, (1, 0, 2))
@@ -62,6 +62,6 @@ if __name__ == "__main__":
         A, B, W  = numpy_generate_A_B_w(batch_size, hidden_size, A_time_steps, B_time_steps, num_perspectives)
         fma = Full_Matching_Attention_Layer(num_perspectives)
         score_fn = fma.compute_attention(tf.constant(A, dtype=tf.float32), tf.constant(B, dtype=tf.float32), tf.constant(W, dtype=tf.float32))
-        score = session.run(score_fn)        
+        score = session.run(score_fn)   
         reference = numpy_reference_fma(A, B, W, batch_size, A_time_steps, hidden_size, num_perspectives)
-        assert score.all() == reference.all()
+        assert numpy_check_equality(score, reference, 1e-7)

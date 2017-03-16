@@ -115,6 +115,11 @@ def numpy_generate_A_B_w(batch_size, hidden_size, A_time_steps, B_time_steps, nu
             counter += 1
     return A, B, W
 
+def numpy_check_equality(score, actual, threshold):
+    diff = np.absolute(score - actual)
+    fulfill_thresh = np.less_equal(diff, threshold)
+    return np.all(fulfill_thresh)
+
 if __name__ == "__main__":
     with tf.Session() as session:
         batch_size = 3
@@ -143,4 +148,4 @@ if __name__ == "__main__":
         v2_np = np.array(v2) # 1 x batch x hidden
         W_np = np.array(W)
         ref_score = numpy_reference_compute_score(v1_np, v2_np, W_np, batch_size, hidden_size, num_perspectives)
-        assert ref_score.all() == score.all()
+        assert numpy_check_equality(score, ref_score, 1E-7)
