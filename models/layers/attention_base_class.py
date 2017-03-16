@@ -18,7 +18,7 @@ class Attention_Base_Class(object):
             v2: 1 x batch_size x hidden_size
             W: Scoring Weight Matrix [hidden_size x num_perspectives]
         Returns:
-            score: batch x perspectives
+            score: 1 x batch x perspectives
         """
         hidden_size = v1.get_shape().as_list()[2]
         batch_size = v1.get_shape().as_list()[1]
@@ -93,6 +93,27 @@ def numpy_reference_compute_score(v1, v2, W, batch_size, hidden_size, num_perspe
         for j in range(0, batch_size):
             result[j, i] = 1-sk_cosine(v1_wi[:, j], v2_wi[:, j])
     return result        
+
+def numpy_generate_A_B_w(batch_size, hidden_size, A_time_steps, B_time_steps, num_perspectives):
+    A = np.zeros([batch_size, A_time_steps, hidden_size])
+    B = np.zeros([batch_size, B_time_steps, hidden_size])
+    W = np.zeros([hidden_size, num_perspectives])
+    counter = 0
+    for i in range(0, batch_size):
+        for j in range(0, A_time_steps):
+            for k in range(0, hidden_size):
+                A[i,j,k] = counter
+                counter += 1
+    for i in range(0, batch_size):
+        for j in range(0, B_time_steps):
+            for k in range(0, hidden_size):
+                B[i,j,k] = counter
+                counter += 1
+    for i in range(0, hidden_size):
+        for j in range(0, num_perspectives):
+            W[i,j] = counter
+            counter += 1
+    return A, B, W
 
 if __name__ == "__main__":
     with tf.Session() as session:
