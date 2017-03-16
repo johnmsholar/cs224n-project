@@ -64,8 +64,9 @@ class Attentive_Matching_Layer(Attention_Base_Class):
             
             result = tf.concat([result, h_i_mean], axis=0)
             return [j+1, result]
+
         result = tf.while_loop(cond, body, [idx, result_init])
-        result = result[1,:,:]
+        result = result[1][1,:,:]
         return result    
 
     def compute_attention(self, a, b, W):
@@ -90,38 +91,23 @@ class Attentive_Matching_Layer(Attention_Base_Class):
         def body(i, result):
             h_i = a[i, :, :] # 1 x hidden_size x batch
             alpha = compute_alpha_embeddings(h_i, b) # batch x B_time_steps
-            h_i_mean = compute_h_i_mean(alpha, b) # B_time_steps x hidden_size x batch_size
+            h_i_mean = compute_h_i_mean(alpha, b) # 1 x hidden_size x batch_size
+            m_i = tf.expand_dims(self.compute_attention_tensor(h_i, h_i_mean, W, a_time_steps), axis=0) # 1 x batch x perspectives
+            result = tf.concat([result, m_i], axis=0) # building time_steps x batch x persspective
 
-            attention_computation_idx = tf.constant(0) # current time step index
-            cond = lambda attention_computation_idx, result: attention_computation_idx < a_time_steps
-            def body(attention_computation_idx, result):
-                h_i = a_perm[i, :, :] # 1 x batch x hidden_size
-                m_i = score(h_i, h_n, W) # 1 x batch x perspectives (score returns 3D)
-                result = tf.concat([result, m_i], axis=0) # building batch x time_steps x persepctive
-                return [i+1, result]
-
-            batch_size = tf.shape(a_perm)[1]
-            result = tf.zeros(shape=[1, batch_size, self.num_perspectives])
-            tf.while_loop(cond, body, [idx, result])
-            result = result[1:, :, :]    
-
-
-
-
-
-        # h_n is [batch x hidden_size]
-        h_n =  b[:, -1, :]
 
         idx = tf.constant(0) # current time step index
         cond = lambda i, result: i < a_time_steps
         def body(i, result):
-            h_i = a_perm[i, :, :] # 1 x batch x hidden_size
-            m_i = score(h_i, h_n, W) # 1 x batch x perspectives (score returns 3D)
-            result = tf.concat([result, m_i], axis=0) # building batch x time_steps x persepctive
+            h_i = tf.expand_dims(a_perm[i, :, :], axis=0) # 1 x batch x hidden_size
+            m_i = tf.expand_dims(self.compute_score(h_i, h_n, W), axis=0) # 1 x batch x perspectives (score returns 3D)
+            result = tf.concat([result, m_i], axis=0) # building time_steps x batch x persepctive
             return [i+1, result]
 
-        batch_size = tf.shape(a_perm)[1]
+        batch_size = tf.shape(a_perm)[2]
+        shape_invariants = [idx.get_shape(), tf.TensorShape([None, None, self.num_perspectives])]
         result = tf.zeros(shape=[1, batch_size, self.num_perspectives])
-        tf.while_loop(cond, body, [idx, result])
-        result = result[1:, :, :]    
+        result = tf.while_loop(cond, body, [idx, result], shape_invariants=shape_invariants) # A_time_steps x batch x perspectives
+        return tf.transpose(result[1][1:, :, :], perm=[1, 0, 2]) # batch x A_time_steps x perspective
+
 
