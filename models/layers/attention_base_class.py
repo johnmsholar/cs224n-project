@@ -1,7 +1,9 @@
 import sys
+import numpy as np
 sys.path.insert(0, '../')
 import tensorflow as tf
-from util import multiply_3d_by_2d
+from util import multiply_3d_by_2d, cosine_similarity
+from scipy.spatial.distance import cosine as sk_cosine
 
 class Attention_Base_Class(object):
     """
@@ -12,25 +14,32 @@ class Attention_Base_Class(object):
     def compute_score(self, v1, v2, W):
         """
         Args:
-            v1: 1 xx_ batch_size x hidden_size
+            v1: 1 x batch_size x hidden_size
             v2: 1 x batch_size x hidden_size
             W: Scoring Weight Matrix [hidden_size x num_perspectives]
         Returns:
-            score:
+            score: 1 x batch x perspectives
         """
-        hidden_size = v1.get_shape()[2]
-        assert hidden_size == v2.get_shape()[2]
-        v1_collapse = tf.reshape(v1, shape=[hidden_size, -1]) # hidden x batch
-        v2_collapse = tf.reshape(v2, shape=[hidden_size, -1]) # hidden x batch
-
-
+        hidden_size = v1.get_shape().as_list()[2]
+        batch_size = v1.get_shape().as_list()[1]
+        # batch_size = tf.shape(v1)[1]
+        v1_collapse = tf.transpose(tf.reshape(v1, shape=[batch_size, hidden_size])) # hidden x batch
+        v2_collapse = tf.transpose(tf.reshape(v2, shape=[batch_size, hidden_size])) # hidden x batch
+        result_init = tf.zeros(shape=[batch_size, 1])
         idx = tf.constant(0)
-        cond = lambda i, result1, result2: i<self.config.num_perspectives
-        def body(i, result1, result2):
-            W_i = W[:, i] # hidden x 1
+
+        cond = lambda i, result: tf.less(i, self.num_perspectives)
+        def body(i, result):
+            W_i = tf.expand_dims(W[:, i], axis=1) # hidden x 1
             v_1_w_i = tf.multiply(v1_collapse, W_i) # hidden x batch
             v_2_w_i = tf.multiply(v2_collapse, W_i) # hidden x batch
-            cos_sim = tf.constant(cosine_similarity(v_1_w_i, v_2_w_i)) # scalar
+            cos_sim = cosine_similarity(v_1_w_i, v_2_w_i) # batch x 1
+            result = tf.concat([result, cos_sim], axis=1)
+            return [tf.add(i, 1), result]
+        #shape invariants
+        shape_invariants = [idx.get_shape(), tf.TensorShape([None, None])]
+        loop_perspectives = tf.while_loop(cond, body, [idx, result_init], shape_invariants = shape_invariants)
+        return loop_perspectives[1][:, 1:]
 
     def compute_attention(self, a, b, W):
         """
@@ -74,3 +83,69 @@ class Attention_Base_Class(object):
             output = tf.concat([fw_attention, bw_attention], 2)
 
         return output
+
+def numpy_reference_compute_score(v1, v2, W, batch_size, hidden_size, num_perspectives):
+    result = np.zeros([batch_size,num_perspectives])
+    for i in range(0, num_perspectives):
+        w_sing = W[:, i] # hidden x 1
+        v1_wi = np.transpose(v1*w_sing)
+        v2_wi = np.transpose(v2*w_sing)
+        for j in range(0, batch_size):
+            result[j, i] = 1-sk_cosine(v1_wi[:, j], v2_wi[:, j])
+    return result        
+
+def numpy_generate_A_B_w(batch_size, hidden_size, A_time_steps, B_time_steps, num_perspectives):
+    A = np.zeros([batch_size, A_time_steps, hidden_size])
+    B = np.zeros([batch_size, B_time_steps, hidden_size])
+    W = np.zeros([hidden_size, num_perspectives])
+    counter = 0
+    for i in range(0, batch_size):
+        for j in range(0, A_time_steps):
+            for k in range(0, hidden_size):
+                A[i,j,k] = counter
+                counter += 1
+    for i in range(0, batch_size):
+        for j in range(0, B_time_steps):
+            for k in range(0, hidden_size):
+                B[i,j,k] = counter
+                counter += 1
+    for i in range(0, hidden_size):
+        for j in range(0, num_perspectives):
+            W[i,j] = counter
+            counter += 1
+    return A, B, W
+
+def numpy_check_equality(score, actual, threshold):
+    diff = np.absolute(score - actual)
+    fulfill_thresh = np.less_equal(diff, threshold)
+    return np.all(fulfill_thresh)
+
+if __name__ == "__main__":
+    with tf.Session() as session:
+        batch_size = 3
+        hidden_size = 4
+        num_perspectives = 2
+
+        v1 = [[1,2,3,4],
+            [5,6,7,8],
+            [9,10,11,12]]
+        v2 = [[1,2,10,4],
+            [5,6,7,1],
+            [9,13,11,12]]
+        W = [[1,2],
+            [3,4],
+            [5,6],
+            [7,8]]
+
+        v1_tf = tf.constant([v1], dtype=tf.float32) # 1 x batch x hidden
+        v2_tf = tf.constant([v2], dtype=tf.float32) # 1 x batch x hidden
+        W_tf = tf.constant(W, dtype=tf.float32)
+        abc = Attention_Base_Class(num_perspectives)
+        score_fn = abc.compute_score(v1_tf, v2_tf, W_tf)
+        score = session.run(score_fn)
+        # checking our work:
+        v1_np = np.array(v1) # 1 x batch x hidden
+        v2_np = np.array(v2) # 1 x batch x hidden
+        W_np = np.array(W)
+        ref_score = numpy_reference_compute_score(v1_np, v2_np, W_np, batch_size, hidden_size, num_perspectives)
+        assert numpy_check_equality(score, ref_score, 1E-7)
