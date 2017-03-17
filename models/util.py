@@ -271,13 +271,15 @@ def parse_args():
 # adapted from tensorflow's word2vec implementation
 # Args:
 #   a, b: tensor of hidden x batch
+# Returns: batch x 1 tensor that is cosine similarity between a and b over the batch sizes
 def cosine_similarity(a, b):
-    a_norm = tf.norm(a, axis=1)
-    b_norm = tf.norm(b, axis=1)
-    hidden_size = a.get_shape()[0]
-    a_expand = tf.reshape(a, shape=[-1, 1, hidden_size]) # batch, 1, hidden
-    b_expand = tf.reshape(b, shape=[-1, hidden_size, 1]) # bath, hidden, 1
-    a_b_expand = tf.matmul(a_expand, b_expand)
-    a_b = tf.reshape(a_b_expand, shape=[-1])
-    a_b_norm = tf.norm(a_b)
-    return a_b_norm/(a_norm*b_norm)
+    a_norm = tf.norm(a, axis=0) # dim: batch x 1
+    b_norm = tf.norm(b, axis=0) # dim: batch x 1
+    hidden_size = a.get_shape().as_list()[0]
+    batch_size = tf.shape(a)[1]
+    a_expand = tf.expand_dims(tf.transpose(a), axis=1) # batch, 1, hidden
+    b_expand = tf.expand_dims(tf.transpose(b), axis=2) # bath, hidden, 1
+    a_b_expand = tf.matmul(a_expand, b_expand) # batch x 1 x 1
+    a_b = tf.reshape(a_b_expand, shape=[batch_size, 1]) #batch x 1
+    a_b_norm = tf.norm(a_b, axis = 1) # batch x 1
+    return tf.expand_dims(a_b_norm/(a_norm*b_norm), axis=1) # batch x 1

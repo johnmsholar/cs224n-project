@@ -13,7 +13,12 @@ John Sholar <jmsholar@cs.stanford.edu>
 import sys
 import argparse
 import scipy
+import os
 import sklearn
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+
 
 sys.path.insert(0, '../')
 
@@ -25,8 +30,6 @@ from baselines.linear_baseline import generate_feature_files, generate_feature_m
 from models.util import save_confusion_matrix
 
 from models.fnc1_utils.score import report_score
-
-from models.advanced_model import produce_uniform_data_split
 
 
 def convert_to_two_class_problem(y_train, y_test, y_dev):
@@ -107,7 +110,7 @@ def main(args):
     if args.feature_input and args.x_output and args.y_output:
         generate_feature_matrices(args.feature_input, args.x_output,
                                   args.y_output, args, args.full)
-    if args.x_input and args.y_input:
+    if args.eval and args.x_input and args.y_input:
         (X_indices, y, b_id_to_article, h_id_to_headline,
          h_id_b_id_to_stance, raw_article_id_to_b_id,
          headline_to_h_id) = compute_splits()
@@ -120,12 +123,53 @@ def main(args):
             X_train_indices, X_test_indices, X_dev_indices,
             h_id_b_id_to_stance, X_vectors)
         if args.uniform_split:
-            X, y = (X_train, X_dev, X_test), (y_train, y_dev, y_test)
+            #y_train_matrix = dist_matrix(y_train)
+            #y_test_matrix = dist_matrix(y_test)
+            #y_dev_matrix = dist_matrix(y_dev)
+            X, y = ((X_train, X_dev, X_test),
+                    (y_train, y_dev, y_test))
             X, y = produce_uniform_data_split(X, y)
-            (X_train, X_dev, X_test), (y_train, y_dev, y_test) = X, y
-        clf = train_model(X_train, y_train)
+            ((X_train, X_dev, X_test),
+             (y_train, y_dev, y_test)) = X, y
+            #y_train = class_vector(y_train)
+            #y_test = class_vector(y_test)
+            #y_dev = class_vector(y_dev)
+        clf = train_model(X_train, y_train, args)
         evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test, y_dev,
                        args.cm_prefix)
+    if args.plot_feature_dist:
+        plot_feature_distribution(args)
+
+def produce_uniform_data_split(X, y):
+    X_train = X[0]
+    X_dev = X[1]
+    X_test = X[2]
+    y_train = y[0]
+    y_dev = y[1]
+    y_test = y[2]
+    target_variables = [
+        (X_train, y_train),
+        (X_dev, y_dev),
+        (X_test, y_test)
+    ]
+    result_X = []
+    result_y = []
+    for X, y in target_variables:
+        X = X.toarray()
+        X_new = X
+        y_new = y
+        for row in range(X.shape[0]):
+            if y[row] == 0:
+                new_row = X[row, :].reshape(1, X_new.shape[1])
+                X_new = np.concatenate([X_new, new_row], axis=0)
+                X_new = np.concatenate([X_new, new_row], axis=0)
+                y_new.append(0)
+                y_new.append(0)
+        result_X.append(X_new)
+        result_y.append(y_new)
+    X = tuple(result_X)
+    y = tuple(result_y)
+    return X, y
 
 def create_feature_matrices(X_train_indices, X_test_indices, X_dev_indices,
                             h_id_b_id_to_stance, X_vectors):
@@ -139,10 +183,57 @@ def create_feature_matrices(X_train_indices, X_test_indices, X_dev_indices,
     X_dev = X_vectors[X_dev_matrix_indices, :]
     return X_train, X_dev, X_test
 
+def plot_histogram(filename, data, bins, title, xlabel='Value', ylabel='Count'):
+    plt.hist(data, bins=bins, histtype='bar', rwidth=.75)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.grid(True)
+    plt.savefig(filename)
+    plt.close()
+
+def plot_two_histograms(filename, data1, data2, label1, label2, bins, title,
+                        xlabel='Value', ylabel='Count'):
+    n, bins_1, patches = plt.hist(
+        data2, bins=bins, histtype='bar', rwidth=.75, label=label2, alpha=.5)
+    plt.hist(data1, bins=bins_1, histtype='bar', rwidth=.75, label=label1, alpha=.5)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.grid(True)
+    plt.legend()
+    plt.savefig(filename)
+    plt.close()
+
+def plot_feature_distribution(args):
+    (X_indices, y, b_id_to_article, h_id_to_headline,
+     h_id_b_id_to_stance, raw_article_id_to_b_id,
+     headline_to_h_id) = compute_splits()
+    ((X_train_indices, X_test_indices, X_dev_indices),
+     (y_train, y_test, y_dev)) = X_indices, y
+    (y_train, y_test, y_dev) = convert_to_two_class_problem(
+        y_train, y_test, y_dev)
+    X_vectors = scipy.io.mmread(args.x_input).tocsr()
+    X_train, X_dev, X_test = create_feature_matrices(
+        X_train_indices, X_test_indices, X_dev_indices,
+        h_id_b_id_to_stance, X_vectors)
+    X = np.concatenate([X_train.toarray(), X_dev.toarray(), X_test.toarray()], axis=0)
+    y = np.concatenate([np.array(y_train), np.array(y_dev), np.array(y_test)], axis=0)
+    for i in range(X.shape[1]):
+        filename= args.plot_prefix + '.png'
+        feature_x = X[:, i]
+        feature_x_0 = [x for index, x in enumerate(feature_x) if y[index] == 0]
+        feature_x_1 = [x for index, x in enumerate(feature_x) if y[index] == 1]
+        plot_two_histograms(filename, feature_x_0, feature_x_1, 'Related', 'Unrelated', 20, filename)
+    x = 1
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and Test Linear Model')
     parser.add_argument('--full', action='store_true')
     parser.add_argument('--uniform-split', action = 'store_true')
+    parser.add_argument('--plot-feature-dist', action='store_true')
+    parser.add_argument('--eval', action='store_true')
+    parser.add_argument('--classifier')
     parser.add_argument('--feature-output')
     parser.add_argument('--feature-input')
     parser.add_argument('--x-output')
@@ -150,6 +241,7 @@ def parse_args():
     parser.add_argument('--x-input')
     parser.add_argument('--y-input')
     parser.add_argument('--cm-prefix')
+    parser.add_argument('--plot-prefix')
     feature_names = ['--overlap-features', '--overlap-features-clean',
                      '--bleu-score-features', '--bleu-score-features-clean',
                      '--tfidf-features', '--tfidf-features-clean',

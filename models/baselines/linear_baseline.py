@@ -13,6 +13,7 @@ import sys
 import argparse
 import sklearn.naive_bayes
 import sklearn.model_selection
+import sklearn.svm
 import sklearn
 import nltk
 import itertools
@@ -94,7 +95,7 @@ def generate_tfidf_features_clean(b_id_to_body, h_id_to_headline, h_id_b_id_to_s
 
     tfidf_vectorizer = TfidfVectorizer(preprocessor=tfidf_preprocess)
     bodies = [' '.join(body) for b_id, body in sorted(b_id_to_body.items())]
-    headlines = [' '.join(body) for h_id, headline in sorted(h_id_to_headline.items())]
+    headlines = [' '.join(headline) for h_id, headline in sorted(h_id_to_headline.items())]
     body_id_mapping = dict((key, index) for index, key in
                               enumerate(sorted(b_id_to_body.keys())))
     headline_id_mapping = dict((key, index) for index, key in
@@ -102,7 +103,7 @@ def generate_tfidf_features_clean(b_id_to_body, h_id_to_headline, h_id_b_id_to_s
     all_text = bodies + headlines
     text_tfidf_vectors = tfidf_vectorizer.fit_transform(all_text)
     body_tfidf_vectors = text_tfidf_vectors[:len(bodies)]
-    headline_tfidf_vectors = text_tfidf_vectors[len(bodies):]
+    headline_tfidf_vectors = text_tfidf_vectors[len(headlines):]
     TFIDF_FEATURE_NAME = 'tfidf_clean'
     tfidf_features = {}
     num_pairs = len(h_id_b_id_to_stance)
@@ -120,7 +121,7 @@ def generate_tfidf_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
     tfidf_vectorizer = TfidfVectorizer(use_idf=False)
     x = 1
     bodies = [' '.join(body) for b_id, body in sorted(b_id_to_body.items())]
-    headlines = [' '.join(body) for h_id, headline in sorted(h_id_to_headline.items())]
+    headlines = [' '.join(headline) for h_id, headline in sorted(h_id_to_headline.items())]
     body_id_mapping = dict((key, index) for index, key in
                               enumerate(sorted(b_id_to_body.keys())))
     headline_id_mapping = dict((key, index) for index, key in
@@ -128,7 +129,7 @@ def generate_tfidf_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance)
     all_text = bodies + headlines
     text_tfidf_vectors = tfidf_vectorizer.fit_transform(all_text)
     body_tfidf_vectors = text_tfidf_vectors[:len(bodies)]
-    headline_tfidf_vectors = text_tfidf_vectors[len(bodies):]
+    headline_tfidf_vectors = text_tfidf_vectors[len(headlines):]
     TFIDF_FEATURE_NAME = 'tfidf'
     tfidf_features = {}
     num_pairs = len(h_id_b_id_to_stance)
@@ -196,7 +197,7 @@ def generate_bleu_score_features_clean(b_id_to_body, h_id_to_headline,
     return bleu_score_feature_vectors
 
 
-# Generate modified BLEU scores for each (healdine, article) pair, in which BLEU
+# Generate modified BLEU scores for each (headline, article) pair, in which BLEU
 # score is evaluated for a series of overlapping segments of the article.
 # See description below for more information.
 def generate_bleu_score_features(b_id_to_body, h_id_to_headline, h_id_b_id_to_stance):
@@ -312,7 +313,7 @@ def generate_cross_gram_features_clean(b_id_to_body, h_id_to_headline, h_id_b_id
             headline = filter(lambda x: x not in english_stopwords and
                                         x not in string.punctuation, headline)
             article = filter(lambda x: x not in english_stopwords and
-                                       x not in string.punctuation, headline)
+                                       x not in string.punctuation, article)
         if n == 2:
             headline = filter(lambda x: x not in string.punctuation, headline)
             article = filter(lambda x: x not in string.punctuation, article)
@@ -403,8 +404,7 @@ def generate_cross_gram_count_features(b_id_to_body, h_id_to_headline, h_id_b_id
 
     # For a single (headline, article) pair, generate a single feature vector composed of all cross-ngrams
     # matching the conditions described above
-    def single_pair_cross_ngram_features(headline, article, n):
-        CROSS_NGRAM_FEATURE_NAME = 'clean_cross_ngram_count'
+    def single_pair_cross_ngram_features(headline, article, n, CROSS_NGRAM_FEATURE_NAME):
         result = {}
         stemmer = nltk.stem.porter.PorterStemmer()
         english_stopwords = stopwords.words('english')
@@ -412,7 +412,7 @@ def generate_cross_gram_count_features(b_id_to_body, h_id_to_headline, h_id_b_id
             headline = filter(lambda x: x not in english_stopwords and
                                         x not in string.punctuation, headline)
             article = filter(lambda x: x not in english_stopwords and
-                                       x not in string.punctuation, headline)
+                                       x not in string.punctuation, article)
         if n == 2:
             headline = filter(lambda x: x not in string.punctuation, headline)
             article = filter(lambda x: x not in string.punctuation, article)
@@ -433,14 +433,14 @@ def generate_cross_gram_count_features(b_id_to_body, h_id_to_headline, h_id_b_id
                                                 article_matches):
                 result += 1.0
         normalized_count = result / (len(headline) + len(article))
-        return {CROSS_NGRAM_FEATURE_NAME : normalized_count}
+        return {CROSS_NGRAM_FEATURE_NAME: normalized_count}
 
     def map_ids_to_feature_vector(ids):
         h_id, b_id = ids
         headline = h_id_to_headline[h_id]
         body = b_id_to_body[b_id]
-        unigram_features = single_pair_cross_ngram_features(headline, body, 1)
-        bigram_features = single_pair_cross_ngram_features(headline, body, 2)
+        unigram_features = single_pair_cross_ngram_features(headline, body, 1, 'clean_unigram_cross_count')
+        bigram_features = single_pair_cross_ngram_features(headline, body, 2, 'clean_bigram_cross_count')
         gram_features = dict(unigram_features.items() + bigram_features.items())
         return gram_features
 
@@ -611,9 +611,13 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
     else:
         raise Exception('--feature-input is required to load feature matrices')
 
-def train_model(X_train, y_train, model=None):
-    if model == 'mnb':
+def train_model(X_train, y_train, args):
+    if args.classifier == 'mnb':
         clf = sklearn.naive_bayes.MultinomialNB()
+    elif args.classifer == 'svm':
+        clf = sklearn.svm.SVC()
+    elif args.classifier == 'randomforest':
+        clf = sklearn.ensemble.RandomForestClassifier()
     else:
         clf = sklearn.naive_bayes.MultinomialNB()
     clf.fit(X_train, y_train)
