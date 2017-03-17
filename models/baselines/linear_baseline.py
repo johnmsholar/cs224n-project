@@ -305,7 +305,7 @@ def generate_cross_gram_features_clean(b_id_to_body, h_id_to_headline, h_id_b_id
     # For a single (headline, article) pair, generate a single feature vector composed of all cross-ngrams
     # matching the conditions described above
     def single_pair_cross_ngram_features(headline, article, n):
-        CROSS_NGRAM_FEATURE_NAME = 'clean_cross_ngram'
+        CROSS_NGRAM_FEATURE_NAME = 'clean_cross_{0}gram'.format(n)
         result = {}
         stemmer = nltk.stem.porter.PorterStemmer()
         english_stopwords = stopwords.words('english')
@@ -327,8 +327,9 @@ def generate_cross_gram_features_clean(b_id_to_body, h_id_to_headline, h_id_b_id
             headline_matches = [g for i, g in
                                 enumerate(nltk.ngrams(headline, n)) if
                                 headline_pos[i + n - 1][1] == pos_class]
-            article_matches = [g for i, g in enumerate(nltk.ngrams(article, n))
-                               if article_pos[i + n - 1][1] == pos_class]
+            article_matches = [g for i, g in
+                               enumerate(nltk.ngrams(article, n)) if
+                               article_pos[i + n - 1][1] == pos_class]
             for cross_gram in itertools.product(headline_matches,
                                                 article_matches):
                 result[(CROSS_NGRAM_FEATURE_NAME, cross_gram)] = 1.0
@@ -427,8 +428,9 @@ def generate_cross_gram_count_features(b_id_to_body, h_id_to_headline, h_id_b_id
             headline_matches = [g for i, g in
                                 enumerate(nltk.ngrams(headline, n)) if
                                 headline_pos[i + n - 1][1] == pos_class]
-            article_matches = [g for i, g in enumerate(nltk.ngrams(article, n))
-                               if article_pos[i + n - 1][1] == pos_class]
+            article_matches = [g for i, g in
+                               enumerate(nltk.ngrams(article, n)) if
+                               article_pos[i + n - 1][1] == pos_class]
             for cross_gram in itertools.product(headline_matches,
                                                 article_matches):
                 result += 1.0
