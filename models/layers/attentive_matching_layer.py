@@ -21,7 +21,7 @@ class Attentive_Matching_Layer(Attention_Base_Class):
             a slice at a single timestep i in H_p (h_i) and all the timesteps
             in H_q.
         """
-        batch_size = h_i.get_shape().as_list()[1]
+        batch_size = tf.shape(h_i)[1]
         hidden_size = h_i.get_shape().as_list()[0]
         b_time_steps = H_q.get_shape().as_list()[0]
 
@@ -34,7 +34,7 @@ class Attentive_Matching_Layer(Attention_Base_Class):
         idx = tf.constant(0) # Current time step index
         cond = lambda j, result: j < b_time_steps  
         result_init = tf.zeros([batch_size, 1]) # batch_size x 1
-        shape_invariants = [idx.get_shape(), tf.TensorShape([batch_size, None,])]
+        shape_invariants = [idx.get_shape(), tf.TensorShape([None, None])]
         result = tf.while_loop(cond, body, [idx, result_init], shape_invariants=shape_invariants)
         result = result[1][:, 1:]
         return result
@@ -50,7 +50,7 @@ class Attentive_Matching_Layer(Attention_Base_Class):
         alpha_sum = tf.reduce_sum(alpha, axis=1) # batch_size x 1
         b_time_steps = H_q.get_shape().as_list()[1]
         hidden_size = H_q.get_shape().as_list()[1]
-        batch_size = H_q.get_shape().as_list()[2]
+        batch_size = tf.shape(H_q)[2]
 
         H_q_t = tf.transpose(H_q, perm=[0, 2, 1]) # batch x hidden_size x B_time_steps
         alpha_expand = tf.expand_dims(alpha, axis=2) # batch x B_time_steps x 1

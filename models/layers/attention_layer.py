@@ -67,7 +67,7 @@ def test():
         Y = tf.constant([
             [[1, 2, 3, 4],
             [1, 2, 3, 4]],
-            [[2, 3, 4, 5],
+            [[2, 3, 4, 5],B
             [2, 3, 4, 5]],
             [[3, 4, 5, 6],
             [3, 4, 5, 6]]], dtype=tf.float32) # batch_size x A_time_steps x hidden_size

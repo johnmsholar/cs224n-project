@@ -23,6 +23,7 @@ from fnc1_utils.featurizer import create_embeddings
 from util import create_tensorflow_saver, parse_args
 from layers.attention_layer import AttentionLayer
 from layers.class_squash_layer import ClassSquashLayer
+from layers.multiperspective_matching_a_to_b_layer import Multiperspective_Matching_A_to_B_Layer
 
 class Config(object):
     """Holds model hyperparams and data information.
@@ -44,6 +45,7 @@ class Config(object):
         self.max_grad_norm = 5.
         self.dropout_rate = 0.8
         self.beta = 0
+        self.num_perspectives = 20
 
         # Data Params
         self.training_size = .80
@@ -82,58 +84,62 @@ class Bimpmp(Advanced_Model):
 
         # Context Layer
         with tf.variable_scope("context_layer"):
-            # run first headline LSTM
             fw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.context_hidden_size)
-            bw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.context_hidden_size)           
-            headline_context_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
-                fw_cell,
-                bw_cell,
-                headline_x,
-                dtype=tf.float32,
-                sequence_length=self.h_seq_lengths_placeholder
-            )
-            article_context_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
-                fw_cell,
-                bw_cell,
-                body_x,
-                dtype=tf.float32,
-                sequence_length=self.a_seq_lengths_placeholder
-            )           
+            bw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.context_hidden_size)   
+            with tf.variable_scope("headline_lstm"):
+                # run first headline LSTM
+                headline_context_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                    fw_cell,
+                    bw_cell,
+                    headline_x,
+                    dtype=tf.float32,
+                    sequence_length=self.h_seq_lengths_placeholder
+                )
+            with tf.variable_scope("article_lstm"):
+                article_context_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                    fw_cell,
+                    bw_cell,
+                    body_x,
+                    dtype=tf.float32,
+                    sequence_length=self.a_seq_lengths_placeholder
+                )           
 
         # Matching Layer -- assume output is concatenated (fw and bw together)
         # Output Dimensionality: batch_size x time steps x (hidden_size x 2)
         with tf.variable_scope("matching_headline_to_article"):
-            matching_layer_headline_to_article = Multiperspective_Matching_A_to_B_Layer()
+            matching_layer_headline_to_article = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
             post_matching_h_to_a = matching_layer_headline_to_article(headline_context_outputs, article_context_outputs)
 
         with tf.variable_scope("matching_article_to_headline"):
-            matching_layer_article_to_headline = Multiperspective_Matching_A_to_B_Layer()
+            matching_layer_article_to_headline = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
             post_matching_a_to_h = matching_layer_article_to_headline(article_context_outputs, headline_context_outputs)
 
         # Aggregation Layer 
         with tf.variable_scope("aggregation_layer"):
             # run first headline LSTM
             fw_cell_aggregation = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.aggregate_hidden_size)
-            bw_cell_aggregation = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.aggregate_hidden_size)           
-            headline_aggregate_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
-                fw_cell_aggregation,
-                bw_cell_aggregation,
-                post_matching_h_to_a,
-                dtype=tf.float32,
-                sequence_length=self.h_seq_lengths_placeholder
-            )
-            article_aggregate_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
-                fw_cell_aggregation,
-                bw_cell_aggregation,
-                post_matching_a_to_h,
-                dtype=tf.float32,
-                sequence_length=self.a_seq_lengths_placeholder
-            )           
+            bw_cell_aggregation = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.aggregate_hidden_size)
+            with tf.variable_scope("aggregation_headline"):           
+                headline_aggregate_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                    fw_cell_aggregation,
+                    bw_cell_aggregation,
+                    post_matching_h_to_a,
+                    dtype=tf.float32,
+                    sequence_length=self.h_seq_lengths_placeholder
+                )
+            with tf.variable_scope("article_headline"):
+                article_aggregate_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                    fw_cell_aggregation,
+                    bw_cell_aggregation,
+                    post_matching_a_to_h,
+                    dtype=tf.float32,
+                    sequence_length=self.a_seq_lengths_placeholder
+                )           
 
         # Final Prediction Layer
         with tf.variable_scope("final_prediction_layer"):
-            headline_output = tf.concat([headline_aggregate_outputs[0][:, -1, :], headline_aggregate_outputs[1][:, -1, :]])
-            article_output = tf.concat([article_aggregate_outputs[0][:, -1, :], article_aggregate_outputs[1][:, -1, :]]) 
+            headline_output = tf.concat([headline_aggregate_outputs[0][:, -1, :], headline_aggregate_outputs[1][:, -1, :]], axis=1)
+            article_output = tf.concat([article_aggregate_outputs[0][:, -1, :], article_aggregate_outputs[1][:, -1, :]], axis=1) 
             output = tf.concat([headline_output, article_output], 1)
             output_dropout = tf.nn.dropout(output, dropout_rate)
             squash = tf.contrib.layers.fully_connected(
@@ -151,7 +157,7 @@ class Bimpmp(Advanced_Model):
                     biases_initializer=tf.constant_initializer(0),
             )
 
-        return preds, debug_ops
+        return preds, None
 
 def main(debug=True):
     # Parse Arguments
@@ -192,7 +198,7 @@ def main(debug=True):
         # Create and configure model
         print "Building model...",
         start = time.time()
-        model = Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
+        model = Bimpmp(config, report_score, max_input_lengths, glove_matrix, debug)
         model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 

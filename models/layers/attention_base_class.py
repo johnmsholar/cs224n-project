@@ -21,7 +21,7 @@ class Attention_Base_Class(object):
             score: 1 x batch x perspectives
         """
         hidden_size = v1.get_shape().as_list()[2]
-        batch_size = v1.get_shape().as_list()[1]
+        batch_size = tf.shape(v1)[1]
         # batch_size = tf.shape(v1)[1]
         v1_collapse = tf.transpose(tf.reshape(v1, shape=[batch_size, hidden_size])) # hidden x batch
         v2_collapse = tf.transpose(tf.reshape(v2, shape=[batch_size, hidden_size])) # hidden x batch
@@ -78,8 +78,8 @@ class Attention_Base_Class(object):
             self.W1 = tf.get_variable("W1", shape=[hidden_size, self.num_perspectives])
             self.W2 = tf.get_variable("W2", shape=[hidden_size, self.num_perspectives])
 
-            fw_attention = compute_attention(A_fw, B_fw)
-            bw_attention = compute_attention(A_bw, B_bw)
+            fw_attention = self.compute_attention(A_fw, B_fw, self.W1)
+            bw_attention = self.compute_attention(A_bw, B_bw, self.W2)
             output = tf.concat([fw_attention, bw_attention], 2)
 
         return output

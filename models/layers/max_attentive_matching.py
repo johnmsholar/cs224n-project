@@ -20,7 +20,7 @@ class Max_Attentive_Matching_Layer(Attention_Base_Class):
             a slice at a single timestep i in H_p (h_i) and all the timesteps
             in H_q.
         """
-        batch_size = h_i.get_shape().as_list()[1]
+        batch_size = tf.shape(h_i)[1]
         hidden_size = h_i.get_shape().as_list()[0]
         b_time_steps = H_q.get_shape().as_list()[0]
 
@@ -33,7 +33,7 @@ class Max_Attentive_Matching_Layer(Attention_Base_Class):
         idx = tf.constant(0) # Current time step index
         cond = lambda j, result: j < b_time_steps  
         result_init = tf.zeros([batch_size, 1]) # batch_size x 1
-        shape_invariants = [idx.get_shape(), tf.TensorShape([batch_size, None,])]
+        shape_invariants = [idx.get_shape(), tf.TensorShape([None, None])]
         result = tf.while_loop(cond, body, [idx, result_init], shape_invariants=shape_invariants)
         result = result[1][:, 1:]
         return result
@@ -92,12 +92,6 @@ def numpy_reference_max_aml(A, B, W, A_time_steps, B_time_steps, batch_size, num
 
 
 if __name__ == "__main__":
-    batch_size = 3
-    hidden_size = 4
-    num_perspectives = 2
-    A_time_steps = 5
-    B_time_steps = 6
-
     with tf.Session() as session:
         batch_size = 3
         hidden_size = 4
