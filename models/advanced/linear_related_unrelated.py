@@ -13,9 +13,12 @@ John Sholar <jmsholar@cs.stanford.edu>
 import sys
 import argparse
 import scipy
+import os
 import sklearn
 import random
 import numpy as np
+import matplotlib.pyplot as plt
+
 
 sys.path.insert(0, '../')
 
@@ -107,7 +110,7 @@ def main(args):
     if args.feature_input and args.x_output and args.y_output:
         generate_feature_matrices(args.feature_input, args.x_output,
                                   args.y_output, args, args.full)
-    if args.x_input and args.y_input:
+    if args.eval and args.x_input and args.y_input:
         (X_indices, y, b_id_to_article, h_id_to_headline,
          h_id_b_id_to_stance, raw_article_id_to_b_id,
          headline_to_h_id) = compute_splits()
@@ -134,10 +137,10 @@ def main(args):
         clf = train_model(X_train, y_train, args)
         evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test, y_dev,
                        args.cm_prefix)
+    if args.plot_feature_dist:
+        plot_feature_distribution(args)
 
 def produce_uniform_data_split(X, y):
-
-
     X_train = X[0]
     X_dev = X[1]
     X_test = X[2]
@@ -168,64 +171,6 @@ def produce_uniform_data_split(X, y):
     y = tuple(result_y)
     return X, y
 
-"""
-def produce_uniform_data_split(X, y):
-    X_train = X[0]
-    X_dev = X[1]
-    X_test = X[2]
-    y_train = y[0]
-    y_dev = y[1]
-    y_test = y[2]
-
-    def get_dist(y_vector):
-        zero_count = len(filter(lambda v: v == 0, y))
-        one_count = len(filter(lambda v: v == 1, y))
-        return [zero_count, one_count]
-
-    train_dist = get_dist(y_train)
-    dev_dist = get_dist(y_dev)
-    test_dist = get_dist(y_test)
-    train_count = min(train_dist)
-    dev_count = min(dev_dist)
-    test_count = min(test_dist)
-
-    target_variables = [
-        (X_train, y_train, train_count),
-        (X_dev, y_dev, dev_count),
-        (X_test, y_test, test_count)
-    ]
-    finalized_variables = []
-    for X, y, count in target_variables:
-        dist = get_dist(y)
-        new_X, new_y = None, None
-        for i in range(2):
-            rows_in_class = [index for index in range(y.shape[0]) if y[index] == i]
-
-            rows_in_class = (y[:, i] == 1)
-            num_rows_in_class = np.sum(rows_in_class.astype(int))
-
-            X_h_seq_lengths = [l for i, l in enumerate(X[2]) if rows_in_class[i]]
-            X_a_seq_lengths = [l for i, l in enumerate(X[3]) if rows_in_class[i]]
-            X_local = (X[0][rows_in_class, :], X[1][rows_in_class, :], X_h_seq_lengths, X_a_seq_lengths)
-            y_local = y[rows_in_class, :]
-
-            random_indices = random.sample(range(num_rows_in_class), int(count))
-            X_local_h_seq_lengths = [l for i, l in enumerate(X_local[2]) if i in random_indices]
-            X_local_a_seq_lengths = [l for i, l in enumerate(X_local[3]) if i in random_indices]
-            X_local = (X_local[0][random_indices, :], X_local[1][random_indices, :], X_local_h_seq_lengths, X_local_a_seq_lengths)
-            y_local = y_local[random_indices, :]
-
-            if new_X is None and new_y is None:
-                new_X = X_local
-                new_y = y_local
-            else:
-                new_X = (np.concatenate([new_X[0], X_local[0]]), np.concatenate([new_X[1], X_local[1]]), new_X[2] + X_local[2], new_X[3] + X_local[3])
-                new_y = np.concatenate([new_y, y_local])
-        finalized_variables.append((new_X, new_y))
-    (X_train, y_train), (X_dev, y_dev), (X_test, y_test) = finalized_variables
-    # need to shuffle
-"""
-
 def create_feature_matrices(X_train_indices, X_test_indices, X_dev_indices,
                             h_id_b_id_to_stance, X_vectors):
     vector_ordering = sorted(h_id_b_id_to_stance.keys())
@@ -238,10 +183,56 @@ def create_feature_matrices(X_train_indices, X_test_indices, X_dev_indices,
     X_dev = X_vectors[X_dev_matrix_indices, :]
     return X_train, X_dev, X_test
 
+def plot_histogram(filename, data, bins, title, xlabel='Value', ylabel='Count'):
+    plt.hist(data, bins=bins, histtype='bar', rwidth=.75)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.grid(True)
+    plt.savefig(filename)
+    plt.close()
+
+def plot_two_histograms(filename, data1, data2, label1, label2, bins, title,
+                        xlabel='Value', ylabel='Count'):
+    n, bins_1, patches = plt.hist(
+        data2, bins=bins, histtype='bar', rwidth=.75, label=label2, alpha=.5)
+    plt.hist(data1, bins=bins_1, histtype='bar', rwidth=.75, label=label1, alpha=.5)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.grid(True)
+    plt.legend()
+    plt.savefig(filename)
+    plt.close()
+
+def plot_feature_distribution(args):
+    (X_indices, y, b_id_to_article, h_id_to_headline,
+     h_id_b_id_to_stance, raw_article_id_to_b_id,
+     headline_to_h_id) = compute_splits()
+    ((X_train_indices, X_test_indices, X_dev_indices),
+     (y_train, y_test, y_dev)) = X_indices, y
+    (y_train, y_test, y_dev) = convert_to_two_class_problem(
+        y_train, y_test, y_dev)
+    X_vectors = scipy.io.mmread(args.x_input).tocsr()
+    X_train, X_dev, X_test = create_feature_matrices(
+        X_train_indices, X_test_indices, X_dev_indices,
+        h_id_b_id_to_stance, X_vectors)
+    X = np.concatenate([X_train.toarray(), X_dev.toarray(), X_test.toarray()], axis=0)
+    y = np.concatenate([np.array(y_train), np.array(y_dev), np.array(y_test)], axis=0)
+    for i in range(X.shape[1]):
+        filename= args.plot_prefix + '.png'
+        feature_x = X[:, i]
+        feature_x_0 = [x for index, x in enumerate(feature_x) if y[index] == 0]
+        feature_x_1 = [x for index, x in enumerate(feature_x) if y[index] == 1]
+        plot_two_histograms(filename, feature_x_0, feature_x_1, 'Related', 'Unrelated', 20, filename)
+    x = 1
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and Test Linear Model')
     parser.add_argument('--full', action='store_true')
     parser.add_argument('--uniform-split', action = 'store_true')
+    parser.add_argument('--plot-feature-dist', action='store_true')
+    parser.add_argument('--eval', action='store_true')
     parser.add_argument('--classifier')
     parser.add_argument('--feature-output')
     parser.add_argument('--feature-input')
@@ -250,6 +241,7 @@ def parse_args():
     parser.add_argument('--x-input')
     parser.add_argument('--y-input')
     parser.add_argument('--cm-prefix')
+    parser.add_argument('--plot-prefix')
     feature_names = ['--overlap-features', '--overlap-features-clean',
                      '--bleu-score-features', '--bleu-score-features-clean',
                      '--tfidf-features', '--tfidf-features-clean',
