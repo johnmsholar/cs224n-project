@@ -33,13 +33,13 @@ class Config(object):
     """
     def __init__(self):
         self.num_classes = 3 # Number of classses for classification task.
-        self.embed_size = 300 # Size of Glove Vectors
+        self.embed_size = 100 # Size of Glove Vectors
 
         # Hyper Parameters
-        self.context_hidden_size = 300 # Hidden State Size
-        self.aggregate_hidden_size = 300
-        self.squashing_layer_hidden_size = 150
-        self.batch_size = 50
+        self.context_hidden_size = 100 # Hidden State Size
+        self.aggregate_hidden_size = 100
+        self.squashing_layer_hidden_size = 50
+        self.batch_size = 10
         self.n_epochs = None
         self.lr = 0.0001
         self.max_grad_norm = 5.
@@ -217,6 +217,9 @@ def main(debug=True):
 
             # Finalize graph
             session.graph.finalize()
+            # train_vars = [var for var in tf.global_variables()]
+            # for var in train_vars:
+            #     print (var.name, var.get_shape())
 
             # Train Model
             print 80 * "="
