@@ -131,7 +131,7 @@ def main(debug=False):
 
     # Define hyperparameters
     hyperparameters = {
-        'lr': [0.001, 0.0001, 0.00001],
+        'lr': [0.001],
         'dropout_rate': [.6, .8, .9],
         'beta': [.1, 1, 10, 100]
     }
