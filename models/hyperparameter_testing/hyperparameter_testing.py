@@ -67,7 +67,7 @@ def run_model(config, max_input_lengths, glove_matrix, args, train_examples, dev
         # Create and configure model
         print "Building model...",
         start = time.time()
-        model = Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix)
+        model = Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix)
         model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
