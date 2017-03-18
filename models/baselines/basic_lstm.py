@@ -312,7 +312,7 @@ def main(debug=True):
                     predictions_batch = list(model.predict_on_batch(session, inputs_batch))
                     preds.extend(predictions_batch)
                     prog.update(i + 1)       
-                test_score = pretty_report_score(actual, preds, "./data/plots/basic_lstm.png")
+                test_score, test_lines = pretty_report_score(actual, preds, "./data/plots/basic_lstm.png")
 
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"
