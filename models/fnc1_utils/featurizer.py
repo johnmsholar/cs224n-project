@@ -342,9 +342,9 @@ if __name__ == '__main__':
         max_headline_length=500,
         max_article_length=500,
         glove_set=None,
-        debug_printing=False,
+        debug_printing=True,
         # debug=False,
-        debug=True,
+        # debug=True,
     )
 
 # -----------------------------------------------
