@@ -14,32 +14,23 @@ class Attention_Base_Class(object):
     def compute_score(self, v1, v2, W):
         """
         Args:
-            v1: 1 x batch_size x hidden_size
-            v2: 1 x batch_size x hidden_size
+            v1: hidden x batch
+            v2: hidden x batch
             W: Scoring Weight Matrix [hidden_size x num_perspectives]
         Returns:
-            score: 1 x batch x perspectives
+            score: batch x perspectives
         """
-        hidden_size = v1.get_shape().as_list()[2]
-        batch_size = tf.shape(v1)[1]
-        # batch_size = tf.shape(v1)[1]
-        v1_collapse = tf.transpose(tf.reshape(v1, shape=[batch_size, hidden_size])) # hidden x batch
-        v2_collapse = tf.transpose(tf.reshape(v2, shape=[batch_size, hidden_size])) # hidden x batch
-        result_init = tf.zeros(shape=[batch_size, 1])
-        idx = tf.constant(0)
+        W = tf.expand_dims(tf.transpose(W), 2) # p x h x 1
+        Wv1 = W*v1 # p x h x b
+        Wv2 = W*v2 # p x h x b
+        norm_prod = tf.norm(Wv1, axis=1) * tf.norm(Wv2, axis=1) # dim: p x b
 
-        cond = lambda i, result: tf.less(i, self.num_perspectives)
-        def body(i, result):
-            W_i = tf.expand_dims(W[:, i], axis=1) # hidden x 1
-            v_1_w_i = tf.multiply(v1_collapse, W_i) # hidden x batch
-            v_2_w_i = tf.multiply(v2_collapse, W_i) # hidden x batch
-            cos_sim = cosine_similarity(v_1_w_i, v_2_w_i) # batch x 1
-            result = tf.concat([result, cos_sim], axis=1)
-            return [tf.add(i, 1), result]
-        #shape invariants
-        shape_invariants = [idx.get_shape(), tf.TensorShape([None, None])]
-        loop_perspectives = tf.while_loop(cond, body, [idx, result_init], shape_invariants = shape_invariants)
-        return loop_perspectives[1][:, 1:]
+        # perform dot product
+        Wv1_exp = tf.expand_dims(tf.transpose(Wv1, perm=[0, 2, 1]) , 2) # p x b x 1 x h
+        Wv2_exp = tf.expand_dims(tf.transpose(Wv2, perm=[0, 2, 1]), 3) # p x b x h x 1
+        dot_prod = tf.squeeze(tf.matmul(Wv1_exp, Wv2_exp)) # p x b
+        
+        return tf.transpose(tf.divide(dot_prod, norm_prod)) # b x p
 
     def compute_attention(self, a, b, W):
         """
@@ -85,11 +76,14 @@ class Attention_Base_Class(object):
         return output
 
 def numpy_reference_compute_score(v1, v2, W, batch_size, hidden_size, num_perspectives):
+    #   v1: hidden_size, batch_size)
+    #   v2: hidden_size, batch_size)
+    #   W:  hidden_size, num_perspectives)
     result = np.zeros([batch_size,num_perspectives])
     for i in range(0, num_perspectives):
-        w_sing = W[:, i] # hidden x 1
-        v1_wi = np.transpose(v1*w_sing)
-        v2_wi = np.transpose(v2*w_sing)
+        w_sing = W[:, i] # 1 x hidden
+        v1_wi = np.transpose(np.transpose(v1)*w_sing)
+        v2_wi = np.transpose(np.transpose(v2)*w_sing)
         for j in range(0, batch_size):
             result[j, i] = 1-sk_cosine(v1_wi[:, j], v2_wi[:, j])
     return result        
@@ -126,26 +120,16 @@ if __name__ == "__main__":
         hidden_size = 4
         num_perspectives = 2
 
-        v1 = [[1,2,3,4],
-            [5,6,7,8],
-            [9,10,11,12]]
-        v2 = [[1,2,10,4],
-            [5,6,7,1],
-            [9,13,11,12]]
-        W = [[1,2],
-            [3,4],
-            [5,6],
-            [7,8]]
+        v1 = np.random.rand(hidden_size, batch_size)
+        v2 = np.random.rand(hidden_size, batch_size)
+        W = np.random.rand(hidden_size, num_perspectives)
 
-        v1_tf = tf.constant([v1], dtype=tf.float32) # 1 x batch x hidden
-        v2_tf = tf.constant([v2], dtype=tf.float32) # 1 x batch x hidden
+        v1_tf = tf.constant(v1, dtype=tf.float32) # 1 x batch x hidden
+        v2_tf = tf.constant(v2, dtype=tf.float32) # 1 x batch x hidden
         W_tf = tf.constant(W, dtype=tf.float32)
         abc = Attention_Base_Class(num_perspectives)
         score_fn = abc.compute_score(v1_tf, v2_tf, W_tf)
         score = session.run(score_fn)
         # checking our work:
-        v1_np = np.array(v1) # 1 x batch x hidden
-        v2_np = np.array(v2) # 1 x batch x hidden
-        W_np = np.array(W)
-        ref_score = numpy_reference_compute_score(v1_np, v2_np, W_np, batch_size, hidden_size, num_perspectives)
-        assert numpy_check_equality(score, ref_score, 1E-7)
+        ref_score = numpy_reference_compute_score(v1, v2, W, batch_size, hidden_size, num_perspectives)
+        assert numpy_check_equality(score, ref_score, 1E-5)
