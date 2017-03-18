@@ -102,8 +102,8 @@ def generate_tfidf_features_clean(b_id_to_body, h_id_to_headline, h_id_b_id_to_s
                                   enumerate(sorted(h_id_to_headline.keys())))
     all_text = bodies + headlines
     text_tfidf_vectors = tfidf_vectorizer.fit_transform(all_text)
-    body_tfidf_vectors = text_tfidf_vectors[:len(bodies)]
-    headline_tfidf_vectors = text_tfidf_vectors[len(headlines):]
+    body_tfidf_vectors = text_tfidf_vectors[:len(bodies), :]
+    headline_tfidf_vectors = text_tfidf_vectors[len(bodies):, :]
     TFIDF_FEATURE_NAME = 'tfidf_clean'
     tfidf_features = {}
     num_pairs = len(h_id_b_id_to_stance)
@@ -407,20 +407,21 @@ def generate_cross_gram_count_features(b_id_to_body, h_id_to_headline, h_id_b_id
     # matching the conditions described above
     def single_pair_cross_ngram_features(headline, article, n, CROSS_NGRAM_FEATURE_NAME):
         result = {}
+        headline_pos = nltk.pos_tag(headline)
+        article_pos = nltk.pos_tag(article)
         stemmer = nltk.stem.porter.PorterStemmer()
         english_stopwords = stopwords.words('english')
         if n == 1:
-            headline = filter(lambda x: x not in english_stopwords and
-                                        x not in string.punctuation, headline)
-            article = filter(lambda x: x not in english_stopwords and
-                                       x not in string.punctuation, article)
+            headline_pos = filter(lambda x: x[0] not in english_stopwords and
+                                        x[0] not in string.punctuation, headline_pos)
+            article_pos = filter(lambda x: x[0] not in english_stopwords and
+                                       x[0] not in string.punctuation, article_pos)
         if n == 2:
-            headline = filter(lambda x: x not in string.punctuation, headline)
-            article = filter(lambda x: x not in string.punctuation, article)
-        headline = [stemmer.stem(w) for w in headline]
-        article = [stemmer.stem(w) for w in article]
-        headline_pos = nltk.pos_tag(headline)
-        article_pos = nltk.pos_tag(article)
+            headline_pos = filter(lambda x: x[0] not in string.punctuation, headline_pos)
+            article_pos = filter(lambda x: x[0] not in string.punctuation, article_pos)
+        headline = [w for w, pos in headline_pos]
+        article = [w for w, pos in article_pos]
+
         all_pos = headline_pos + article_pos
         unique_pos_classes = set([token_pos[1] for token_pos in all_pos])
         result = 0.0

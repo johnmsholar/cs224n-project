@@ -45,7 +45,7 @@ class Attentive_Matching_Layer(Attention_Base_Class):
             alpha: tensor [batch_size, B_time_steps]
             H_q: tensor [batch, B_time_steps, hidden_size]
         Output:
-            h_i_mean: tensor[1, batch_size, hidden size]
+            h_i_mean: tensor[hidden x batch]
         """
         alpha_sum = tf.reduce_sum(alpha, axis=1) # batch_size x 1
         b_time_steps = H_q.get_shape().as_list()[1]
@@ -54,8 +54,8 @@ class Attentive_Matching_Layer(Attention_Base_Class):
 
         H_q_t = tf.transpose(H_q, perm=[0, 2, 1]) # batch x hidden_size x B_time_steps
         alpha_expand = tf.expand_dims(alpha, axis=2) # batch x B_time_steps x 1
-        result = tf.matmul(H_q_t, alpha_expand) # batch x hidden x 1
-        return tf.transpose(result, perm=[2, 0, 1]) # 1 x batch x hidden
+        result = tf.transpose(tf.squeeze(tf.matmul(H_q_t, alpha_expand)))# hidden x batch
+        return result
 
     def compute_attention(self, a, b, W):
         """
@@ -78,9 +78,8 @@ class Attentive_Matching_Layer(Attention_Base_Class):
         def body(i, result):
             h_i = a_perm[i, :, :] #hidden_size x batch
             alpha = self.compute_alpha_embeddings(h_i, b_perm) # batch x B_time_steps
-            h_i_mean = self.compute_h_i_mean(alpha, b) # 1 x batch_size x hidden
-            h_i_perm = tf.expand_dims(tf.transpose(h_i), 0) # 1 x batch size x hidden
-            m_i = tf.expand_dims(self.compute_score(h_i_perm, h_i_mean, W), axis=0) # 1 x batch x perspectives
+            h_i_mean = self.compute_h_i_mean(alpha, b) # hidden x batch
+            m_i = tf.expand_dims(self.compute_score(h_i, h_i_mean, W), axis=0) # 1 x batch x perspectives
             result = tf.concat([result, m_i], axis=0) # building time_steps x batch x persspective
             return [i+1, result]
 
@@ -101,10 +100,11 @@ def numpy_reference_aml(A, B, W, A_time_steps, B_time_steps, batch_size, num_per
         h_i = A_perm[i, :, :]
         alpha = numpy_compute_alpha_embeddings(h_i, B_perm, B_time_steps, batch_size, hidden_size)
         h_i_mean = numpy_compute_h_i_mean(alpha, B, B_time_steps, hidden_size, batch_size)
-        h_i_perm = np.expand_dims(np.transpose(h_i), 0)
+        h_i_perm = h_i
         m_i = numpy_reference_compute_score(h_i_perm, h_i_mean, W, batch_size, hidden_size, num_perspectives) # 1 x batch x perspectives
+
         result[i, :, :] = m_i
-    return result
+    return np.transpose(result, (1, 0, 2))
 
 def numpy_compute_alpha_embeddings(h_i, H_q, b_time_steps, batch_size, hidden_size):
     h_i_collapse = np.reshape(h_i, [hidden_size, batch_size])    
@@ -120,11 +120,12 @@ def numpy_compute_alpha_embeddings(h_i, H_q, b_time_steps, batch_size, hidden_si
     return result
 
 def numpy_compute_h_i_mean(alpha, H_q, b_time_steps, hidden_size, batch_size):
+    # return hidden x batch
     alpha_sum = np.sum(alpha, axis=1) # batch_size x 1
     H_q_t = np.transpose(H_q, [0, 2, 1]) # batch x hidden_size x B_time_steps
     alpha_expand = np.expand_dims(alpha, axis=2) # batch x B_time_steps x 1
-    result = np.matmul(H_q_t, alpha_expand) # batch x hidden x 1
-    return np.transpose(result, [2, 0, 1]) # 1 x batch x hidden
+    result = np.squeeze(np.matmul(H_q_t, alpha_expand)) # batch x hidden 
+    return np.transpose(result)
 
 def test():
     with tf.Session() as session:
@@ -138,7 +139,7 @@ def test():
 
         aml = Attentive_Matching_Layer(num_perspectives)
         score_fn = aml.compute_attention(tf.constant(A, dtype=tf.float32), tf.constant(B, dtype=tf.float32), tf.constant(W, dtype=tf.float32))
-        score = session.run(score_fn)   
+        score = session.run(score_fn)
         reference = numpy_reference_aml(A, B, W, A_time_steps, B_time_steps, batch_size, num_perspectives, hidden_size)
         assert numpy_check_equality(score, reference, 1e-7)
 

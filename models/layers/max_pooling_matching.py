@@ -19,22 +19,19 @@ class Max_Pooling_Attention_Layer(Attention_Base_Class):
         Returns:
             output: tensor [batch x A_time_steps x num_perspectives]
         """
-        # a_perm is now [A_time_steps, batch, hidden_size]
-        a_perm = tf.transpose(a, perm=[1, 0, 2])
+        a_perm = tf.transpose(a, perm=[1, 2, 0]) # [A_time_steps, hidden_size, batch]
         a_time_steps = a_perm.get_shape()[0]
-        b_perm = tf.transpose(b, perm=[1, 0, 2])
-        # h_n is [1 x batch x hidden_size]
-        h_n =  tf.transpose(tf.expand_dims(b[:, -1, :], axis=0), perm=[1, 0, 2])
+        batch_size = tf.shape(a_perm)[2]
+        b_perm = tf.transpose(b, perm=[1, 2, 0]) # [B_time_steps, hidden_size, batch]
 
         idx = tf.constant(0) # current time step index
         cond = lambda i, result: tf.less(i, a_time_steps)
         def body(i, result):
-            h_i = tf.expand_dims(a_perm[i, :, :], axis=0) # 1 x batch x hidden_size
+            h_i = a_perm[i, :, :] # 1 x hidden x batch
             m_i = self.compute_max_elem_score(h_i, b_perm, W) # 1 x batch x perspectives
             result = tf.concat([result, m_i], axis=0) # building batch x time_steps x persepctive
             return [i+1, result]
 
-        batch_size = tf.shape(a_perm)[1]
         shape_invariants = [idx.get_shape(), tf.TensorShape([None, None, self.num_perspectives])]
         result = tf.zeros(shape=[1, batch_size, self.num_perspectives])
         result = tf.while_loop(cond, body, [idx, result], shape_invariants=shape_invariants) # A_time_steps x batch x perspectives
@@ -43,19 +40,21 @@ class Max_Pooling_Attention_Layer(Attention_Base_Class):
 
     def compute_max_elem_score(self, h_i, B, W, ):
         # Args:
-        #   h_i is [1 x batch x hidden_size]
-        #   B is [B_time_steps, batch x hidden_size]
+        #   h_i is [hidden x batch]
+        #   B is [B_time_steps, hidden_size x batch]
         #   W is [hidden_size x num_perspectives]
         # Returns:
         #   1 x batch x perspectives which is max elem score over the scores on B
         b_time_steps = B.get_shape()[0]
+        batch_size = tf.shape(h_i)[1]
+
         cond = lambda j, result: tf.less(j, b_time_steps)
         def body(j, result):
-            h_j = tf.expand_dims(B[j, :, :], axis=0) # 1 x batch x hidden_size
+            h_j = B[j, :, :] # hidden_size x batch
             m_i_j = tf.expand_dims(self.compute_score(h_i, h_j, W), axis=0) # 1 x batch x perspectives
             result = tf.concat([result, m_i_j], axis=0)
             return [tf.add(j,1), result]
-        batch_size = tf.shape(h_i)[1]
+        
         jdx = tf.constant(0) # current j time step index
         shape_invariants = [jdx.get_shape(), tf.TensorShape([None, None, self.num_perspectives])]
         result = tf.zeros(shape=[1, batch_size, self.num_perspectives])
@@ -70,12 +69,10 @@ def numpy_reference_mpa(A, B, W, batch_size, A_time_steps, hidden_size, num_pers
     # W [hidden_size, num_perspectives]
     result = np.zeros([A_time_steps, batch_size, num_perspectives])
     for i in range(0, A_time_steps):
-        a_slice = np.expand_dims(A[:, i, :], axis=1)
-        h_i = np.transpose(a_slice, (1, 0, 2))
+        h_i = np.transpose(A[:, i, :])
         i_result = np.zeros([B_time_steps, batch_size, num_perspectives])
         for j in range(0, B_time_steps):
-            b_slice = np.expand_dims(B[:, j, :], axis=1)
-            h_j = np.transpose(b_slice, (1, 0, 2))
+            h_j = np.transpose(B[:, j, :])
             i_result[j] = numpy_reference_compute_score(h_i, h_j, W, batch_size, hidden_size, num_perspectives)
         result[i] = np.amax(i_result, axis=0)
     return np.transpose(result, (1, 0, 2))

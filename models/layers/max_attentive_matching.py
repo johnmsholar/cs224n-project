@@ -61,8 +61,8 @@ class Max_Attentive_Matching_Layer(Attention_Base_Class):
             alpha = self.compute_alpha_embeddings(h_i, b_perm) # batch x B_time_steps
             max_indices = tf.argmax(alpha, axis=1) # batch x 1 (time_step index)
             dense_max = tf.expand_dims(tf.one_hot(max_indices, b_time_steps), axis=1) # batch x 1 x b_time_steps
-            h_i_mean = tf.transpose(tf.matmul(dense_max, b), perm=[1, 0, 2]) # 1 x batch x hidden
-            h_i_perm = tf.expand_dims(tf.transpose(h_i), 0) # 1 x batch size x hidden
+            h_i_mean = tf.transpose(tf.squeeze(tf.matmul(dense_max, b))) # hidden x batch
+            h_i_perm = h_i # hidden x batch
             m_i = tf.expand_dims(self.compute_score(h_i_perm, h_i_mean, W), axis=0) # 1 x batch x perspectives
             result = tf.concat([result, m_i], axis=0) # building time_steps x batch x persspective
             return [i+1, result]
@@ -84,7 +84,8 @@ def numpy_reference_max_aml(A, B, W, A_time_steps, B_time_steps, batch_size, num
         for j in range(0, batch_size):
             best_time_step = np.argmax(alpha[j])
             result_i[j] = B[j][best_time_step]
-        h_i_perm = np.expand_dims(np.transpose(h_i), 0)
+        result_i = np.transpose(result_i)
+        h_i_perm = h_i
         m_i = numpy_reference_compute_score(h_i_perm, result_i, W, batch_size, hidden_size, num_perspectives) # 1 x batch x perspectives
         result[i, :, :] = m_i
     result = np.transpose(result, (1, 0, 2))
