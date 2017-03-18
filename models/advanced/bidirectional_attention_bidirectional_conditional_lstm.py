@@ -12,6 +12,7 @@ import argparse
 import tensorflow as tf
 import numpy as np
 
+import csv
 import time
 import os
 import sys
@@ -32,7 +33,7 @@ class Config(object):
     """
     def __init__(self):
         self.num_classes = 3 # Number of classses for classification task.
-        self.embed_size = 300 # Size of Glove Vectors
+        self.embed_size = 2 # Size of Glove Vectors
 
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
@@ -45,7 +46,7 @@ class Config(object):
 
         # Data Params
         self.training_size = .80
-        self.random_split = False
+        self.random_split = True
         self.truncate_headlines = False
         self.truncate_articles = True
         self.classification_problem = 3
@@ -230,6 +231,12 @@ def main(debug=True):
                 with open(model.test_confusion_matrix_fn, 'w') as file:
                     file.write(test_confusion_matrix_str)
 
+            # Print Train and Score Files
+            with open(model.scores_fn, 'w') as file:
+                writer = csv.writer(file)
+                writer.writerow(['Epoch Number', "Train Score", "Dev Score"])
+                for i, train_value in enumerate(model.train_scores):
+                    writer.writerow([i, train_value/100.0, model.dev_scores[i]/100.0])
 
 if __name__ == '__main__':
-    main(False)
+    main(True)
