@@ -33,14 +33,14 @@ class Multiperspective_Matching_A_to_B_Layer:
             max_pooling_layer = Max_Pooling_Attention_Layer(self.num_perspectives)
             max_pooling_output = max_pooling_layer(A, B)
 
-            attentive_matching_layer = Attentive_Matching_Layer(self.num_perspectives)
-            attentive_matching_output = attentive_matching_layer(A, B)
+            #attentive_matching_layer = Attentive_Matching_Layer(self.num_perspectives)
+            #attentive_matching_output = attentive_matching_layer(A, B)
 
-            max_attentive_matching_layer = Max_Attentive_Matching_Layer(self.num_perspectives)
-            max_attentive_matching_output = max_attentive_matching_layer(A, B)
-
+            #max_attentive_matching_layer = Max_Attentive_Matching_Layer(self.num_perspectives)
+            #max_attentive_matching_output = max_attentive_matching_layer(A, B)
+	    final_output = tf.concat([fma_output, max_pooling_output], 2)
             # Concatenate along 3rd axis (num_perspectives x 2) -> (num_perspectives x 8)
-            final_output = tf.concat([fma_output, max_pooling_output, attentive_matching_output, max_attentive_matching_output], 2)
+            #final_output = tf.concat([fma_output, max_pooling_output, attentive_matching_output, max_attentive_matching_output], 2)
 
         return final_output
 

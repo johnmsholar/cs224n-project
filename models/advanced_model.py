@@ -227,7 +227,7 @@ class Advanced_Model(object):
     def add_training_op(self, loss):
         """Sets up the training Ops.
         """
-        optimizer = tf.train.AdamOptimizer(self.config.lr)
+        optimizer = tf.train.GradientDescentOptimizer(self.config.lr)
         train_op = optimizer.minimize(loss)
         return train_op
 
