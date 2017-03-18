@@ -67,6 +67,7 @@ class Advanced_Model(object):
         self.train_confusion_matrix_fn = '{}/best_train_confusion_matrix'.format(self.logs_path)
         self.dev_confusion_matrix_fn = '{}/best_dev_confusion_matrix'.format(self.logs_path)
         self.test_confusion_matrix_fn = '{}/best_test_confusion_matrix'.format(self.logs_path)
+        self.scores_fn = '{}/scores.csv'.format(self.logs_path)
         self.exclude_names = set([])
 
         # Create Necessary Directories 
@@ -102,6 +103,10 @@ class Advanced_Model(object):
         self.class_predictions = tf.argmax(tf.nn.softmax(self.pred), axis=1)
         self.loss, self.debug_loss_ops = self.add_loss_op(self.pred)
         self.train_op = self.add_training_op(self.loss)
+
+        # Stats
+        self.dev_scores = []
+        self.train_scores = []
 
         # Tensorboard writer
         self.summary_writer =  tf.summary.FileWriter(self.logs_path)
@@ -303,10 +308,12 @@ class Advanced_Model(object):
         print "\nEvaluating on dev set"
         dev_score, _, dev_confusion_matrix_str = self.predict(sess, dev_set)
         print "- dev Score: {:.2f}".format(dev_score)
+        self.dev_scores.append(dev_score)
 
         print "\nEvaluating on train set"
         train_score, _, train_confusion_matrix_str = self.predict(sess, train_examples)
         print "- train Score: {:.2f}".format(train_score)
+        self.train_scores.append(train_score)
         return dev_score, train_score, dev_confusion_matrix_str, train_confusion_matrix_str
 
     def fit(self, sess, saver, train_examples, dev_set):

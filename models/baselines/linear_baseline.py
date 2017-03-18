@@ -34,6 +34,7 @@ from models.fnc1_utils.generate_test_splits import compute_splits
 from models.fnc1_utils.score import report_score
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.ensemble import RandomForestClassifier
 
 rgen = random.Random()
 rgen.seed(1489215)
@@ -615,12 +616,13 @@ def generate_feature_matrices(feature_directory, feature_matrix_filename, output
         raise Exception('--feature-input is required to load feature matrices')
 
 def train_model(X_train, y_train, args):
+    args.classifier = 'randomforest'
     if args.classifier == 'mnb':
         clf = sklearn.naive_bayes.MultinomialNB()
-    elif args.classifer == 'svm':
+    elif args.classifier == 'svm':
         clf = sklearn.svm.SVC()
     elif args.classifier == 'randomforest':
-        clf = sklearn.ensemble.RandomForestClassifier()
+        clf = RandomForestClassifier()
     else:
         clf = sklearn.naive_bayes.MultinomialNB()
     clf.fit(X_train, y_train)
@@ -673,6 +675,17 @@ def evaluate_model(clf, X_train, X_test, y_train, y_test):
     print('FNC1 Official Score:')
     report_score(y_test, y_predicted)
 
+def create_feature_matrices(X_train_indices, X_test_indices, X_dev_indices,
+                            h_id_b_id_to_stance, X_vectors):
+    vector_ordering = sorted(h_id_b_id_to_stance.keys())
+    vector_index_mapping = dict((key, index) for index, key in enumerate(vector_ordering))
+    X_train_matrix_indices = [vector_index_mapping[index] for index in X_train_indices]
+    X_test_matrix_indices = [vector_index_mapping[index] for index in X_test_indices]
+    X_dev_matrix_indices = [vector_index_mapping[index] for index in X_dev_indices]
+    X_train = X_vectors[X_train_matrix_indices, :]
+    X_test = X_vectors[X_test_matrix_indices, :]
+    X_dev = X_vectors[X_dev_matrix_indices, :]
+    return X_train, X_test, X_dev
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and Test Linear Model')
@@ -681,7 +694,9 @@ def parse_args():
     parser.add_argument('--y-output')
     parser.add_argument('--x-input')
     parser.add_argument('--y-input')
+    parser.add_argument('--classifier')
     args = parser.parse_args()
+    args.classifier = 'svm'
     return args
 
 if __name__ == '__main__':
@@ -689,6 +704,14 @@ if __name__ == '__main__':
     if not (args.x_output is None or args.y_output is None):
         generate_feature_vectors(args.x_output, args.y_output, full=args.full)
     if not (args.x_input is None or args.y_input is None):
-        X_train, X_dev, X_test, y_train, y_dev, y_test = retrieve_feature_vectors(args.x_input, args.y_input)
-        clf = train_model(X_train, y_train)
+        (X_indices, y, b_id_to_article, h_id_to_headline,
+         h_id_b_id_to_stance, raw_article_id_to_b_id,
+         headline_to_h_id) = compute_splits()
+        ((X_train_indices, X_test_indices, X_dev_indices),
+         (y_train, y_test, y_dev)) = X_indices, y
+        X_vectors = retrieve_feature_vectors(args.x_input)
+        X_train, X_dev, X_test = create_feature_matrices(
+            X_train_indices, X_test_indices, X_dev_indices,
+            h_id_b_id_to_stance, X_vectors)
+        clf = train_model(X_train, y_train, args)
         evaluate_model(clf, X_train, X_test, y_train, y_test)
