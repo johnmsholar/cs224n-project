@@ -96,7 +96,7 @@ class Deep_Bidirectional_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         with tf.variable_scope("body_cell"):
             cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
             stacked_body_lstm = tf.contrib.rnn.MultiRNNCell([cell_body] * self.config.number_of_layers)
-            article_outputs, _ = tf.nn.dynamic_rnn(
+            article_outputs, article_state = tf.nn.dynamic_rnn(
                 stacked_body_lstm,
                 body_x,
                 initial_state=headline_state,
@@ -106,13 +106,13 @@ class Deep_Bidirectional_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         
         # Apply attention from headline -> article
         with tf.variable_scope("headline_to_article_attention"):
-            article_output = article_outputs[:,-1,:]
+            article_output = article_state[1]
             attention_layer_1 = AttentionLayer(self.config.hidden_size, self.h_max_length)
             output_1 = attention_layer_1(headline_outputs, article_output)
 
         # Apply attentin from article -> headline
         with tf.variable_scope("article_to_headline_attention"):
-            headline_output = headline_outputs[:, -1, :]
+            headline_output = headline_state[1]
             attention_layer_2 = AttentionLayer(self.config.hidden_size, self.a_max_length)
             output_2 = attention_layer_2(article_outputs, headline_output)
 

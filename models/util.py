@@ -283,3 +283,24 @@ def cosine_similarity(a, b):
     a_b = tf.reshape(a_b_expand, shape=[batch_size, 1]) #batch x 1
     a_b_norm = tf.norm(a_b, axis = 1) # batch x 1
     return tf.expand_dims(a_b_norm/(a_norm*b_norm), axis=1) # batch x 1
+
+# # Given a matrix with [batch x time_steps x hidden] and a tensor of the 
+# # For time_steps, batch with 0s in hidden in A, replace with given state
+# # from batch
+# # Args:
+# #   A: [batch x time_steps x hidden]
+# #   H: [batch x hidden] (the last hiddens for each batch example)
+# def extend_padded_matrix(A, H):
+#     norms = tf.norm(A, axis=2) # dim: batch x time_steps
+#     zeros = tf.to_float(tf.equal(norms, 0)) # dim: batch x time_steps, 1 where all 0s in hidden
+#     exp_zeros = tf.tile(tf.expand_dims(zeros, axis=2), [1, 1, hidden_size]) # dim: batch x time_steps x hidden_size
+#     exp_transp = tf.transpose(exp_zeros, [1, 0, 2])
+
+
+#     hidden_size = H.get_shape().as_list()[1]
+#     empty_hiddens = tf.zeros() # batch x 
+#     zero_locs = 
+
+
+
+
