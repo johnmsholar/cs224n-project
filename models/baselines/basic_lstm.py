@@ -208,12 +208,13 @@ class BasicLSTM(Model):
 
         print "Evaluating on dev set"
         prog = Progbar(target=1 + len(dev_set[0])/ self.config.batch_size)
-        actual = vectorize_stances(dev_set[1])
+        actual = []
         preds = []
         for i, (inputs_batch, labels_batch) in enumerate(minibatches(dev_set, self.config.batch_size)):
             predictions_batch = list(self.predict_on_batch(sess, inputs_batch))
             preds.extend(predictions_batch)
-            prog.update(i + 1)       
+            actual.extend(vectorize_stances(labels_batch))
+            prog.update(i + 1)
         dev_score, lines = report_score(actual, preds)
 
         print "- dev Score: {:.2f}".format(dev_score)
