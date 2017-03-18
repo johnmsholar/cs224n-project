@@ -99,6 +99,10 @@ def evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test,
 def train_model(X_train, y_train, model=None):
     if model == 'mnb':
         clf = sklearn.naive_bayes.MultinomialNB()
+    elif model == 'svm':
+        clf = sklearn.svm.SVC()
+    elif model == 'randomforest':
+        clf = sklearn.ensemble.RandomForestClassifier()
     else:
         clf = sklearn.naive_bayes.MultinomialNB()
     clf.fit(X_train, y_train)
@@ -118,7 +122,7 @@ def main(args):
          (y_train, y_test, y_dev)) = X_indices, y
         (y_train, y_test, y_dev) = convert_to_two_class_problem(
             y_train, y_test, y_dev)
-        X_vectors = scipy.io.mmread(args.x_input).tocsr()
+        X_vectors = scipy.io.mmread(args.x_input).toarray()
         X_train, X_dev, X_test = create_feature_matrices(
             X_train_indices, X_test_indices, X_dev_indices,
             h_id_b_id_to_stance, X_vectors)
@@ -134,7 +138,7 @@ def main(args):
             #y_train = class_vector(y_train)
             #y_test = class_vector(y_test)
             #y_dev = class_vector(y_dev)
-        clf = train_model(X_train, y_train, args)
+        clf = train_model(X_train, y_train, args.classifier)
         evaluate_model(clf, X_train, X_test, X_dev, y_train, y_test, y_dev,
                        args.cm_prefix)
     if args.plot_feature_dist:
@@ -213,14 +217,14 @@ def plot_feature_distribution(args):
      (y_train, y_test, y_dev)) = X_indices, y
     (y_train, y_test, y_dev) = convert_to_two_class_problem(
         y_train, y_test, y_dev)
-    X_vectors = scipy.io.mmread(args.x_input).tocsr()
+    X_vectors = scipy.io.mmread(args.x_input).toarray()
     X_train, X_dev, X_test = create_feature_matrices(
         X_train_indices, X_test_indices, X_dev_indices,
         h_id_b_id_to_stance, X_vectors)
     X = np.concatenate([X_train.toarray(), X_dev.toarray(), X_test.toarray()], axis=0)
     y = np.concatenate([np.array(y_train), np.array(y_dev), np.array(y_test)], axis=0)
     for i in range(X.shape[1]):
-        filename= args.plot_prefix + '.png'
+        filename= args.plot_prefix + '{0}.png'.format(i)
         feature_x = X[:, i]
         feature_x_0 = [x for index, x in enumerate(feature_x) if y[index] == 0]
         feature_x_1 = [x for index, x in enumerate(feature_x) if y[index] == 1]

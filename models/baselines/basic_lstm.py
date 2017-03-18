@@ -36,13 +36,17 @@ class Config:
     """
     num_classes = 4 # Number of classses for classification task.
     embed_size = 300 # Size of Glove Vectors
+    training_size = .8
+    random_split = True
+    truncate_headlines = False
+    truncate_articles = True
 
     # Hyper Parameters
     max_length = 1000
     hidden_size = 400 # Hidden State Size
     batch_size = 30
     n_epochs = None
-    lr = 0.02
+    lr = 0.001
     max_grad_norm = 5.
     dropout_rate = 0.5
 
@@ -210,7 +214,7 @@ class BasicLSTM(Model):
             predictions_batch = list(self.predict_on_batch(sess, inputs_batch))
             preds.extend(predictions_batch)
             prog.update(i + 1)       
-        dev_score = report_score(actual, preds)
+        dev_score, lines = report_score(actual, preds)
 
         print "- dev Score: {:.2f}".format(dev_score)
         return dev_score
@@ -275,6 +279,8 @@ def main(debug=True):
         start = time.time()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
+
+
         init = tf.global_variables_initializer()
         with tf.Session() as session:
             session.run(init)
@@ -306,7 +312,7 @@ def main(debug=True):
                     predictions_batch = list(model.predict_on_batch(session, inputs_batch))
                     preds.extend(predictions_batch)
                     prog.update(i + 1)       
-                test_score = pretty_report_score(actual, preds, "./data/plots/basic_lstm.png")
+                test_score, test_lines = pretty_report_score(actual, preds, "./data/plots/basic_lstm.png")
 
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"

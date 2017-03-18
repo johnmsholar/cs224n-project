@@ -368,7 +368,7 @@ def create_inputs_by_glove(concatenate=True, truncate=True):
     # compute glove index vector for every headline
     # sample id -> computed glove indices
     h_id_to_glove_index_vector = compute_glove_index_vector(h_id_to_headline, word_to_glove_index, truncate)
-    b_id_to_glove_index_vector = compute_glove_index_vector(b_id_to_body, word_to_glove_index, truncate, MAX_BODY_LENGTH)
+    b_id_to_glove_index_vector = compute_glove_index_vector(b_id_to_article, word_to_glove_index, truncate, MAX_BODY_LENGTH)
     max_body_length = max([len(index_vec) for (b_id, index_vec) in b_id_to_glove_index_vector.items()])
     max_headline_length = max([len(index_vec) for (h_id, index_vec) in h_id_to_glove_index_vector.items()])
     max_input_lengths = (max_headline_length, max_body_length)
