@@ -38,8 +38,8 @@ class Config(object):
         self.n_epochs = None
         self.lr = 0.001
         self.max_grad_norm = 5.
-        self.dropout_rate = 0.8
-        self.beta = 0
+        self.dropout_rate = 0.9
+        self.beta = 0.1
 
         # Data Params
         self.training_size = .80
@@ -191,4 +191,4 @@ def main(debug=True):
                 print "- test Score: {:.2f}".format(test_score)
 
 if __name__ == '__main__':
-    main(True)
+    main(False)
