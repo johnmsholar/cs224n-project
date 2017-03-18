@@ -103,13 +103,16 @@ class Bimpmp(Advanced_Model):
                     dtype=tf.float32,
                     sequence_length=self.a_seq_lengths_placeholder
                 )           
+        # headline_context_outputs: batch x h_time_steps x hidden
+        # article_context_outputs: batch x a_time_steps x hidden
 
         # Matching Layer -- assume output is concatenated (fw and bw together)
-        # Output Dimensionality: batch_size x time steps x (hidden_size x 2)
+        # Output: [batch x A_time_steps x (num_perspectives x 8)]
         with tf.variable_scope("matching_headline_to_article"):
             matching_layer_headline_to_article = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
             post_matching_h_to_a = matching_layer_headline_to_article(headline_context_outputs, article_context_outputs)
 
+        # [batch x B_time_steps x (num_perspectives x 8)]
         with tf.variable_scope("matching_article_to_headline"):
             matching_layer_article_to_headline = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
             post_matching_a_to_h = matching_layer_article_to_headline(article_context_outputs, headline_context_outputs)
@@ -135,6 +138,9 @@ class Bimpmp(Advanced_Model):
                     dtype=tf.float32,
                     sequence_length=self.a_seq_lengths_placeholder
                 )           
+
+        # headline_aggregate_outputs: batch x h_time_steps x aggregate_hidden_size
+        # article_aggregate_outputs: batch x a_time_steps x aggregate_hidden_size
 
         # Final Prediction Layer
         with tf.variable_scope("final_prediction_layer"):

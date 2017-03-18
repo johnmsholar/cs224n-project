@@ -91,13 +91,12 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         with tf.variable_scope("body_cell"):
             cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
             # _, article_state = tf.contrib.rnn.static_rnn(cell_body, body_x_list, initial_state=headline_state, dtype=tf.float32)
-            outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
+            outputs, article_state = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
         
         # Apply attention
         with tf.variable_scope("attention"):
-            article_state = outputs[:,-1,:]
             attention_layer = AttentionLayer(self.config.hidden_size, self.h_max_length)
-            output = attention_layer(headline_outputs, article_state)
+            output = attention_layer(headline_outputs, article_state[1])
 
         # Compute predictions
         with tf.variable_scope("final_projection"):

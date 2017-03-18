@@ -88,17 +88,17 @@ class Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         # body_x_list = [body_x[:, i, :] for i in range(body_x.get_shape()[1].value)]
         with tf.variable_scope("body_cell"):
             cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
-            article_outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
+            article_outputs, article_state = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
         
         # Apply attention from headline -> article
         with tf.variable_scope("headline_to_article_attention"):
-            article_output = article_outputs[:,-1,:]
+            article_output = article_state[1]
             attention_layer_1 = AttentionLayer(self.config.hidden_size, self.h_max_length)
             output_1 = attention_layer_1(headline_outputs, article_output)
 
         # Apply attentin from article -> headline
         with tf.variable_scope("article_to_headline_attention"):
-            headline_output = headline_outputs[:, -1, :]
+            headline_output = headline_state[1]
             attention_layer_2 = AttentionLayer(self.config.hidden_size, self.a_max_length)
             output_2 = attention_layer_2(article_outputs, headline_output)
 
