@@ -22,7 +22,7 @@ def score_submission(gold_labels, test_labels):
         g_stance, t_stance = g, t
         if g_stance == t_stance:
             score += 0.25
-            if g_stance != 'unrelated':
+            if g_stance != 3:
                 score += 0.50
         if g_stance in RELATED and t_stance in RELATED:
             score += 0.25
