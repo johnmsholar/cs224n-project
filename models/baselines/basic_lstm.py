@@ -23,7 +23,7 @@ import os
 import sys
 sys.path.insert(0, '../')
 
-from fnc1_utils.score import report_score, pretty_report_score
+from fnc1_utils.score import report_score
 from model import Model
 from fnc1_utils.featurizer import create_inputs_by_glove
 from util import Progbar, vectorize_stances, minibatches, create_tensorflow_saver
@@ -313,7 +313,7 @@ def main(debug=True):
                     predictions_batch = list(model.predict_on_batch(session, inputs_batch))
                     preds.extend(predictions_batch)
                     prog.update(i + 1)       
-                test_score, test_lines = pretty_report_score(actual, preds, "./data/plots/basic_lstm.png")
+                test_score, test_lines = report_score(actual, preds)
 
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"

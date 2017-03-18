@@ -21,7 +21,7 @@ import os
 import sys
 sys.path.insert(0, '../')
 
-from fnc1_utils.score import report_score, pretty_report_score
+from fnc1_utils.score import report_score
 from model import Model
 from fnc1_utils.featurizer import read_glove_sum_binaries
 from util import vectorize_stances
@@ -38,9 +38,9 @@ class Config:
     input_dim = 200
     num_classes = 4
 
-    dropout = 0.5
+    dropout = 0.8
     batch_size = 500
-    lr = .001
+    lr = .0001
     n_epochs = 100
     class_weights = None
 
@@ -272,7 +272,7 @@ def main(debug=True):
 
                 actual = vectorize_stances(test_set[2])
                 preds = list(model.predict_on_batch(session, *test_set[:2]))
-                test_score = pretty_report_score(actual, preds, "nn_cm.png")
+                test_score = report_score(actual, preds)
 
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"
