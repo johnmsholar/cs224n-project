@@ -1,0 +1,1 @@
+'{"dropout_rate": 0.6, "training_size": 0.8, "classification_problem": 3, "embed_size": 300, "max_article_length": 800, "max_headline_length": 500, "truncate_articles": true, "batch_size": 50, "n_epochs": 5, "uniform_data_split": false, "beta": 1, "lr": 0.001, "truncate_headlines": false, "max_grad_norm": 5.0, "random_split": false, "hidden_size": 300, "num_classes": 3}'
