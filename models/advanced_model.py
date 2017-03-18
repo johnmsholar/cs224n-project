@@ -244,7 +244,12 @@ class Advanced_Model(object):
             a_seq_lengths
         )
 
-        _, loss, summary_str = sess.run([self.train_op, self.loss, self.merged_summary_op], feed_dict=feed)
+        _, loss, summary_str, truncation = sess.run([self.train_op, self.loss, self.merged_summary_op, self.truncation], feed_dict=feed)
+
+        np.set_printoptions(threshold=np.nan)
+        print "-----"
+        print truncation
+        print "-----"
 
         if self.debug and self.debug_loss_ops is not None:
             sess.run(self.debug_loss_ops, feed_dict=feed)
