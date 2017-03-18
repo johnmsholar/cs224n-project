@@ -39,7 +39,7 @@ class Config(object):
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
         self.batch_size = 50
-        self.n_epochs = 30
+        self.n_epochs = 5
         self.lr = 0.0001
         self.max_grad_norm = 5.
         self.dropout_rate = 0.8
@@ -67,7 +67,7 @@ def run_model(config, max_input_lengths, glove_matrix, args, train_examples, dev
         # Create and configure model
         print "Building model...",
         start = time.time()
-        model = Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix)
+        model = Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix)
         model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
@@ -131,8 +131,9 @@ def main(debug=False):
 
     # Define hyperparameters
     hyperparameters = {
-        'lr': [0.001, 0.0001, 0.00001],
+        'lr': [0.001],
         'dropout_rate': [.6, .8, .9],
+        'beta': [.1, 1, 10, 100]
     }
 
     # Run model over all these hyper parameters
@@ -147,15 +148,17 @@ def main(debug=False):
             config.embed_size = 2
         for dropout_rate in hyperparameters['dropout_rate']:
             config.dropout_rate = dropout_rate
-            print "-"*80
-            print "Using Configs:"
-            pp.pprint(config.__dict__)
-            print "-"*80
-            test_score, test_confusion_matrix = run_model(config, max_input_lengths, glove_matrix, args, train_examples, dev_set, test_set)
-            if test_score > best_test_score:
-                best_test_score = test_score
-                best_config = config
-                best_test_confusion_matrix = test_confusion_matrix
+            for beta in hyperparameters['beta']:
+                config.beta = beta
+                print "-"*80
+                print "Using Configs:"
+                pp.pprint(config.__dict__)
+                print "-"*80
+                test_score, test_confusion_matrix = run_model(config, max_input_lengths, glove_matrix, args, train_examples, dev_set, test_set)
+                if test_score > best_test_score:
+                    best_test_score = test_score
+                    best_config = config
+                    best_test_confusion_matrix = test_confusion_matrix
 
     print '-'*80
     print "Best Config:"
