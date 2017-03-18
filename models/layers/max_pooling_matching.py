@@ -38,30 +38,36 @@ class Max_Pooling_Attention_Layer(Attention_Base_Class):
         sliced_result = result[1][1:, :, :]
         return tf.transpose(result[1][1:, :, :], perm=[1, 0, 2]) # batch x time_steps x perspective
 
-    def compute_max_elem_score(self, h_i, B, W, ):
+    def compute_max_elem_score(self, h_i, B, W ):
         # Args:
         #   h_i is [hidden x batch]
         #   B is [B_time_steps, hidden_size x batch]
         #   W is [hidden_size x num_perspectives]
         # Returns:
         #   1 x batch x perspectives which is max elem score over the scores on B
-        b_time_steps = B.get_shape()[0]
-        batch_size = tf.shape(h_i)[1]
 
-        cond = lambda j, result: tf.less(j, b_time_steps)
-        def body(j, result):
-            h_j = B[j, :, :] # hidden_size x batch
-            m_i_j = tf.expand_dims(self.compute_score(h_i, h_j, W), axis=0) # 1 x batch x perspectives
-            result = tf.concat([result, m_i_j], axis=0)
-            return [tf.add(j,1), result]
-        
-        jdx = tf.constant(0) # current j time step index
-        shape_invariants = [jdx.get_shape(), tf.TensorShape([None, None, self.num_perspectives])]
-        result = tf.zeros(shape=[1, batch_size, self.num_perspectives])
-        result = tf.while_loop(cond, body, [jdx, result], shape_invariants=shape_invariants) # B_time_steps x batch x perspectives
-        result = result[1][1:, :, :] # B_time_steps x batch x perspective
-        result = tf.expand_dims(tf.reduce_max(result, axis=0), axis=0) # take elementwise max
-        return result # 1 x batch x perspective
+        W = tf.expand_dims(tf.transpose(W), 2) # p x h x 1
+        Whi = W*h_i # p x h x b
+        B_time_steps = B.get_shape().as_list()[0]
+        # make copies along the B_timesteps dim
+        W_exp = tf.tile(tf.expand_dims(W, 1), [1, B_time_steps, 1, 1]) # p x B_time_steps x h x 1
+        WB = W_exp*B # p x B_time_steps x h x b
+
+        whi_norm = tf.norm(Whi, axis=1) # p x b
+        wb_norm = tf.norm(WB, axis=2) # p x B_time_steps x b
+        wb_norm_transp = tf.transpose(wb_norm, [1, 0, 2]) # B_time_steps x p x b
+        norm_prod = wb_norm_transp*whi_norm # B_time_steps x p x b
+
+        # make copies of Whi
+        Whi_transp = tf.transpose(Whi, [0, 2, 1]) # p x b x h
+        Whi_exp = tf.tile(tf.expand_dims(Whi_transp, 0), [B_time_steps, 1, 1, 1]) # B_time_steps x p x b x h
+        Whi_exp = tf.expand_dims(Whi_exp, 4) # B_time_steps x p x b x h x 1
+        WB_exp = tf.expand_dims(tf.transpose(WB, [1, 0, 3, 2]), 3) # B_time_steps x p x b x 1 x h
+        dot_prod = tf.squeeze(tf.matmul(WB_exp, Whi_exp)) # B_time_steps x p x b
+
+        full = tf.divide(dot_prod, norm_prod) # B_time_steps x p x b
+
+        return tf.expand_dims(tf.transpose(tf.reduce_max(full, axis=0)), 0) # 1 x b x p
 
 def numpy_reference_mpa(A, B, W, batch_size, A_time_steps, hidden_size, num_perspectives):
     # A [batch_size, A_time_steps, hidden_size]
