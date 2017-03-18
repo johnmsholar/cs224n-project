@@ -67,8 +67,7 @@ class Advanced_Model(object):
         self.train_confusion_matrix_fn = '{}/best_train_confusion_matrix'.format(self.logs_path)
         self.dev_confusion_matrix_fn = '{}/best_dev_confusion_matrix'.format(self.logs_path)
         self.test_confusion_matrix_fn = '{}/best_test_confusion_matrix'.format(self.logs_path)
-        self.train_scores_fn = '{}/train_scores'.format(self.logs_path)
-        self.dev_scores_fn = '{}/dev_scores'.format(self.logs_path)
+        self.scores_fn = '{}/scores.csv'.format(self.logs_path)
         self.exclude_names = set([])
 
         # Create Necessary Directories 

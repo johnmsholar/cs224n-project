@@ -12,6 +12,7 @@ import argparse
 import tensorflow as tf
 import numpy as np
 
+import csv
 import time
 import os
 import sys
@@ -231,10 +232,11 @@ def main(debug=True):
                     file.write(test_confusion_matrix_str)
 
             # Print Train and Score Files
-            with open(model.train_scores_fn, 'w') as file:
-                file.write(model.train_scores)           
-            with open(model.dev_scores_fn, 'w') as file:
-                file.write(model.dev_scores) 
+            with open(model.scores_fn, 'w') as file:
+                writer = csv.writer(file)
+                writer.writerow(['Epoch Number', "Train Score", "Dev Score"])
+                for i, train_value in enumerate(model.train_scores):
+                    writer.writerow([i, train_value/100.0, model.dev_scores[i]/100.0])
 
 if __name__ == '__main__':
     main(True)
