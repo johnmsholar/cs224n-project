@@ -119,7 +119,7 @@ class Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
             output_2 = attention_layer_2(headline_outputs[1], article_output)
 
         # Apply attentin from article -> headline
-        with tf.variable_scope("article_to_headline_attention_f"):
+        with tf.variable_scope("article_to_headline_attention_fw"):
             headline_output = headline_outputs[0][:, -1, :]
             attention_layer_3 = AttentionLayer(self.config.hidden_size, self.a_max_length)
             output_3 = attention_layer_3(article_outputs[0], headline_output)
@@ -151,7 +151,7 @@ class Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         else:
             debug_ops = None
 
-        return preds, debug_ops
+        return preds, debug_ops, output_1, output_2, output_3, output_4
 
 def main(debug=True):
     # Parse Arguments

@@ -21,6 +21,7 @@ import json
 import time
 import os
 import sys
+import random
 import cPickle
 
 class Advanced_Model(object):
@@ -70,6 +71,16 @@ class Advanced_Model(object):
         self.scores_fn = '{}/scores.csv'.format(self.logs_path)
         self.exclude_names = set([])
 
+        self.final_epoch = False
+        self.save_attention = False
+        self.attention_headline_output_fn = '{}/headlines'.format(self.logs_path)
+        self.attention_article_output_fn = '{}/articles'.format(self.logs_path)
+        self.attention_label_output_fn = '{}/labels'.format(self.logs_path)
+        self.attention_1 = '{}/attention_1'.format(self.logs_path)
+        self.attention_2 = '{}/attention_2'.format(self.logs_path)
+        self.attention_3 = '{}/attention_3'.format(self.logs_path)
+        self.attention_4 = '{}/attention_4'.format(self.logs_path)
+
         # Create Necessary Directories 
         if not os.path.exists(self.weights_path):
             os.makedirs(self.weights_path)
@@ -99,7 +110,11 @@ class Advanced_Model(object):
 
     def build(self):
         self.add_placeholders()
-        self.pred, self.debug_ops = self.add_prediction_op(self.debug)
+        # Bidirectional Attention Bidirectional Conditional LSTM
+        # Special Case
+        self.pred, self.debug_ops, self.output_1, self.output_2, self.output_3, self.output_4 = self.add_prediction_op(self.debug)
+        # self.pred, self.debug_ops =  self.add_prediction_op(self.debug)   
+
         self.class_predictions = tf.argmax(tf.nn.softmax(self.pred), axis=1)
         self.loss, self.debug_loss_ops = self.add_loss_op(self.pred)
         self.train_op = self.add_training_op(self.loss)
@@ -246,6 +261,21 @@ class Advanced_Model(object):
 
         _, loss, summary_str = sess.run([self.train_op, self.loss, self.merged_summary_op], feed_dict=feed)
 
+        if self.save_attention:
+            output_1, output_2, output_3, output_4 = sess.run([self.output_1, self.output_2, self.output_3, self.output_4], feed_dict=feed)
+            self.attention_1 = '{}/headline_to_article_attention_fw'.format(self.logs_path)
+            self.attention_2 = '{}/headline_to_article_attention_bw'.format(self.logs_path)
+            self.attention_3 = '{}/article_to_headline_attention_fw'.format(self.logs_path)
+            self.attention_4 = '{}/article_to_headline_attention_bw'.format(self.logs_path)
+            with open(self.attention_1, 'wb') as outfile:
+                write_tensor_to_file(output_1, outfile)
+            with open(self.attention_2, 'wb') as outfile:
+                write_tensor_to_file(output_2, outfile)
+            with open(self.attention_3, 'wb') as outfile:
+                write_tensor_to_file(output_3, outfile)
+            with open(self.attention_4, 'wb') as outfile:
+                write_tensor_to_file(output_4, outfile)        
+
         if self.debug and self.debug_loss_ops is not None:
             sess.run(self.debug_loss_ops, feed_dict=feed)
         return loss, summary_str
@@ -299,7 +329,20 @@ class Advanced_Model(object):
         """
         # Train the Epoch
         prog = Progbar(target=1+len(train_examples[0])/self.config.batch_size)
+
+        if self.final_epoch:
+            batch_to_record = random.randint(0, self.config.batch_size)
+        else:
+            batch_to_record = -1
+
         for i, (headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch) in enumerate(minibatches(train_examples, self.config.batch_size)):
+            if batch_to_record != -1:
+                self.save_attention = True
+                np.savetxt(self.attention_headline_output_fn, headlines_batch)
+                np.savetxt(self.attention_article_output_fn, articles_batch)
+                np.savetxt(self.attention_label_output_fn, labels_batch)
+            else:
+                self.save_attention = False
             loss, summary_str = self.train_on_batch(sess, headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch)
             self.summary_writer.add_summary(summary_str, (epoc_num + 1) * len(train_examples[0])/self.config.batch_size)
             prog.update(i + 1, [("train loss", loss)])
@@ -323,6 +366,10 @@ class Advanced_Model(object):
         best_train_score = 0
         for epoch in range(self.config.n_epochs):
             print "Epoch {:} out of {:}".format(epoch + 1, self.config.n_epochs)
+            if epoch == self.config.n_epochs - 1:
+                self.final_epoch = True
+            else:
+                self.final_epoch = False
             dev_score, train_score, dev_confusion_matrix_str, train_confusion_matrix_str = self.run_epoch(sess, train_examples, dev_set, epoch)
             if dev_score > best_dev_score:
                 best_dev_score = dev_score
@@ -344,6 +391,21 @@ class Advanced_Model(object):
             #     print "Finished Epoch ... Saving model in {}".format(self.curr_weights_fn)
             #     saver.save(sess, self.curr_weights_fn)
             # print    
+
+def write_tensor_to_file(data, outfile):
+    outfile.write('# Array shape: {0}\n'.format(data.shape))
+
+    # Iterating through a ndimensional array produces slices along
+    # the last axis. This is equivalent to data[i,:,:] in this case
+    for data_slice in data:
+
+        # The formatting string indicates that I'm writing out
+        # the values in left-justified columns 7 characters in width
+        # with 2 decimal places.  
+        np.savetxt(outfile, data_slice, fmt='%-7.2f')
+
+        # Writing out a break to indicate different slices...
+        outfile.write('# New slice\n')
 
 def create_data_sets_for_model(X, y, debug=False):
     """ Given train, dev, and test splits for input, sequnce lengths, labels,
