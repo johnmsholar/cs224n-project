@@ -111,23 +111,23 @@ class Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         with tf.variable_scope("headline_to_article_attention_fw"):
             article_output = article_outputs[0][:,-1,:] 
             attention_layer_1 = AttentionLayer(self.config.hidden_size, self.h_max_length)
-            output_1 = attention_layer_1(headline_outputs[0], article_output)
+            output_1, alpha_1 = attention_layer_1(headline_outputs[0], article_output)
 
         with tf.variable_scope("headline_to_article_attention_bw"):
             article_output = article_outputs[1][:,-1,:] 
             attention_layer_2 = AttentionLayer(self.config.hidden_size, self.h_max_length)
-            output_2 = attention_layer_2(headline_outputs[1], article_output)
+            output_2, alpha_2 = attention_layer_2(headline_outputs[1], article_output)
 
         # Apply attentin from article -> headline
         with tf.variable_scope("article_to_headline_attention_fw"):
             headline_output = headline_outputs[0][:, -1, :]
             attention_layer_3 = AttentionLayer(self.config.hidden_size, self.a_max_length)
-            output_3 = attention_layer_3(article_outputs[0], headline_output)
+            output_3, alpha_3 = attention_layer_3(article_outputs[0], headline_output)
 
         with tf.variable_scope("article_to_headline_attention_bw"):
             headline_output = headline_outputs[1][:,-1,:]
             attention_layer_4 = AttentionLayer(self.config.hidden_size, self.a_max_length)
-            output_4 = attention_layer_4(article_outputs[1], headline_output)
+            output_4, alpha_4 = attention_layer_4(article_outputs[1], headline_output)
 
         # Compute predictions
         with tf.variable_scope("final_projection"):
@@ -151,7 +151,8 @@ class Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         else:
             debug_ops = None
 
-        return preds, debug_ops, output_1, output_2, output_3, output_4
+        attention_vals = [alpha_1, alpha_2, alpha_3, alpha_4]
+        return preds, debug_ops, attention_vals
 
 def main(debug=True):
     # Parse Arguments
@@ -219,17 +220,17 @@ def main(debug=True):
             print 80 * "="
             model.fit(session, saver, train_examples, dev_set)
 
-            if not debug:
-                print 80 * "="
-                print "TESTING"
-                print 80 * "="
-                print "Restoring the best model weights found on the dev set"
-                saver.restore(session, model.best_weights_fn)
 
-                print "Final evaluation on test set",
-                test_score, _, test_confusion_matrix_str = model.predict(session, test_set, save_preds=True)
-                with open(model.test_confusion_matrix_fn, 'w') as file:
-                    file.write(test_confusion_matrix_str)
+            print 80 * "="
+            print "TESTING"
+            print 80 * "="
+            print "Restoring the best model weights found on the dev set"
+            saver.restore(session, model.best_weights_fn)
+
+            print "Final evaluation on test set",
+            test_score, _, test_confusion_matrix_str = model.predict(session, test_set, save_preds=True, save_attention=True)
+            with open(model.test_confusion_matrix_fn, 'w') as file:
+                file.write(test_confusion_matrix_str)
 
             # Print Train and Score Files
             with open(model.scores_fn, 'w') as file:

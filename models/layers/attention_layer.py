@@ -34,7 +34,7 @@ class AttentionLayer:
         h_star_one = tf.matmul(r, W_p)
         h_star_two = tf.matmul(h_n, W_x)
         output = tf.tanh(h_star_one + h_star_two) # dim: batch x hidden
-        return output
+        return output, alpha
 
     def __call__(self, Y, h_n, scope=None):
         """
@@ -54,9 +54,9 @@ class AttentionLayer:
             w = tf.get_variable("w", shape=[self.hidden_size, 1])
             W_x = tf.get_variable("W_x", shape=[self.hidden_size, self.hidden_size])
             W_p = tf.get_variable("W_p", shape=[self.hidden_size, self.hidden_size])
-            output = self.compute_attention(Y, h_n, W_y, W_h, w, W_x, W_p)
+            output, alpha = self.compute_attention(Y, h_n, W_y, W_h, w, W_x, W_p)
 
-        return output
+        return output, alpha
 
 def test():
     batch_size = 3
