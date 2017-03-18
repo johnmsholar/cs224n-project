@@ -36,13 +36,17 @@ class Config:
     """
     num_classes = 4 # Number of classses for classification task.
     embed_size = 300 # Size of Glove Vectors
+    training_size = .8
+    random_split = True
+    truncate_headlines = False
+    truncate_articles = True
 
     # Hyper Parameters
     max_length = 1000
     hidden_size = 400 # Hidden State Size
     batch_size = 30
     n_epochs = None
-    lr = 0.02
+    lr = 0.001
     max_grad_norm = 5.
     dropout_rate = 0.5
 
@@ -274,6 +278,8 @@ def main(debug=True):
         print "Building model...",
         start = time.time()
         print "took {:.2f} seconds\n".format(time.time() - start)
+
+
 
         init = tf.global_variables_initializer()
         with tf.Session() as session:
