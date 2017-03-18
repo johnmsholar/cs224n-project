@@ -214,7 +214,7 @@ class BasicLSTM(Model):
             predictions_batch = list(self.predict_on_batch(sess, inputs_batch))
             preds.extend(predictions_batch)
             prog.update(i + 1)       
-        dev_score = report_score(actual, preds)
+        dev_score, lines = report_score(actual, preds)
 
         print "- dev Score: {:.2f}".format(dev_score)
         return dev_score
