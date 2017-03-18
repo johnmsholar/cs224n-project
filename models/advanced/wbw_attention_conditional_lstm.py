@@ -24,6 +24,7 @@ from util import create_tensorflow_saver
 from layers.attention_layer import AttentionLayer
 from layers.wbw_attention_layer import WBWAttentionLayer
 from layers.class_squash_layer import ClassSquashLayer
+from util import extend_padded_matrix
 
 class Config(object):
     """Holds model hyperparams and data information.
@@ -89,11 +90,12 @@ class WBW_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         # body_x_list = [body_x[:, i, :] for i in range(body_x.get_shape()[1].value)]
         with tf.variable_scope("body_cell"):
             cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
-            body_outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
+            body_outputs, body_state = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
         
+
         # Apply attention
         attention_layer = WBWAttentionLayer(self.config.hidden_size, self.h_max_length)
-        output = attention_layer(headline_outputs, body_outputs)
+        output = attention_layer(headline_outputs, extend_padded_matrix(body_outputs, body_state[1]))
 
         # Compute predictions
         output_dropout = tf.nn.dropout(output, dropout_rate)

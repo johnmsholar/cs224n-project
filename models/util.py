@@ -290,17 +290,13 @@ def cosine_similarity(a, b):
 # # Args:
 # #   A: [batch x time_steps x hidden]
 # #   H: [batch x hidden] (the last hiddens for each batch example)
-# def extend_padded_matrix(A, H):
-#     norms = tf.norm(A, axis=2) # dim: batch x time_steps
-#     zeros = tf.to_float(tf.equal(norms, 0)) # dim: batch x time_steps, 1 where all 0s in hidden
-#     exp_zeros = tf.tile(tf.expand_dims(zeros, axis=2), [1, 1, hidden_size]) # dim: batch x time_steps x hidden_size
-#     exp_transp = tf.transpose(exp_zeros, [1, 0, 2])
-
-
-#     hidden_size = H.get_shape().as_list()[1]
-#     empty_hiddens = tf.zeros() # batch x 
-#     zero_locs = 
-
-
-
+def extend_padded_matrix(A, H):
+    hidden_size = A.get_shape().as_list()[2]
+    norms = tf.norm(A, axis=2) # dim: batch x time_steps
+    zeros = tf.to_float(tf.equal(norms, 0)) # dim: batch x time_steps, 1 where all 0s in hidden
+    multiples = tf.constant([1, 1, hidden_size])
+    exp_zeros = tf.tile(tf.expand_dims(zeros, axis=2), multiples) # dim: batch x time_steps x hidden_size
+    zeros_transp = tf.transpose(exp_zeros, [1, 0, 2]) # time_steps x batch x hidden
+    hidden_exp = tf.transpose(zeros_transp*H,  [1, 0, 2]) # batch x time_steps x hidden
+    return A + hidden_exp
 
