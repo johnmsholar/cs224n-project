@@ -43,12 +43,12 @@ class Config:
 
     # Hyper Parameters
     max_length = 1000
-    hidden_size = 400 # Hidden State Size
-    batch_size = 30
+    hidden_size = 300 # Hidden State Size
+    batch_size = 50
     n_epochs = None
-    lr = 0.001
+    lr = 0.0001
     max_grad_norm = 5.
-    dropout_rate = 0.5
+    dropout_rate = 0.8
 
     # Other params
     pretrained_embeddings = None
