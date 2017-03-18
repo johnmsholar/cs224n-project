@@ -133,7 +133,7 @@ def main(debug=False):
     hyperparameters = {
         'lr': [0.001],
         'dropout_rate': [.6, .8, .9],
-        'beta': [.1, 1, 10, 100]
+        'beta': [.01, .1]
     }
 
     # Run model over all these hyper parameters
