@@ -114,24 +114,25 @@ class Deep_Bidirectional_Attention_BidiretionalConditonal_Encoding_LSTM_Model(Ad
             )
 
         # Apply attention from headline -> article
+        print len(article_state[0])
         with tf.variable_scope("headline_to_article_attention_fw"):
-            article_output = article_state[0][1]
+            article_output = article_state[0][self.config.number_of_layers - 1][1]
             attention_layer_1 = AttentionLayer(self.config.hidden_size, self.h_max_length)
             output_1 = attention_layer_1(headline_outputs[0], article_output)
 
         with tf.variable_scope("headline_to_article_attention_bw"):
-            article_output = article_state[1][1] 
+            article_output = article_state[1][self.config.number_of_layers - 1][1]
             attention_layer_2 = AttentionLayer(self.config.hidden_size, self.h_max_length)
             output_2 = attention_layer_2(headline_outputs[1], article_output)
 
         # Apply attentin from article -> headline
         with tf.variable_scope("article_to_headline_attention_fw"):
-            headline_output = headline_states[0][1]
+            headline_output = headline_states[0][self.config.number_of_layers - 1][1]
             attention_layer_3 = AttentionLayer(self.config.hidden_size, self.a_max_length)
             output_3 = attention_layer_3(article_outputs[0], headline_output)
 
         with tf.variable_scope("article_to_headline_attention_bw"):
-            headline_output = headline_states[1][1]
+            headline_output = headline_states[1][self.config.number_of_layers - 1][1]
             attention_layer_4 = AttentionLayer(self.config.hidden_size, self.a_max_length)
             output_4 = attention_layer_4(article_outputs[1], headline_output)
 
