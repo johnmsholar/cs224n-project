@@ -37,7 +37,7 @@ class Config(object):
 
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
-        self.config.squashing_layer_hidden_size = 150
+        self.squashing_layer_hidden_size = 150
         self.batch_size = 50
         self.n_epochs = None
         self.lr = 0.0001
