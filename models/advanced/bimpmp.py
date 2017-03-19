@@ -20,7 +20,7 @@ sys.path.insert(0, '../')
 from advanced_model import Advanced_Model, create_data_sets_for_model, produce_uniform_data_split
 from fnc1_utils.score import report_score
 from fnc1_utils.featurizer import create_embeddings
-from util import create_tensorflow_saver, parse_args
+from util import create_tensorflow_saver, parse_args, extend_padded_matrix
 from layers.attention_layer import AttentionLayer
 from layers.class_squash_layer import ClassSquashLayer
 from layers.multiperspective_matching_a_to_b_layer import Multiperspective_Matching_A_to_B_Layer
@@ -107,20 +107,24 @@ class Bimpmp(Advanced_Model):
         # article_context_outputs: batch x a_time_steps x hidden
 
         # copy over hidden state into padding region
-        for i in range(0,2):
-            headline_context_outputs[i] = extend_padded_matrix(headline_context_outputs[i], headline_context_state[i][1])
-            article_context_outputs[i] = extend_padded_matrix(article_context_outputs[i], article_context_state[i][1])
+        h_extend_fwd = extend_padded_matrix(headline_context_outputs[0], headline_context_state[0][1])
+        h_extend_bwd = extend_padded_matrix(headline_context_outputs[1], headline_context_state[1][1])
+        h_padded_out = (h_extend_fw, h_extend_bwd)
+
+        a_extend_fwd = extend_padded_matrix(article_context_outputs[0], article_context_state[0][1])
+        a_extend_bwd = extend_padded_matrix(article_context_outputs[1], article_context_state[1][1])
+        a_padded_out = (a_extend_fw, a_extend_bwd)
 
         # Matching Layer -- assume output is concatenated (fw and bw together)
         # Output: [batch x A_time_steps x (num_perspectives x 8)]
         with tf.variable_scope("matching_headline_to_article"):
             matching_layer_headline_to_article = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
-            post_matching_h_to_a = matching_layer_headline_to_article(headline_context_outputs, article_context_outputs)
+            post_matching_h_to_a = matching_layer_headline_to_article(h_padded_out, a_padded_out)
 
         # [batch x B_time_steps x (num_perspectives x 8)]
         with tf.variable_scope("matching_article_to_headline"):
             matching_layer_article_to_headline = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
-            post_matching_a_to_h = matching_layer_article_to_headline(article_context_outputs, headline_context_outputs)
+            post_matching_a_to_h = matching_layer_article_to_headline(a_padded_out, h_padded_out)
 
         # Aggregation Layer 
         with tf.variable_scope("aggregation_layer"):
