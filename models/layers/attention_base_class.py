@@ -33,11 +33,12 @@ class Attention_Base_Class(object):
         norm_prod = wm_norm_transp*wv_norm # M_time_steps x p x b
 
         # make copies of wv
-        wv_transp = tf.transpose(wv, [0, 2, 1]) # p x b x h
-        wv_exp = tf.tile(tf.expand_dims(wv_transp, 0), [M_time_steps, 1, 1, 1]) # M_time_steps x p x b x h
-        wv_exp = tf.expand_dims(wv_exp, 4) # M_time_steps x p x b x h x 1
-        wm_exp = tf.expand_dims(tf.transpose(wm, [1, 0, 3, 2]), 3) # M_time_steps x p x b x 1 x h
-        dot_prod = tf.squeeze(tf.matmul(wm_exp, wv_exp)) # M_time_steps x p x b
+        wv_transp = tf.transpose(wv, [2, 0, 1]) # b x p x h
+        wv_exp = tf.tile(tf.expand_dims(wv_transp, 0), [M_time_steps, 1, 1, 1]) # M_time_steps x b x p x h
+        wv_exp = tf.expand_dims(wv_exp, 4) # M_time_steps x b x p x h x 1
+        wm_exp = tf.expand_dims(tf.transpose(wm, [1, 3, 0, 2]), 3) # M_time_steps x b x p x 1 x h
+        dot_prod = tf.squeeze(tf.matmul(wm_exp, wv_exp)) # M_time_steps x b x p
+        dot_prod = tf.transpose(dot_prod, [0, 2, 1]) # M_time_steps x p x b
 
         full = tf.divide(dot_prod, norm_prod) # M_time_steps x p x b
         return full
