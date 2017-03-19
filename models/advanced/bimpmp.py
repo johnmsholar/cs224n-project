@@ -108,22 +108,30 @@ class Bimpmp(Advanced_Model):
         # copy over hidden state into padding region
         h_extend_fwd = extend_padded_matrix(headline_context_outputs[0], headline_context_state[0][1])
         h_extend_bwd = extend_padded_matrix(headline_context_outputs[1], headline_context_state[1][1])
-        h_padded_out = (h_extend_fwd, h_extend_bwd)
 
         a_extend_fwd = extend_padded_matrix(article_context_outputs[0], article_context_state[0][1])
         a_extend_bwd = extend_padded_matrix(article_context_outputs[1], article_context_state[1][1])
-        a_padded_out = (a_extend_fwd, a_extend_bwd)
 
-        # Matching Layer -- assume output is concatenated (fw and bw together)
-        # Output: [batch x A_time_steps x (num_perspectives x 8)]
-        with tf.variable_scope("matching_headline_to_article"):
-            matching_layer_headline_to_article = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
-            post_matching_h_to_a = matching_layer_headline_to_article(h_padded_out, a_padded_out)
+        # perform 4 attention mappings (in each direction (h->a, a->h) for each encoding direction (fwd, bwd))
+        
+        with tf.variable_scope("match_h_a_fwd"):
+            matching_layer_h_a_fwd = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
+            post_match_h_a_fwd = matching_layer_headline_to_article(h_extend_fwd, a_extend_fwd) # batch x h_time_steps x num_perspectives
 
-        # [batch x B_time_steps x (num_perspectives x 8)]
-        with tf.variable_scope("matching_article_to_headline"):
-            matching_layer_article_to_headline = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
-            post_matching_a_to_h = matching_layer_article_to_headline(a_padded_out, h_padded_out)
+        with tf.variable_scope("match_h_a_bwd"):
+            matching_layer_h_a_bwd = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
+            post_match_h_a_bwd = matching_layer_headline_to_article(h_extend_bwd, a_extend_bwd)  # batch x h_time_steps x num_perspectives
+
+        with tf.variable_scope("match_a_h_fwd"):
+            matching_layer_a_h_fwd = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
+            post_match_a_h_fwd = matching_layer_headline_to_article(a_extend_fwd, h_extend_fwd)  # batch x a_time_steps x num_perspectives
+
+        with tf.variable_scope("match_a_h_bwd"):
+            matching_layer_a_h_bwd = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
+            post_match_a_h_bwd = matching_layer_headline_to_article(a_extend_bwd, h_extend_bwd)  # batch x a_time_steps x num_perspectives
+
+        post_matching_h_to_a = tf.concat([post_match_h_a_fwd, post_match_h_a_bwd], axis = 2) # batch x h_time_steps x num_perspectives*2
+        post_matching_a_to_h = tf.concat([post_match_a_h_fwd, post_match_a_h_bwd], axis =2) # batch x a_time_steps x num_perspectives*2
 
         # Aggregation Layer 
         with tf.variable_scope("aggregation_layer"):
