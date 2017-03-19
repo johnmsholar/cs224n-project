@@ -38,13 +38,13 @@ class Config(object):
         self.context_hidden_size = 100 # Hidden State Size
         self.aggregate_hidden_size = 100
         self.squashing_layer_hidden_size = 50
-        self.batch_size = 30
+        self.batch_size = 10
         self.n_epochs = None
         self.lr = 0.0001
         self.max_grad_norm = 5.
         self.dropout_rate = 0.90
         self.beta = 0.01
-        self.num_perspectives = 5
+        self.num_perspectives = 10
 
         # Data Params
         self.training_size = .80
