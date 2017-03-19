@@ -55,20 +55,20 @@ class Config(object):
         self.uniform_data_split = False  
 
 
-class Deep_Bidirectional_Conditonal_Encoding_LSTM_Model(Advanced_Model):
+class Deep_Bidirectional_Attention_BidiretionalConditonal_Encoding_LSTM_Model(Advanced_Model):
     """ Conditional Encoding LSTM Model.
     """
     def get_model_name(self):
-        return 'deep_bidirectional_attention_conditional_lstm'
+        return 'deep_bidirectional_attention_bidirectional_conditional_lstm'
 
     def get_fn_names(self):
         """ Retrieve file names.
             fn_names = [best_weights_fn, curr_weights_fn, preds_fn]
         """
-        best_weights_fn = 'deep_bidirectional_attention_conditional_lstm_best_stance.weights'
-        curr_weights_fn = 'deep_bidirectional_attention_conditional_lstm_curr_stance.weights'
-        preds_fn = 'deep_bidirectional_attention_conditional_encoding_lstm_predicted.pkl'
-        best_train_weights_fn = 'deep_bidirectional_attention_conditional_encoding_lstm_best_train_stance.weights'
+        best_weights_fn = 'deep_bidirectional_attention_bidirectional_conditional_lstm_best_stance.weights'
+        curr_weights_fn = 'deep_bidirectional_attention_bidirectional_conditional_lstm_curr_stance.weights'
+        preds_fn = 'deep_bidirectional_attention_bidirectional_conditional_lstm_predicted.pkl'
+        best_train_weights_fn = 'deep_bidirectional_attention_bidirectional_conditional_lstm_best_train_stance.weights'
         return [best_weights_fn, curr_weights_fn, preds_fn, best_train_weights_fn]
 
     def add_prediction_op(self, debug): 
@@ -182,7 +182,7 @@ def main(debug=True):
         # Create and configure model
         print "Building model...",
         start = time.time()
-        model = Deep_Bidirectional_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
+        model = Deep_Bidirectional_Attention_BidiretionalConditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
         model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 

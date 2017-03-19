@@ -41,7 +41,7 @@ class Config(object):
         self.n_epochs = None
         self.lr = 0.0001
         self.max_grad_norm = 5.
-        self.dropout_rate = 0.8
+        self.dropout_rate = 0.9
         self.beta = 0.01
 
         # Data Params
