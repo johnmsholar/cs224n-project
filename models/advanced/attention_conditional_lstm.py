@@ -133,7 +133,7 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
 
 def main(debug=True):
     # Parse Arguments
-    arg_epoch, arg_restore = parse_args()
+    arg_epoch, arg_restore, arg_test = parse_args()
 
     # Create Config
     config = Config()
@@ -190,11 +190,12 @@ def main(debug=True):
             # Finalize graph
             session.graph.finalize()
 
-            # Train Model
-            print 80 * "="
-            print "TRAINING"
-            print 80 * "="
-            model.fit(session, saver, train_examples, dev_set)
+            if arg_test != None
+                # Train Model
+                print 80 * "="
+                print "TRAINING"
+                print 80 * "="
+                model.fit(session, saver, train_examples, dev_set)
 
             if not debug:
                 print 80 * "="
