@@ -23,7 +23,6 @@ from fnc1_utils.featurizer import create_embeddings
 from util import create_tensorflow_saver
 from layers.attention_layer import AttentionLayer
 from layers.wbw_attention_layer import WBWAttentionLayer
-from layers.class_squash_layer import ClassSquashLayer
 from util import extend_padded_matrix
 
 class Config(object):
@@ -38,12 +37,13 @@ class Config(object):
 
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
+        self.config.squashing_layer_hidden_size = 150
         self.batch_size = 50
         self.n_epochs = None
         self.lr = 0.0001
         self.max_grad_norm = 5.
-        self.dropout_rate = 0.8
-        self.beta = 0
+        self.dropout_rate = 0.9
+        self.beta = 0.05
 
         # Data Params
         self.training_size = .80
@@ -98,14 +98,22 @@ class WBW_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         output = attention_layer(headline_outputs, extend_padded_matrix(body_outputs, body_state[1]))
 
         # Compute predictions
-        output_dropout = tf.nn.dropout(output, dropout_rate)
-        preds = tf.contrib.layers.fully_connected(
-                inputs=output_dropout,
-                num_outputs=self.config.num_classes,
-                activation_fn=tf.nn.relu,
-                weights_initializer=tf.contrib.layers.xavier_initializer(),
-                biases_initializer=tf.constant_initializer(0),
-        )
+        with tf.variable_scope("final_projection"):
+            output_dropout = tf.nn.dropout(output, dropout_rate)
+            squash = tf.contrib.layers.fully_connected(
+                    inputs=output_dropout,
+                    num_outputs=self.config.squashing_layer_hidden_size,
+                    activation_fn=tf.nn.relu,
+                    weights_initializer=tf.contrib.layers.xavier_initializer(),
+                    biases_initializer=tf.constant_initializer(0),
+            )
+            preds = tf.contrib.layers.fully_connected(
+                    inputs=squash,
+                    num_outputs=self.config.num_classes,
+                    activation_fn=tf.nn.relu,
+                    weights_initializer=tf.contrib.layers.xavier_initializer(),
+                    biases_initializer=tf.constant_initializer(0),
+            )
 
         # Debugging Ops
         if debug:
