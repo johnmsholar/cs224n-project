@@ -35,32 +35,126 @@ if __name__ == '__main__':
     # Conditional LSTM
     conditional_lstm = {
         "agree": {
-            "agree": 12,
+            "agree": 139,
             "disagree":  0,
-            "discuss": 643,        
+            "discuss": 516,        
         },
         "disagree": {
-            "agree": 4,
+            "agree": 34,
             "disagree":  0,
-            "discuss": 157, 
+            "discuss": 127, 
         },
         "discuss": {
-            "agree": 5,
+            "agree": 77,
             "disagree":  0,
-            "discuss": 1968, 
+            "discuss": 1896, 
         }
     }
     gold, preds = consruct_lists(conditional_lstm)
-
-    print len(gold), len(preds)
-    print "GOLD:"
-    print "Agree: {}".format(gold.count(0))
-    print "Disagree: {}".format(gold.count(1))
-    print "Discuss: {}".format(gold.count(2))
-
-    print "preds:"    
-    print "Agree: {}".format(preds.count(0))
-    print "Disagree: {}".format(preds.count(1))
-    print "Discuss: {}".format(preds.count(2))
-
     print "Conditional LSTM Micro F1 Score: {}".format(f1_score(gold, preds, labels=LABELS, average='micro'))
+
+    # Headline to Article Global Attention
+    global_attention = {
+        "agree": {
+            "agree": 416,
+            "disagree":  11,
+            "discuss": 228,        
+        },
+        "disagree": {
+            "agree": 68,
+            "disagree":  17,
+            "discuss": 76, 
+        },
+        "discuss": {
+            "agree": 271,
+            "disagree":  36,
+            "discuss": 1666, 
+        }
+    }
+    gold, preds = consruct_lists(global_attention)
+    print "Conditional Global Attention Micro F1 Score: {}".format(f1_score(gold, preds, labels=LABELS, average='micro'))
+
+    # Word By Word Attention
+    wbw_attention = {
+        "agree": {
+            "agree": 438,
+            "disagree":  6,
+            "discuss": 211,        
+        },
+        "disagree": {
+            "agree": 70,
+            "disagree":  4,
+            "discuss": 87, 
+        },
+        "discuss": {
+            "agree": 261,
+            "disagree":  11,
+            "discuss": 1701, 
+        }
+    }
+    gold, preds = consruct_lists(wbw_attention)
+    print "Conditional WBW Micro F1 Score: {}".format(f1_score(gold, preds, labels=LABELS, average='micro'))
+
+    # Bidirectional Global Attention
+    bi_att = {
+        "agree": {
+            "agree": 459,
+            "disagree":  0,
+            "discuss": 196,        
+        },
+        "disagree": {
+            "agree": 88,
+            "disagree":  0,
+            "discuss": 73, 
+        },
+        "discuss": {
+            "agree": 266,
+            "disagree":  0,
+            "discuss": 1707, 
+        }
+    }
+    gold, preds = consruct_lists(bi_att)
+    print "Conditional WBW Micro F1 Score: {}".format(f1_score(gold, preds, labels=LABELS, average='micro'))
+
+    # Bidirectional Attention Bidirectional conditional encoding lstm
+    bi_att_bi_condition = {
+        "agree": {
+            "agree": 480,
+            "disagree":  0,
+            "discuss": 175,        
+        },
+        "disagree": {
+            "agree": 92,
+            "disagree": 0,
+            "discuss": 69, 
+        },
+        "discuss": {
+            "agree": 260,
+            "disagree": 0,
+            "discuss": 1713, 
+        }
+    }
+    gold, preds = consruct_lists(bi_att_bi_condition)
+    print "Conditional bi_att Micro F1 Score: {}".format(f1_score(gold, preds, labels=LABELS, average='micro'))
+
+    # Deep Learning Bidirectional Attention Bidirectional conditional encoding lstm
+    deep_learning_bi_att_bi_condition = {
+        "agree": {
+            "agree": 424,
+            "disagree":  0,
+            "discuss": 231,        
+        },
+        "disagree": {
+            "agree": 79,
+            "disagree":  0,
+            "discuss": 82, 
+        },
+        "discuss": {
+            "agree": 274,
+            "disagree":  0,
+            "discuss": 1699, 
+        }
+    }
+    gold, preds = consruct_lists(deep_learning_bi_att_bi_condition)
+    print "Conditional deep_learning_bi_att_bi_condition Micro F1 Score: {}".format(f1_score(gold, preds, labels=LABELS, average='micro'))
+

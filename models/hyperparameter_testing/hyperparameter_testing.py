@@ -38,12 +38,13 @@ class Config(object):
 
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
+        self.squashing_layer_hidden_size = 150
         self.batch_size = 50
         self.n_epochs = 5
         self.lr = 0.0001
         self.max_grad_norm = 5.
-        self.dropout_rate = 0.8
-        self.beta = 0
+        self.dropout_rate = 0.9
+        self.beta = 0.01
 
         # Data Params
         self.training_size = .80
@@ -67,7 +68,7 @@ def run_model(config, max_input_lengths, glove_matrix, args, train_examples, dev
         # Create and configure model
         print "Building model...",
         start = time.time()
-        model = Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix)
+        model = Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix)
         model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
@@ -131,9 +132,9 @@ def main(debug=False):
 
     # Define hyperparameters
     hyperparameters = {
-        'lr': [0.001],
-        'dropout_rate': [.6, .8, .9],
-        'beta': [.01, .1]
+        'lr': [0.001, .0001],
+        'dropout_rate': [.8, .9, 1],
+        'beta': [.01, .001]
     }
 
     # Run model over all these hyper parameters
