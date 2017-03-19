@@ -42,7 +42,7 @@ class Config(object):
         self.lr = 0.0001
         self.max_grad_norm = 5.
         self.dropout_rate = 0.9
-        self.beta = 0.1
+        self.beta = 0.01
 
         # Data Params
         self.training_size = .80
@@ -184,13 +184,13 @@ def main(debug=True):
             saver = create_tensorflow_saver(model.exclude_names)
             if arg_restore != None:
                 weights_path = './data/{}/{}/weights'.format(model.get_model_name(), arg_restore)
-                restore_path = '{}/{}'.format(weights_path, model.get_fn_names()[1])
+                restore_path = '{}/{}'.format(weights_path, model.get_fn_names()[0])
                 saver.restore(session, model.curr_weights_fn)
 
             # Finalize graph
             session.graph.finalize()
 
-            if arg_test != None
+            if not arg_test:
                 # Train Model
                 print 80 * "="
                 print "TRAINING"
@@ -202,6 +202,8 @@ def main(debug=True):
                 print "TESTING"
                 print 80 * "="
                 print "Restoring the best model weights found on the dev set"
+                # TODO: Remove this hack
+                model.best_weights_fn = 'data/attention_conditional_lstm/1489883343.29/weights/attention_conditional_lstm_best_stance.weights'
                 saver.restore(session, model.best_weights_fn)
 
                 print "Final evaluation on test set",

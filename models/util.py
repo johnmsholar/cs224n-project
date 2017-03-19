@@ -265,7 +265,7 @@ def parse_args():
     parser.add_argument('--restore', type=str, default=None)
     parser.add_argument('--test', type=bool, default=False)
     args = parser.parse_args()
-    return args.epoch, args.restore
+    return args.epoch, args.restore, args.test
 
 # given two matrices of same dimensions (a,b) compute cosine similarity
 # broadcasted over y_dim
