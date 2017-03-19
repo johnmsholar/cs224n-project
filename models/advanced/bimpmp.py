@@ -124,7 +124,7 @@ class Bimpmp(Advanced_Model):
         if self.config.split_gpus:
             with tf.variable_scope("multi_gpu_attention"):
                 # package to split across multiple gpus: {layer_name: [isFwd, isHtoA]}
-                for (attention_key, i, A, B) in attention_reqs.items():
+                for (attention_key, i, A, B) in attention_reqs:
                     with tf.device('/gpu:%d' % i):
                         with tf.variable_scope(attention_key):
                             matching_layer = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
@@ -132,14 +132,14 @@ class Bimpmp(Advanced_Model):
         else:
             with tf.variable_scope("single_gpu_attention"):
                 # package to split across multiple gpus: {layer_name: [isFwd, isHtoA]}
-                for (attention_key, i, A, B) in attention_reqs.items():
+                for (attention_key, i, A, B) in attention_reqs:
                         with tf.variable_scope(attention_key):
                             matching_layer = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
                             attention_results[attention_key] = matching_layer(A, B) # batch x time_stepx x num_perspectives*2
 
 
-        post_matching_h_to_a = tf.concat([attention_reqs["match_h_a_fwd"], attention_reqs["match_h_a_bwd"]], axis = 2) # batch x h_time_steps x num_perspectives*4
-        post_matching_a_to_h = tf.concat([attention_reqs["match_a_h_fwd"], attention_reqs["match_a_h_bwd"]], axis = 2) # batch x h_time_steps x num_perspectives*4
+        post_matching_h_to_a = tf.concat([attention_results["match_h_a_fwd"], attention_results["match_h_a_bwd"]], axis = 2) # batch x h_time_steps x num_perspectives*4
+        post_matching_a_to_h = tf.concat([attention_results["match_a_h_fwd"], attention_results["match_a_h_bwd"]], axis = 2) # batch x h_time_steps x num_perspectives*4
 
         # Aggregation Layer 
         with tf.variable_scope("aggregation_layer"):
