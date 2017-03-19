@@ -39,7 +39,7 @@ class Config(object):
         self.context_hidden_size = 100 # Hidden State Size
         self.aggregate_hidden_size = 100
         self.squashing_layer_hidden_size = 50
-        self.batch_size = 10
+        self.batch_size = 5
         self.n_epochs = None
         self.lr = 0.0001
         self.max_grad_norm = 5.
@@ -88,7 +88,7 @@ class Bimpmp(Advanced_Model):
             bw_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.context_hidden_size)   
             with tf.variable_scope("headline_lstm"):
                 # run first headline LSTM
-                headline_context_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                headline_context_outputs, headline_context_state = tf.nn.bidirectional_dynamic_rnn(
                     fw_cell,
                     bw_cell,
                     headline_x,
@@ -96,7 +96,7 @@ class Bimpmp(Advanced_Model):
                     sequence_length=self.h_seq_lengths_placeholder
                 )
             with tf.variable_scope("article_lstm"):
-                article_context_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                article_context_outputs, article_context_state = tf.nn.bidirectional_dynamic_rnn(
                     fw_cell,
                     bw_cell,
                     body_x,
@@ -105,6 +105,11 @@ class Bimpmp(Advanced_Model):
                 )           
         # headline_context_outputs: batch x h_time_steps x hidden
         # article_context_outputs: batch x a_time_steps x hidden
+
+        # copy over hidden state into padding region
+        for i in range(0,2):
+            headline_context_outputs[i] = extend_padded_matrix(headline_context_outputs[i], headline_context_state[i][1])
+            article_context_outputs[i] = extend_padded_matrix(article_context_outputs[i], article_context_state[i][1])
 
         # Matching Layer -- assume output is concatenated (fw and bw together)
         # Output: [batch x A_time_steps x (num_perspectives x 8)]
@@ -123,7 +128,7 @@ class Bimpmp(Advanced_Model):
             fw_cell_aggregation = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.aggregate_hidden_size)
             bw_cell_aggregation = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.aggregate_hidden_size)
             with tf.variable_scope("aggregation_headline"):           
-                headline_aggregate_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                headline_aggregate_outputs, headline_aggregate_state = tf.nn.bidirectional_dynamic_rnn(
                     fw_cell_aggregation,
                     bw_cell_aggregation,
                     post_matching_h_to_a,
@@ -131,7 +136,7 @@ class Bimpmp(Advanced_Model):
                     sequence_length=self.h_seq_lengths_placeholder
                 )
             with tf.variable_scope("article_headline"):
-                article_aggregate_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                article_aggregate_outputs, article_aggregate_state = tf.nn.bidirectional_dynamic_rnn(
                     fw_cell_aggregation,
                     bw_cell_aggregation,
                     post_matching_a_to_h,
@@ -144,8 +149,8 @@ class Bimpmp(Advanced_Model):
 
         # Final Prediction Layer
         with tf.variable_scope("final_prediction_layer"):
-            headline_output = tf.concat([headline_aggregate_outputs[0][:, -1, :], headline_aggregate_outputs[1][:, -1, :]], axis=1)
-            article_output = tf.concat([article_aggregate_outputs[0][:, -1, :], article_aggregate_outputs[1][:, -1, :]], axis=1) 
+            headline_output = tf.concat([headline_aggregate_state[0][1], headline_aggregate_state[1][1]], axis=1)
+            article_output = tf.concat([article_aggregate_state[0][1], article_aggregate_state[1][1]], axis=1) 
             output = tf.concat([headline_output, article_output], 1)
             output_dropout = tf.nn.dropout(output, dropout_rate)
             squash = tf.contrib.layers.fully_connected(
