@@ -22,7 +22,6 @@ from fnc1_utils.score import report_score
 from fnc1_utils.featurizer import create_embeddings
 from util import create_tensorflow_saver, parse_args, extend_padded_matrix
 from layers.attention_layer import AttentionLayer
-from layers.class_squash_layer import ClassSquashLayer
 from layers.multiperspective_matching_a_to_b_layer import Multiperspective_Matching_A_to_B_Layer
 
 class Config(object):
@@ -33,19 +32,19 @@ class Config(object):
     """
     def __init__(self):
         self.num_classes = 3 # Number of classses for classification task.
-        self.embed_size = 300 # Size of Glove Vectors
+        self.embed_size = 100 # Size of Glove Vectors
 
         # Hyper Parameters
         self.context_hidden_size = 100 # Hidden State Size
         self.aggregate_hidden_size = 100
         self.squashing_layer_hidden_size = 50
-        self.batch_size = 5
+        self.batch_size = 10
         self.n_epochs = None
         self.lr = 0.0001
         self.max_grad_norm = 5.
-        self.dropout_rate = 0.8
-        self.beta = 0
-        self.num_perspectives = 20
+        self.dropout_rate = 0.90
+        self.beta = 0.01
+        self.num_perspectives = 5
 
         # Data Params
         self.training_size = .80
@@ -176,7 +175,7 @@ class Bimpmp(Advanced_Model):
 
 def main(debug=True):
     # Parse Arguments
-    arg_epoch, arg_restore = parse_args()
+    arg_epoch, arg_restore, arg_test = parse_args()
 
     # Create Config
     config = Config()

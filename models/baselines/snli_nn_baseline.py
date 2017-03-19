@@ -131,7 +131,7 @@ class SNLI_Baseline_NN(Model):
         # Construct joint article + headline embedding
         init_article_layer = tf.nn.tanh(tf.matmul(self.articles_placeholder, init_article_weights) + init_article_bias)
         init_headline_layer = tf.nn.tanh(tf.matmul(self.headlines_placeholder, init_headline_weights) + init_headline_bias)
-        embedding = tf.concat(values=[init_article_layer, init_headline_layer], concat_dim=1)
+        embedding = tf.concat(values=[init_article_layer, init_headline_layer], axis=1)
 
         # Declare tf.Variable weight matrices and bias vectors for 3 tanh layers
         weights = [
@@ -272,7 +272,7 @@ def main(debug=True):
 
                 actual = vectorize_stances(test_set[2])
                 preds = list(model.predict_on_batch(session, *test_set[:2]))
-                test_score = report_score(actual, preds)
+                _, test_score = report_score(actual, preds)
 
                 print "- test Score: {:.2f}".format(test_score)
                 print "Writing predictions"

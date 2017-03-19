@@ -43,7 +43,7 @@ class Config(object):
         self.lr = 0.0001
         self.max_grad_norm = 5.
         self.dropout_rate = 0.9
-        self.beta = 0.05
+        self.beta = 0.01
 
         # Data Params
         self.training_size = .80
@@ -134,6 +134,7 @@ def main(debug=True):
     parser = argparse.ArgumentParser()
     parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--restore', action='store_true')
+    parser.add_argument('--test', type=bool, default=False)
     args = parser.parse_args()
 
     # Create Config
@@ -172,7 +173,6 @@ def main(debug=True):
         print "Building model...",
         start = time.time()
         model = WBW_Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
-        model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
         # Initialize variables
@@ -190,10 +190,11 @@ def main(debug=True):
             session.graph.finalize()
 
             # Train Model
-            print 80 * "="
-            print "TRAINING"
-            print 80 * "="
-            model.fit(session, saver, train_examples, dev_set)
+            if not args.test:
+                print 80 * "="
+                print "TRAINING"
+                print 80 * "="
+                model.fit(session, saver, train_examples, dev_set)
 
             if not debug:
                 print 80 * "="
