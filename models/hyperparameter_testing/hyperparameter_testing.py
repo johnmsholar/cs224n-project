@@ -40,7 +40,7 @@ class Config(object):
         self.hidden_size = 300 # Hidden State Size
         self.squashing_layer_hidden_size = 150
         self.batch_size = 50
-        self.n_epochs = 5
+        self.n_epochs = 15
         self.lr = 0.0001
         self.max_grad_norm = 5.
         self.dropout_rate = 0.9
