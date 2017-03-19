@@ -43,7 +43,7 @@ class Config(object):
         self.lr = 0.0001
         self.max_grad_norm = 5.
         self.dropout_rate = 0.8
-        self.beta = 0
+        self.beta = 0.01
 
         # Data Params
         self.training_size = .80
