@@ -22,7 +22,6 @@ from fnc1_utils.score import report_score
 from fnc1_utils.featurizer import create_embeddings
 from util import create_tensorflow_saver, parse_args, extend_padded_matrix
 from layers.attention_layer import AttentionLayer
-from layers.class_squash_layer import ClassSquashLayer
 from layers.multiperspective_matching_a_to_b_layer import Multiperspective_Matching_A_to_B_Layer
 
 class Config(object):
