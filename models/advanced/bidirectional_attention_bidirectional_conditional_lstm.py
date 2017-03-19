@@ -33,20 +33,21 @@ class Config(object):
     """
     def __init__(self):
         self.num_classes = 3 # Number of classses for classification task.
-        self.embed_size = 2 # Size of Glove Vectors
+        self.embed_size = 300 # Size of Glove Vectors
 
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
+        self.squashing_layer_hidden_size = 150
         self.batch_size = 50
         self.n_epochs = None
         self.lr = 0.0001
         self.max_grad_norm = 5.
         self.dropout_rate = 0.8
-        self.beta = 0
+        self.beta = 0.01
 
         # Data Params
         self.training_size = .80
-        self.random_split = True
+        self.random_split = False
         self.truncate_headlines = False
         self.truncate_articles = True
         self.classification_problem = 3
@@ -133,8 +134,15 @@ class Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         with tf.variable_scope("final_projection"):
             output = tf.concat([output_1, output_2, output_3, output_4], 1)
             output_dropout = tf.nn.dropout(output, dropout_rate)
-            preds = tf.contrib.layers.fully_connected(
+            squash = tf.contrib.layers.fully_connected(
                     inputs=output_dropout,
+                    num_outputs=self.config.squashing_layer_hidden_size,
+                    activation_fn=tf.nn.relu,
+                    weights_initializer=tf.contrib.layers.xavier_initializer(),
+                    biases_initializer=tf.constant_initializer(0),
+            )
+            preds = tf.contrib.layers.fully_connected(
+                    inputs=squash,
                     num_outputs=self.config.num_classes,
                     activation_fn=tf.nn.relu,
                     weights_initializer=tf.contrib.layers.xavier_initializer(),
@@ -239,4 +247,4 @@ def main(debug=True):
                     writer.writerow([i, train_value/100.0, model.dev_scores[i]/100.0])
 
 if __name__ == '__main__':
-    main(True)
+    main(False)
