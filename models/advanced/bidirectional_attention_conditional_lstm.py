@@ -22,7 +22,6 @@ from fnc1_utils.score import report_score
 from fnc1_utils.featurizer import create_embeddings
 from util import create_tensorflow_saver
 from layers.attention_layer import AttentionLayer
-from layers.class_squash_layer import ClassSquashLayer
 
 class Config(object):
     """Holds model hyperparams and data information.
