@@ -1,2 +1,0 @@
-model_checkpoint_path: "wbw_attention_conditional_lstm_best_stance.weights"
-all_model_checkpoint_paths: "wbw_attention_conditional_lstm_best_stance.weights"
