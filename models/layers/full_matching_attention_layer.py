@@ -19,26 +19,11 @@ class Full_Matching_Attention_Layer(Attention_Base_Class):
         Returns:
             output: tensor [batch x A_time_steps x num_perspectives]
         """
-        # a_perm is now [A_time_steps, hidden, batch]
-        batch_size = tf.shape(a)[0]
-        a_perm = tf.transpose(a, perm=[1, 2, 0])
-        a_time_steps = a_perm.get_shape()[0]
 
-        # h_n is [1 x batch x hidden_size]
         h_n = tf.transpose(b[:, -1, :]) # hidden x batch
-
-        idx = tf.constant(0) # current time step index
-        cond = lambda i, result: tf.less(i, a_time_steps)
-        def body(i, result):
-            h_i = a_perm[i, :, :] # hidden x batch
-            m_i = tf.expand_dims(self.compute_score(h_i, h_n, W), axis=0) # 1 x batch x perspectives (score returns 3D)
-            result = tf.concat([result, m_i], axis=0) # building batch x time_steps x persepctive
-            return [tf.add(i,1), result]
-
-        shape_invariants = [idx.get_shape(), tf.TensorShape([None, None, self.num_perspectives])]
-        result = tf.zeros(shape=[1, batch_size, self.num_perspectives])
-        result = tf.while_loop(cond, body, [idx, result], shape_invariants=shape_invariants) # A_time_steps x batch x perspectives
-        return tf.transpose(result[1][1:, :, :], perm=[1, 0, 2]) # batch x time_steps x perspective
+        a_M = tf.transpose(a, [1, 2, 0])
+        result = self.compute_vec_matrix_score(h_n, a_M, W) # A_time_steps x p x b
+        return tf.transpose(result, [2, 0, 1])
 
 def numpy_reference_fma(A, B, W, batch_size, A_time_steps, hidden_size, num_perspectives):
     result = np.zeros([A_time_steps, batch_size, num_perspectives])

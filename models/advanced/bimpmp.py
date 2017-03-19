@@ -109,11 +109,11 @@ class Bimpmp(Advanced_Model):
         # copy over hidden state into padding region
         h_extend_fwd = extend_padded_matrix(headline_context_outputs[0], headline_context_state[0][1])
         h_extend_bwd = extend_padded_matrix(headline_context_outputs[1], headline_context_state[1][1])
-        h_padded_out = (h_extend_fw, h_extend_bwd)
+        h_padded_out = (h_extend_fwd, h_extend_bwd)
 
         a_extend_fwd = extend_padded_matrix(article_context_outputs[0], article_context_state[0][1])
         a_extend_bwd = extend_padded_matrix(article_context_outputs[1], article_context_state[1][1])
-        a_padded_out = (a_extend_fw, a_extend_bwd)
+        a_padded_out = (a_extend_fwd, a_extend_bwd)
 
         # Matching Layer -- assume output is concatenated (fw and bw together)
         # Output: [batch x A_time_steps x (num_perspectives x 8)]

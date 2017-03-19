@@ -45,28 +45,7 @@ class Max_Pooling_Attention_Layer(Attention_Base_Class):
         #   W is [hidden_size x num_perspectives]
         # Returns:
         #   1 x batch x perspectives which is max elem score over the scores on B
-
-        W = tf.expand_dims(tf.transpose(W), 2) # p x h x 1
-        Whi = W*h_i # p x h x b
-        B_time_steps = B.get_shape().as_list()[0]
-        # make copies along the B_timesteps dim
-        W_exp = tf.tile(tf.expand_dims(W, 1), [1, B_time_steps, 1, 1]) # p x B_time_steps x h x 1
-        WB = W_exp*B # p x B_time_steps x h x b
-
-        whi_norm = tf.norm(Whi, axis=1) # p x b
-        wb_norm = tf.norm(WB, axis=2) # p x B_time_steps x b
-        wb_norm_transp = tf.transpose(wb_norm, [1, 0, 2]) # B_time_steps x p x b
-        norm_prod = wb_norm_transp*whi_norm # B_time_steps x p x b
-
-        # make copies of Whi
-        Whi_transp = tf.transpose(Whi, [0, 2, 1]) # p x b x h
-        Whi_exp = tf.tile(tf.expand_dims(Whi_transp, 0), [B_time_steps, 1, 1, 1]) # B_time_steps x p x b x h
-        Whi_exp = tf.expand_dims(Whi_exp, 4) # B_time_steps x p x b x h x 1
-        WB_exp = tf.expand_dims(tf.transpose(WB, [1, 0, 3, 2]), 3) # B_time_steps x p x b x 1 x h
-        dot_prod = tf.squeeze(tf.matmul(WB_exp, Whi_exp)) # B_time_steps x p x b
-
-        full = tf.divide(dot_prod, norm_prod) # B_time_steps x p x b
-
+        full = self.compute_vec_matrix_score(h_i, B, W) # B_time_steps x p x b
         return tf.expand_dims(tf.transpose(tf.reduce_max(full, axis=0)), 0) # 1 x b x p
 
 def numpy_reference_mpa(A, B, W, batch_size, A_time_steps, hidden_size, num_perspectives):

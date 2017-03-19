@@ -11,6 +11,37 @@ class Attention_Base_Class(object):
     def __init__(self, num_perspectives):
         self.num_perspectives = num_perspectives
 
+
+    def compute_vec_matrix_score(self, v, M, W ):
+        # Args:
+        #   v is [hidden x batch]
+        #   M is [M_time_steps, hidden_size x batch]
+        #   W is [hidden_size x num_perspectives]
+        # Returns:
+        #   M_time_steps x p x b
+
+        W = tf.expand_dims(tf.transpose(W), 2) # p x h x 1
+        wv = W*v # p x h x b
+        M_time_steps = M.get_shape().as_list()[0]
+        # make copies along the B_timesteps dim
+        W_exp = tf.tile(tf.expand_dims(W, 1), [1, M_time_steps, 1, 1]) # p x M_time_steps x h x 1
+        wm = W_exp*M # p x M_time_steps x h x b
+
+        wv_norm = tf.norm(wv, axis=1) # p x b
+        wm_norm = tf.norm(wm, axis=2) # p x M_time_steps x b
+        wm_norm_transp = tf.transpose(wm_norm, [1, 0, 2]) # M_time_steps x p x b
+        norm_prod = wm_norm_transp*wv_norm # M_time_steps x p x b
+
+        # make copies of wv
+        wv_transp = tf.transpose(wv, [0, 2, 1]) # p x b x h
+        wv_exp = tf.tile(tf.expand_dims(wv_transp, 0), [M_time_steps, 1, 1, 1]) # M_time_steps x p x b x h
+        wv_exp = tf.expand_dims(wv_exp, 4) # M_time_steps x p x b x h x 1
+        wm_exp = tf.expand_dims(tf.transpose(wm, [1, 0, 3, 2]), 3) # M_time_steps x p x b x 1 x h
+        dot_prod = tf.squeeze(tf.matmul(wm_exp, wv_exp)) # M_time_steps x p x b
+
+        full = tf.divide(dot_prod, norm_prod) # M_time_steps x p x b
+        return full
+
     def compute_score(self, v1, v2, W):
         """
         Args:
