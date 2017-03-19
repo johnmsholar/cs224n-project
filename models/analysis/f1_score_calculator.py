@@ -119,19 +119,19 @@ if __name__ == '__main__':
     # Bidirectional Attention Bidirectional conditional encoding lstm
     bi_att_bi_condition = {
         "agree": {
-            "agree": 480,
-            "disagree":  0,
-            "discuss": 175,        
+            "agree": 444,
+            "disagree":  30,
+            "discuss": 181,        
         },
         "disagree": {
-            "agree": 92,
-            "disagree": 0,
-            "discuss": 69, 
+            "agree": 53,
+            "disagree": 43,
+            "discuss": 65, 
         },
         "discuss": {
-            "agree": 260,
-            "disagree": 0,
-            "discuss": 1713, 
+            "agree": 214,
+            "disagree": 33,
+            "discuss": 1726, 
         }
     }
     gold, preds = consruct_lists(bi_att_bi_condition)
