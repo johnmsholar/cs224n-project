@@ -202,8 +202,6 @@ def main(debug=True):
                 print "TESTING"
                 print 80 * "="
                 print "Restoring the best model weights found on the dev set"
-                # TODO: Remove this hack
-                model.best_weights_fn = 'data/attention_conditional_lstm/1489883343.29/weights/attention_conditional_lstm_best_stance.weights'
                 saver.restore(session, model.best_weights_fn)
 
                 print "Final evaluation on test set",
