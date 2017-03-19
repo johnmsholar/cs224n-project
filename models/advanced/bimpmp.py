@@ -176,7 +176,7 @@ class Bimpmp(Advanced_Model):
 
 def main(debug=True):
     # Parse Arguments
-    arg_epoch, arg_restore = parse_args()
+    arg_epoch, arg_restore, arg_test = parse_args()
 
     # Create Config
     config = Config()
