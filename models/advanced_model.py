@@ -263,7 +263,7 @@ class Advanced_Model(object):
         preds = sess.run(self.class_predictions, feed_dict=feed)
         return preds
 
-    def predict(self, sess, data_set, save_preds=False):
+    def predict(self, sess, data_set, save_preds=False, UseShuffle=True):
         """ Compute predictions on a given data set.
             data_set = [headlines, articles, labels]
             Return predictions and score
@@ -275,7 +275,7 @@ class Advanced_Model(object):
         prog = Progbar(target=1+len(data_set[0])/self.config.batch_size)
         actual = []
         preds = []
-        for i, (headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch) in enumerate(minibatches(data_set, self.config.batch_size)):
+        for i, (headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch) in enumerate(minibatches(data_set, self.config.batch_size, UseShuffle)):
             predictions_batch = list(self.predict_on_batch(sess, headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths))
             preds.extend(predictions_batch)
             actual.extend(vectorize_stances(labels_batch))

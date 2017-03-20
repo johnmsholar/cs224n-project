@@ -9,7 +9,7 @@ John Sholar <jmsholar@cs.stanford.edu>
 """
 
 from __init__ import LABEL_MAPPING, RELATED_UNRELATED_MAPPING, RELATED_CLASS_MAPPING
-from generate_test_splits import compute_splits, underRepresent, split_by_unrelated_versus_related, split_by_related_class
+from generate_test_splits import construct_data_set, compute_splits, underRepresent, split_by_unrelated_versus_related, split_by_related_class
 
 from collections import defaultdict
 import filenames
@@ -332,21 +332,6 @@ def compute_stance_embeddings(stance_list, mapping=LABEL_MAPPING):
         labels_matrix[i][stance_list[i]] = 1
     return labels_matrix
 
-if __name__ == '__main__':
-    X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
-        training_size=1.0,
-        random_split=True,
-        truncate_headlines=False,
-        truncate_articles=True,
-        classification_problem=3,
-        max_headline_length=500,
-        max_article_length=500,
-        glove_set=None,
-        debug_printing=True,
-        # debug=False,
-        # debug=True,
-    )
-
 # -----------------------------------------------
 # LEGACY CODE -- THIS IS MANTAINED FOR BASIC LSTM
 # -----------------------------------------------
@@ -456,7 +441,7 @@ def construct_glove_sum_binaries():
     """ Construct binaries where each text is represented as the sum of the glove 
         vectors for the words.
     """
-    b_id_to_body, h_id_to_headline, h_id_b_id_to_stance = construct_data_set()
+    b_id_to_body, h_id_to_headline, h_id_b_id_to_stance, _, _ = construct_data_set()
     glove_vectors = read_glove_set()
     save_glove_sums_matrix(b_id_to_body, h_id_to_headline, glove_vectors)
     write_id_id_stance(h_id_b_id_to_stance)
@@ -466,7 +451,9 @@ def read_glove_sum_binaries():
     """
     glove_body_matrix, glove_headline_matrix = read_glove_sums()
     id_map = read_id_id_stance()
-    X_train, X_dev, X_test, y_train, y_dev, y_test = compute_splits(id_map, TRAINING_SIZE, USE_RANDOM_FNC)
+    X, y, b_id_to_article, h_id_to_headline, h_id_b_id_to_stance, raw_article_id_to_b_id, headline_to_h_id = compute_splits(0.8, False)
+    X_train, X_dev, X_test = X[0], X[1], X[2]
+    y_train, y_dev, y_test = y[0], y[1], y[2]
     X_train_input = compute_id_embeddings(X_train, glove_body_matrix, glove_headline_matrix)
     X_dev_input = compute_id_embeddings(X_dev, glove_body_matrix, glove_headline_matrix)
     X_test_input = compute_id_embeddings(X_test, glove_body_matrix, glove_headline_matrix)
@@ -474,3 +461,19 @@ def read_glove_sum_binaries():
     y_dev_input = compute_stance_embeddings(y_dev)
     y_test_input = compute_stance_embeddings(y_test)
     return X_train_input, X_dev_input, X_test_input, y_train_input, y_dev_input, y_test_input
+
+if __name__ == '__main__':
+    # X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
+    #     training_size=1.0,
+    #     random_split=True,
+    #     truncate_headlines=False,
+    #     truncate_articles=True,
+    #     classification_problem=3,
+    #     max_headline_length=500,
+    #     max_article_length=500,
+    #     glove_set=None,
+    #     debug_printing=True,
+    #     # debug=False,
+    #     # debug=True,
+    # )
+    construct_glove_sum_binaries()

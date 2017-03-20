@@ -176,7 +176,7 @@ def produce_uniform_data_split(X, y):
     return X, y
 
 def create_feature_matrices(X_train_indices, X_test_indices, X_dev_indices,
-                            h_id_b_id_to_stance, X_vectors):
+                            h_id_b_id_to_stance, X_vectors, dev=True):
     vector_ordering = sorted(h_id_b_id_to_stance.keys())
     vector_index_mapping = dict((key, index) for index, key in enumerate(vector_ordering))
     X_train_matrix_indices = [vector_index_mapping[index] for index in X_train_indices]
@@ -185,7 +185,11 @@ def create_feature_matrices(X_train_indices, X_test_indices, X_dev_indices,
     X_train = X_vectors[X_train_matrix_indices, :]
     X_test = X_vectors[X_test_matrix_indices, :]
     X_dev = X_vectors[X_dev_matrix_indices, :]
-    return X_train, X_dev, X_test
+    if dev:
+        return X_train, X_dev, X_test
+    else:
+        X_train = np.concatenate([X_train, X_dev], axis=0)
+    return X_train, X_test
 
 def plot_histogram(filename, data, bins, title, xlabel='Value', ylabel='Count'):
     plt.hist(data, bins=bins, histtype='bar', rwidth=.75)
@@ -212,7 +216,7 @@ def plot_two_histograms(filename, data1, data2, label1, label2, bins, title,
 def plot_feature_distribution(args):
     (X_indices, y, b_id_to_article, h_id_to_headline,
      h_id_b_id_to_stance, raw_article_id_to_b_id,
-     headline_to_h_id) = compute_splits()
+     headline_to_h_id) = compute_splits(random=False)
     ((X_train_indices, X_test_indices, X_dev_indices),
      (y_train, y_test, y_dev)) = X_indices, y
     (y_train, y_test, y_dev) = convert_to_two_class_problem(
@@ -230,6 +234,28 @@ def plot_feature_distribution(args):
         feature_x_1 = [x for index, x in enumerate(feature_x) if y[index] == 1]
         plot_two_histograms(filename, feature_x_0, feature_x_1, 'Related', 'Unrelated', 20, filename)
     x = 1
+
+def classify_related_unrelated():
+    (X_indices, y, b_id_to_article, h_id_to_headline,
+     h_id_b_id_to_stance, raw_article_id_to_b_id,
+     headline_to_h_id) = compute_splits(random=False)
+    ((X_train_indices, X_dev_indices, X_test_indices),
+     (y_train, y_dev, y_test)) = X_indices, y
+    (y_train, y_test, y_dev) = convert_to_two_class_problem(
+        y_train, y_test, y_dev)
+    X_vectors = scipy.io.mmread(
+        'data/linear_related_unrelated/matrices/tfidf_revised.mtx').toarray()
+    X_train, X_test = create_feature_matrices(
+        X_train_indices, X_test_indices, X_dev_indices,
+        h_id_b_id_to_stance, X_vectors, dev=False)
+    y_train = np.concatenate([y_train, y_dev], axis=0)
+    clf = train_model(X_train, y_train, 'svm')
+    y_test_predicted = clf.predict(X_test)
+    y_test_final = np.logical_not(y_test_predicted.astype(bool))
+    cm_test = sklearn.metrics.confusion_matrix(y_test, y_test_predicted)
+    print(cm_test)
+    return y_test_final
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train and Test Linear Model')
@@ -260,5 +286,8 @@ def parse_args():
     return args
 
 if __name__ == '__main__':
-    args = parse_args()
-    main(args)
+
+    #args = parse_args()
+    #main(args)
+    classify_related_unrelated()
+

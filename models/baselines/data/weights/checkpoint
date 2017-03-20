@@ -1,3 +1,0 @@
-model_checkpoint_path: "basic_lstm_curr_stance.weights"
-all_model_checkpoint_paths: "basic_lstm_best_stance.weights"
-all_model_checkpoint_paths: "basic_lstm_curr_stance.weights"
