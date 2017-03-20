@@ -83,54 +83,6 @@ class BiDirAttnBidirCondConfig(object):
         self.max_article_length = 800
         self.uniform_data_split = False  
 
-def load_data():
-    # Load Data 
-    # -- first data split into "unrelated" versus "related"
-    # -- second data split amongst the "related" classes "agree", "disagree", "discuss"
-    _, X_dev_unrelated_split, X_test_unrelated_split, y_train_unrelated_split, y_dev_unrelated_split, y_test_unrelated_split, glove_matrix, max_input_lengths_unrelated_split, word_to_glove_index = create_inputs_by_glove_split_on_class(truncate=True, split_on_unrelated=True)
-    X_train_related_split, X_dev_related_split, X_test_related_split, y_train_related_split, y_dev_related_split, y_test_related_split, _, max_input_lengths_related_split, _ = create_inputs_by_glove_split_on_class(truncate=True, split_on_unrelated=True, (word_to_glove_index, glove_matrix))
-
-    model_1_train_examples = [X_train_unrelated_split[0], X_train_unrelated_split[1], y_train_unrelated_split]
-    model_1_dev_examples = [X_dev_unrelated_split[0], X_dev_unrelated_split[1], y_dev_unrelated_split]
-    model_1_test_examples = [X_test_unrelated_split[0], X_test_unrelated_split[1], y_test_unrelated_split]
-
-    model_2_train_examples = [X_train_related_split[0], X_train_related_split[1], y_train_related_split]
-    model_2_dev_examples = [X_dev_related_split[0], X_dev_related_split[1], y_dev_related_split]
-    model_2_test_examples = [X_test_related_split[0], X_test_related_split[1], y_test_related_split]
-
-    model_1_data = (model_1_train_examples, model_1_dev_examples, model_1_test_examples, max_input_lengths_unrelated_split)
-    model_2_data = (model_2_train_examples, model_2_dev_examples, model_2_test_examples, max_input_lengths_related_split)
-
-    return model_1_data, model_2_data, glove_matrix
-
-def create_class1_data():
-    # original hold_out
-    X, y, b_id_to_article, h_id_to_headline, h_id_b_id_to_stance, raw_article_id_to_b_id, headline_to_h_id = compute_splits(random=False)
-    X_test = X[2] # [h_id, b_id]
-    Y_test = y[2] # stances
-
-
-
-# def create_data_sets_for_model(X, y, debug=False):
-#     """ Given train, dev, and test splits for input, sequnce lengths, labels,
-#         construct the arrays that can be processed by the model.
-#         X: [X_train, X_dev, X_test] X_train, X_dev, X_test are tuples consisting of (headline matrix of glove indices, article matrix of glove indices, h_seq_lengths, article_seq_lengths)
-#         y: [y_train, y_dev, y_test] y_train, y_dev, y_test are matrices where each row is a 1 hot vector represntation of the class label
-
-#         Note: Replicate examples if in debug mode.
-
-#         Returns lists in the form of [headline_glove_index_matrix, article_glove_index_matrix, h_seq_lengths, a_seq_lengths, labels]
-#     """
-#     if debug:
-#         train_examples = [np.repeat(X[0][0], 400, axis=0), np.repeat(X[0][1], 400, axis=0), X[0][2]*400, X[0][3]*400, np.repeat(y[0], 400, axis=0)]
-#     else:    
-#         train_examples = [X[0][0], X[0][1], X[0][2], X[0][3], y[0]]
-
-#     dev_set = [X[1][0], X[1][1], X[1][2], X[1][3], y[1]]
-#     test_set = [X[2][0], X[2][1], X[2][2], X[2][3], y[2]]
-#     return train_examples, dev_set, test_set
-
-
 def create_sub_class_test_data(related):
     '''
         Args: related: a numpy array of booleans that are true if related, false if unrelated
@@ -216,9 +168,9 @@ def main(debug=True):
             test_score, preds, test_confusion_matrix_str = model.predict(session, test_set, save_preds=True, UseShuffle=False)
             print preds
             print test_confusion_matrix_str
-                with open(output_file, 'w') as file:
-                    file.write(test_confusion_matrix_str)
-                    file.write(preds)
+            with open(output_file, 'w') as file:
+                file.write(test_confusion_matrix_str)
+                file.write(preds)
 
 if __name__ == "__main__":
     main(False)
