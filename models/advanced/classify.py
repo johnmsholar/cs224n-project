@@ -124,7 +124,7 @@ def report_pipeline_score(sub2_actual, sub2_preds, sub1_actual):
     actual = sub2_actual + sub1_actual
     num_sub1 = len(sub1_actual)
     preds = sub2_preds + [3]*num_sub1
-    report_score(actual, preds)
+    return report_score(actual, preds)
 
 def main():
     debug = False
