@@ -38,8 +38,8 @@ class Config(object):
         self.n_epochs = None
         self.lr = 0.001
         self.max_grad_norm = 5.
-        self.dropout_rate = 0.8
-        self.beta = 0
+        self.dropout_rate = 0.9
+        self.beta = 0.1
 
         # Data Params
         self.training_size = .80
@@ -83,7 +83,7 @@ class Conditonal_Encoding_LSTM_Model(Advanced_Model):
         with tf.variable_scope("article_cell"):
             article_cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
             outputs, article_state = tf.nn.dynamic_rnn(article_cell, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length= self.a_seq_lengths_placeholder)
-            output = outputs[:,-1,:]
+            output = article_state[1]
             output_dropout = tf.nn.dropout(output, dropout_rate)
             assert output_dropout.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size], output_dropout.get_shape().as_list())
 
@@ -191,4 +191,4 @@ def main(debug=True):
                 print "- test Score: {:.2f}".format(test_score)
 
 if __name__ == '__main__':
-    main(True)
+    main(False)

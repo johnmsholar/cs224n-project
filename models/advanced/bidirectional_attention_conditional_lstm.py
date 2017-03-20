@@ -22,7 +22,6 @@ from fnc1_utils.score import report_score
 from fnc1_utils.featurizer import create_embeddings
 from util import create_tensorflow_saver
 from layers.attention_layer import AttentionLayer
-from layers.class_squash_layer import ClassSquashLayer
 
 class Config(object):
     """Holds model hyperparams and data information.
@@ -36,12 +35,13 @@ class Config(object):
 
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
+        self.squashing_layer_hidden_size = 150
         self.batch_size = 50
         self.n_epochs = None
         self.lr = 0.0001
         self.max_grad_norm = 5.
-        self.dropout_rate = 0.8
-        self.beta = 0
+        self.dropout_rate = 0.9
+        self.beta = 0.01
 
         # Data Params
         self.training_size = .80
@@ -88,17 +88,17 @@ class Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         # body_x_list = [body_x[:, i, :] for i in range(body_x.get_shape()[1].value)]
         with tf.variable_scope("body_cell"):
             cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
-            article_outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
+            article_outputs, article_state = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
         
         # Apply attention from headline -> article
         with tf.variable_scope("headline_to_article_attention"):
-            article_output = article_outputs[:,-1,:]
+            article_output = article_state[1]
             attention_layer_1 = AttentionLayer(self.config.hidden_size, self.h_max_length)
             output_1 = attention_layer_1(headline_outputs, article_output)
 
         # Apply attentin from article -> headline
         with tf.variable_scope("article_to_headline_attention"):
-            headline_output = headline_outputs[:, -1, :]
+            headline_output = headline_state[1]
             attention_layer_2 = AttentionLayer(self.config.hidden_size, self.a_max_length)
             output_2 = attention_layer_2(article_outputs, headline_output)
 
@@ -106,13 +106,21 @@ class Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         with tf.variable_scope("final_projection"):
             output = tf.concat([output_1, output_2], 1)
             output_dropout = tf.nn.dropout(output, dropout_rate)
-            preds = tf.contrib.layers.fully_connected(
+            squash = tf.contrib.layers.fully_connected(
                     inputs=output_dropout,
+                    num_outputs=self.config.squashing_layer_hidden_size,
+                    activation_fn=tf.nn.relu,
+                    weights_initializer=tf.contrib.layers.xavier_initializer(),
+                    biases_initializer=tf.constant_initializer(0),
+            )
+            preds = tf.contrib.layers.fully_connected(
+                    inputs=squash,
                     num_outputs=self.config.num_classes,
                     activation_fn=tf.nn.relu,
                     weights_initializer=tf.contrib.layers.xavier_initializer(),
                     biases_initializer=tf.constant_initializer(0),
             )
+
 
         # Debugging Ops
         if debug:

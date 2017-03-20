@@ -206,7 +206,7 @@ def confusion_matrix_backend(cm, classes,
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
     """
-    plt.title(title)
+    plt.title(title).set_size('x-large')
     tick_marks = np.arange(len(classes))
     plt.xticks(tick_marks, classes, rotation=45)
     plt.yticks(tick_marks, classes)
@@ -225,11 +225,11 @@ def confusion_matrix_backend(cm, classes,
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         plt.text(j, i, '{0:.4f}'.format(cm[i, j]),
                  horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black")
+                 color="white" if cm[i, j] > thresh else "black").set_size('x-large')
 
     plt.tight_layout()
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
+    plt.ylabel('True label').set_size('large')
+    plt.xlabel('Predicted label').set_size('large')
 
 def create_tensorflow_saver(exclude_names):
     train_vars = [var for var in tf.global_variables() if var.name not in exclude_names]
@@ -263,8 +263,9 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--restore', type=str, default=None)
+    parser.add_argument('--test', type=bool, default=False)
     args = parser.parse_args()
-    return args.epoch, args.restore
+    return args.epoch, args.restore, args.test
 
 # given two matrices of same dimensions (a,b) compute cosine similarity
 # broadcasted over y_dim
@@ -283,3 +284,20 @@ def cosine_similarity(a, b):
     a_b = tf.reshape(a_b_expand, shape=[batch_size, 1]) #batch x 1
     a_b_norm = tf.norm(a_b, axis = 1) # batch x 1
     return tf.expand_dims(a_b_norm/(a_norm*b_norm), axis=1) # batch x 1
+
+# # Given a matrix with [batch x time_steps x hidden] and a tensor of the 
+# # For time_steps, batch with 0s in hidden in A, replace with given state
+# # from batch
+# # Args:
+# #   A: [batch x time_steps x hidden]
+# #   H: [batch x hidden] (the last hiddens for each batch example)
+def extend_padded_matrix(A, H):
+    hidden_size = A.get_shape().as_list()[2]
+    norms = tf.norm(A, axis=2) # dim: batch x time_steps
+    zeros = tf.to_float(tf.equal(norms, 0)) # dim: batch x time_steps, 1 where all 0s in hidden
+    multiples = tf.constant([1, 1, hidden_size])
+    exp_zeros = tf.tile(tf.expand_dims(zeros, axis=2), multiples) # dim: batch x time_steps x hidden_size
+    zeros_transp = tf.transpose(exp_zeros, [1, 0, 2]) # time_steps x batch x hidden
+    hidden_exp = tf.transpose(zeros_transp*H,  [1, 0, 2]) # batch x time_steps x hidden
+    return A + hidden_exp
+

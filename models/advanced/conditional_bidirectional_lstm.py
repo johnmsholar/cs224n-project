@@ -99,8 +99,8 @@ class Conditional_Encoding_Bidirectional_LSTM_Model(Advanced_Model):
                 dtype=tf.float32,
                 sequence_length= self.a_seq_lengths_placeholder
             )
-            fw_output = outputs[0][:, -1, :]
-            bw_output = outputs[1][:, -1, :]
+            fw_output = article_states[0][1]
+            bw_output = outputs[1][1]
             output = tf.concat([fw_output, bw_output], 1)
             output_dropout = tf.nn.dropout(output, dropout_rate)
             assert output_dropout.get_shape().as_list() == [None, self.config.hidden_size * 2], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.hidden_size * 2], output_dropout.get_shape().as_list())

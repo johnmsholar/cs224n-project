@@ -131,9 +131,8 @@ class BasicLSTM(Model):
         # Compute the output at the end of the LSTM (automatically unrolled)
         # Tensor Flow 1.0 Code:
         cell = tf.contrib.rnn.LSTMBlockCell(num_units=self.config.hidden_size)
-        outputs, _ = tf.nn.dynamic_rnn(cell, x, dtype=tf.float32, sequence_length = self.sequence_lengths_placeholder)
-        self.print_outputs = tf.Print(outputs, [outputs[:, -1, :]], "basic lstm output")
-        output = outputs[:,-1,:]
+        outputs, final_state = tf.nn.dynamic_rnn(cell, x, dtype=tf.float32, sequence_length = self.sequence_lengths_placeholder)
+        output = final_state[1]
         assert output.get_shape().as_list() == [None, self.config.hidden_size], "predictions are not of the right shape. Expected {}, got {}".format([None, self.config.max_length, self.config.hidden_size], output.get_shape().as_list())
 
         # Compute predictions
@@ -185,8 +184,7 @@ class BasicLSTM(Model):
         """
         sequence_lengths = [len(input_arr) for input_arr in inputs_batch]
         feed = self.create_feed_dict(inputs_batch, labels_batch=labels_batch, sequence_lengths=sequence_lengths, dropout = self.config.dropout_rate)
-        _, loss, p = sess.run([self.train_op, self.loss, self.print_outputs], feed_dict=feed)
-        np.savetxt(sys.stdout, p)
+        _, loss = sess.run([self.train_op, self.loss], feed_dict=feed)
         return loss
 
     def predict_on_batch(self, sess, inputs_batch):

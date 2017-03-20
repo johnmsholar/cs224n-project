@@ -232,9 +232,8 @@ class Advanced_Model(object):
        
         # Regularization
         reg = 0
-        for var in tf.trainable_variables():
-            reg += tf.nn.l2_loss(var)
-        reg *= self.config.beta
+        for var in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='final_projection'):
+            reg += (tf.nn.l2_loss(var) * self.config.beta)
         loss += reg
         return loss, None
 

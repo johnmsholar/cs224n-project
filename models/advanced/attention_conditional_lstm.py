@@ -22,7 +22,6 @@ from fnc1_utils.score import report_score
 from fnc1_utils.featurizer import create_embeddings
 from util import create_tensorflow_saver, parse_args
 from layers.attention_layer import AttentionLayer
-from layers.class_squash_layer import ClassSquashLayer
 
 class Config(object):
     """Holds model hyperparams and data information.
@@ -41,8 +40,8 @@ class Config(object):
         self.n_epochs = None
         self.lr = 0.0001
         self.max_grad_norm = 5.
-        self.dropout_rate = 0.8
-        self.beta = 0
+        self.dropout_rate = 0.9
+        self.beta = 0.01
 
         # Data Params
         self.training_size = .80
@@ -91,13 +90,12 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         with tf.variable_scope("body_cell"):
             cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
             # _, article_state = tf.contrib.rnn.static_rnn(cell_body, body_x_list, initial_state=headline_state, dtype=tf.float32)
-            outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
+            outputs, article_state = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
         
         # Apply attention
         with tf.variable_scope("attention"):
-            article_state = outputs[:,-1,:]
             attention_layer = AttentionLayer(self.config.hidden_size, self.h_max_length)
-            output = attention_layer(headline_outputs, article_state)
+            output = attention_layer(headline_outputs, article_state[1])
 
         # Compute predictions
         with tf.variable_scope("final_projection"):
@@ -134,7 +132,7 @@ class Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
 
 def main(debug=True):
     # Parse Arguments
-    arg_epoch, arg_restore = parse_args()
+    arg_epoch, arg_restore, arg_test = parse_args()
 
     # Create Config
     config = Config()
@@ -185,17 +183,18 @@ def main(debug=True):
             saver = create_tensorflow_saver(model.exclude_names)
             if arg_restore != None:
                 weights_path = './data/{}/{}/weights'.format(model.get_model_name(), arg_restore)
-                restore_path = '{}/{}'.format(weights_path, model.get_fn_names()[1])
+                restore_path = '{}/{}'.format(weights_path, model.get_fn_names()[0])
                 saver.restore(session, model.curr_weights_fn)
 
             # Finalize graph
             session.graph.finalize()
 
-            # Train Model
-            print 80 * "="
-            print "TRAINING"
-            print 80 * "="
-            model.fit(session, saver, train_examples, dev_set)
+            if not arg_test:
+                # Train Model
+                print 80 * "="
+                print "TRAINING"
+                print 80 * "="
+                model.fit(session, saver, train_examples, dev_set)
 
             if not debug:
                 print 80 * "="
