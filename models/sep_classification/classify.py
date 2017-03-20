@@ -220,3 +220,6 @@ def main(debug=True):
                     file.write(test_confusion_matrix_str)
                     file.write(preds)
 
+if __name__ == "__main__":
+    main(False)
+
