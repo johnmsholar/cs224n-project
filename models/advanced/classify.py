@@ -106,10 +106,10 @@ def create_sub_class_test_data(related, config):
     unrelated_labels = labels[unrelated]
     related_labels = labels[related]
 
-    related_h_glove_index_matrix = related[h_glove_index_matrix]
-    related_a_glove_index_matrix = related[a_glove_index_matrix]
-    related_h_seq_lengths = np.transpose(related[np.transpose(h_seq_lengths)])
-    related_a_seq_lengths = np.transpose(related[np.transpose(a_seq_lengths)])
+    related_h_glove_index_matrix = h_glove_index_matrix[related]
+    related_a_glove_index_matrix = a_glove_index_matrix[related]
+    related_h_seq_lengths = np.transpose(np.transpose(h_seq_lengths)[related])
+    related_a_seq_lengths = np.transpose(np.transpose(a_seq_lengths)[related]])
 
     return glove_matrix, related_h_glove_index_matrix, related_a_glove_index_matrix, related_h_seq_lengths, related_a_seq_lengths, related_labels, max_input_lengths, unrelated_labels
 
