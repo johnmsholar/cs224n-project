@@ -185,7 +185,7 @@ def main(debug=True):
 
     # Create result directories
     model = Bidirectional_Attention_Conditonal_Encoding_LSTM_Model
-    linear_related_preds = run_linear_related_unrelated()
+    linear_related_preds = classify_related_unrelated()
     glove_matrix, related_h_glove_index_matrix, related_a_glove_index_matrix, related_h_seq_lengths, related_a_seq_lengths, max_input_lengths, related_labels, unrelated_labels = create_sub_class_test_data(linear_related_preds, config)
     test_set = [related_h_glove_index_matrix, related_a_glove_index_matrix, related_h_seq_lengths, related_a_seq_lengths, related_labels]
     sub1_labels = vectorize_stances(unrelated_labels)
