@@ -396,6 +396,7 @@ def hyperparameters():
     }
     gold, preds = consruct_lists(output_12)
     print "Conditional output_12 Micro F1 Score: {}".format(f1_score(gold, preds, labels=LABELS, average='micro'))
+
  
 if __name__ == '__main__':
     hyperparameters()
