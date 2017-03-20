@@ -111,23 +111,23 @@ class Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         with tf.variable_scope("headline_to_article_attention_fw"):
             article_output = article_state[0][1]
             attention_layer_1 = AttentionLayer(self.config.hidden_size, self.h_max_length)
-            output_1, alpha_1 = attention_layer_1(headline_outputs[0], article_output)
+            output_1, alpha_1, alpha_1_debug = attention_layer_1(headline_outputs[0], article_output)
 
         with tf.variable_scope("headline_to_article_attention_bw"):
             article_output = article_state[1][1] 
             attention_layer_2 = AttentionLayer(self.config.hidden_size, self.h_max_length)
-            output_2, alpha_2 = attention_layer_2(headline_outputs[1], article_output)
+            output_2, alpha_2, alpha_2_debug = attention_layer_2(headline_outputs[1], article_output)
 
         # Apply attentin from article -> headline
         with tf.variable_scope("article_to_headline_attention_f"):
             headline_output = headline_states[0][1]
             attention_layer_3 = AttentionLayer(self.config.hidden_size, self.a_max_length)
-            output_3, alpha_3 = attention_layer_3(article_outputs[0], headline_output)
+            output_3, alpha_3, alpha_3_debug = attention_layer_3(article_outputs[0], headline_output)
 
         with tf.variable_scope("article_to_headline_attention_bw"):
             headline_output = headline_states[1][1]
             attention_layer_4 = AttentionLayer(self.config.hidden_size, self.a_max_length)
-            output_4, alpha_4 = attention_layer_4(article_outputs[1], headline_output)
+            output_4, alpha_4, alpha_4_debug = attention_layer_4(article_outputs[1], headline_output)
 
         # Compute predictions
         with tf.variable_scope("final_projection"):
@@ -150,11 +150,7 @@ class Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
 
         # Debugging Ops
         if debug:
-            headline_x = tf.Print(headline_x, [headline_x], 'headline_x', summarize=20)
-            body_x = tf.Print(body_x, [body_x], 'body_x', summarize=24)
-            h_seq_lengths = tf.Print(self.h_seq_lengths_placeholder, [self.h_seq_lengths_placeholder], 'h_seq_lengths', summarize=3)
-            a_seq_lengths = tf.Print(self.a_seq_lengths_placeholder, [self.a_seq_lengths_placeholder], 'a_seq_lengths', summarize=3)            
-            debug_ops = [headline_x, body_x, h_seq_lengths, a_seq_lengths]
+            debug_ops = [alpha_1_debug, alpha_2_debug, alpha_3_debug, alpha_4_debug]
         else:
             debug_ops = None
 
