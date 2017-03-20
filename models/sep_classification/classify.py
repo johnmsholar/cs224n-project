@@ -127,8 +127,8 @@ def report_pipeline_score(sub2_actual, sub2_preds, sub1_actual):
 
 def main(debug=True):
     parser = argparse.ArgumentParser()
-    parse.add_argument('--nn_weights', type=str)
-    parse.add_argument('--output_file', type=str)
+    parser.add_argument('--nn_weights', type=str)
+    parser.add_argument('--output_file', type=str)
     parser.add_argument('--bimpmp', type=bool, default=False)
     args = parser.parse_args()
     weightFn = args.nn_weights
