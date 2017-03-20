@@ -152,7 +152,7 @@ def main():
         print "INITIALIZING"
         print 80 * "="
         print "Building model...",
-        scoring_fn = lambda actual, preds: report_pipeline_score(actual, preds, unrelated_labels)
+        scoring_fn = lambda actual, preds: report_pipeline_score(actual, preds, sub1_labels)
         if isBimpmp:
             model = Bimpmp(config, scoring_fn, max_input_lengths, glove_matrix, debug)
         else:
