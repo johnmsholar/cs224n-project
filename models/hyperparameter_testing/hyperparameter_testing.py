@@ -38,12 +38,13 @@ class Config(object):
 
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
+        self.squashing_layer_hidden_size = 150
         self.batch_size = 50
-        self.n_epochs = 30
+        self.n_epochs = 15
         self.lr = 0.0001
         self.max_grad_norm = 5.
-        self.dropout_rate = 0.8
-        self.beta = 0
+        self.dropout_rate = 0.9
+        self.beta = 0.01
 
         # Data Params
         self.training_size = .80
@@ -131,8 +132,9 @@ def main(debug=False):
 
     # Define hyperparameters
     hyperparameters = {
-        'lr': [0.001, 0.0001, 0.00001],
-        'dropout_rate': [.6, .8, .9],
+        'lr': [0.001, .0001],
+        'dropout_rate': [.8, .9, 1],
+        'beta': [.01, .001]
     }
 
     # Run model over all these hyper parameters
@@ -147,15 +149,17 @@ def main(debug=False):
             config.embed_size = 2
         for dropout_rate in hyperparameters['dropout_rate']:
             config.dropout_rate = dropout_rate
-            print "-"*80
-            print "Using Configs:"
-            pp.pprint(config.__dict__)
-            print "-"*80
-            test_score, test_confusion_matrix = run_model(config, max_input_lengths, glove_matrix, args, train_examples, dev_set, test_set)
-            if test_score > best_test_score:
-                best_test_score = test_score
-                best_config = config
-                best_test_confusion_matrix = test_confusion_matrix
+            for beta in hyperparameters['beta']:
+                config.beta = beta
+                print "-"*80
+                print "Using Configs:"
+                pp.pprint(config.__dict__)
+                print "-"*80
+                test_score, test_confusion_matrix = run_model(config, max_input_lengths, glove_matrix, args, train_examples, dev_set, test_set)
+                if test_score > best_test_score:
+                    best_test_score = test_score
+                    best_config = config
+                    best_test_confusion_matrix = test_confusion_matrix
 
     print '-'*80
     print "Best Config:"

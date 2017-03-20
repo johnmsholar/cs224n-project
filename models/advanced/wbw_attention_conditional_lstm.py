@@ -23,7 +23,7 @@ from fnc1_utils.featurizer import create_embeddings
 from util import create_tensorflow_saver
 from layers.attention_layer import AttentionLayer
 from layers.wbw_attention_layer import WBWAttentionLayer
-from layers.class_squash_layer import ClassSquashLayer
+from util import extend_padded_matrix
 
 class Config(object):
     """Holds model hyperparams and data information.
@@ -37,12 +37,13 @@ class Config(object):
 
         # Hyper Parameters
         self.hidden_size = 300 # Hidden State Size
+        self.squashing_layer_hidden_size = 150
         self.batch_size = 50
         self.n_epochs = None
         self.lr = 0.0001
         self.max_grad_norm = 5.
-        self.dropout_rate = 0.8
-        self.beta = 0
+        self.dropout_rate = 0.9
+        self.beta = 0.01
 
         # Data Params
         self.training_size = .80
@@ -89,21 +90,30 @@ class WBW_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         # body_x_list = [body_x[:, i, :] for i in range(body_x.get_shape()[1].value)]
         with tf.variable_scope("body_cell"):
             cell_body = tf.contrib.rnn.LSTMBlockCell(num_units = self.config.hidden_size)
-            body_outputs, _ = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
+            body_outputs, body_state = tf.nn.dynamic_rnn(cell_body, body_x, initial_state=headline_state, dtype=tf.float32, sequence_length = self.a_seq_lengths_placeholder)
         
+
         # Apply attention
         attention_layer = WBWAttentionLayer(self.config.hidden_size, self.h_max_length)
-        output = attention_layer(headline_outputs, body_outputs)
+        output = attention_layer(headline_outputs, extend_padded_matrix(body_outputs, body_state[1]))
 
         # Compute predictions
-        output_dropout = tf.nn.dropout(output, dropout_rate)
-        preds = tf.contrib.layers.fully_connected(
-                inputs=output_dropout,
-                num_outputs=self.config.num_classes,
-                activation_fn=tf.nn.relu,
-                weights_initializer=tf.contrib.layers.xavier_initializer(),
-                biases_initializer=tf.constant_initializer(0),
-        )
+        with tf.variable_scope("final_projection"):
+            output_dropout = tf.nn.dropout(output, dropout_rate)
+            squash = tf.contrib.layers.fully_connected(
+                    inputs=output_dropout,
+                    num_outputs=self.config.squashing_layer_hidden_size,
+                    activation_fn=tf.nn.relu,
+                    weights_initializer=tf.contrib.layers.xavier_initializer(),
+                    biases_initializer=tf.constant_initializer(0),
+            )
+            preds = tf.contrib.layers.fully_connected(
+                    inputs=squash,
+                    num_outputs=self.config.num_classes,
+                    activation_fn=tf.nn.relu,
+                    weights_initializer=tf.contrib.layers.xavier_initializer(),
+                    biases_initializer=tf.constant_initializer(0),
+            )
 
         # Debugging Ops
         if debug:
@@ -124,6 +134,7 @@ def main(debug=True):
     parser = argparse.ArgumentParser()
     parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--restore', action='store_true')
+    parser.add_argument('--test', type=bool, default=False)
     args = parser.parse_args()
 
     # Create Config
@@ -162,7 +173,6 @@ def main(debug=True):
         print "Building model...",
         start = time.time()
         model = WBW_Attention_Conditonal_Encoding_LSTM_Model(config, report_score, max_input_lengths, glove_matrix, debug)
-        model.print_params()
         print "took {:.2f} seconds\n".format(time.time() - start)
 
         # Initialize variables
@@ -180,10 +190,11 @@ def main(debug=True):
             session.graph.finalize()
 
             # Train Model
-            print 80 * "="
-            print "TRAINING"
-            print 80 * "="
-            model.fit(session, saver, train_examples, dev_set)
+            if not args.test:
+                print 80 * "="
+                print "TRAINING"
+                print 80 * "="
+                model.fit(session, saver, train_examples, dev_set)
 
             if not debug:
                 print 80 * "="
