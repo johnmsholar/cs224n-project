@@ -166,6 +166,7 @@ def main(debug=True):
     parser = argparse.ArgumentParser()
     parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--restore', action='store_true')
+    parser.add_argument('--test', type=str)
     args = parser.parse_args()
 
     # Create Config
@@ -221,30 +222,49 @@ def main(debug=True):
             # Finalize graph
             session.graph.finalize()
 
-            # Train Model
-            print 80 * "="
-            print "TRAINING"
-            print 80 * "="
-            model.fit(session, saver, train_examples, dev_set)
+            # Test Model
+            if args.test is not None:
+                print 80 * "="
+                print "TESTING"
+                print 80 * "="
+                print "Restoring the best model weights found on the dev set"
+                saver.restore(session, args.test)
+
+                print "Final evaluation on test set",
+                test_score, _, test_confusion_matrix_str = model.predict(session, test_set, save_preds=True, save_attention=True)
+                with open(model.test_confusion_matrix_fn, 'w') as file:
+                    file.write(test_confusion_matrix_str)
+
+                # Print Train and Score Files
+                with open(model.scores_fn, 'w') as file:
+                    writer = csv.writer(file)
+                    writer.writerow(['Epoch Number', "Train Score", "Dev Score"])
+                    for i, train_value in enumerate(model.train_scores):
+                        writer.writerow([i, train_value/100.0, model.dev_scores[i]/100.0])
+            else:        
+                print 80 * "="
+                print "TRAINING"
+                print 80 * "="
+                model.fit(session, saver, train_examples, dev_set)
 
 
-            print 80 * "="
-            print "TESTING"
-            print 80 * "="
-            print "Restoring the best model weights found on the dev set"
-            saver.restore(session, model.best_weights_fn)
+                print 80 * "="
+                print "TESTING"
+                print 80 * "="
+                print "Restoring the best model weights found on the dev set"
+                saver.restore(session, model.best_weights_fn)
 
-            print "Final evaluation on test set",
-            test_score, _, test_confusion_matrix_str = model.predict(session, test_set, save_preds=True, save_attention=True)
-            with open(model.test_confusion_matrix_fn, 'w') as file:
-                file.write(test_confusion_matrix_str)
+                print "Final evaluation on test set",
+                test_score, _, test_confusion_matrix_str = model.predict(session, test_set, save_preds=True, save_attention=True)
+                with open(model.test_confusion_matrix_fn, 'w') as file:
+                    file.write(test_confusion_matrix_str)
 
-            # Print Train and Score Files
-            with open(model.scores_fn, 'w') as file:
-                writer = csv.writer(file)
-                writer.writerow(['Epoch Number', "Train Score", "Dev Score"])
-                for i, train_value in enumerate(model.train_scores):
-                    writer.writerow([i, train_value/100.0, model.dev_scores[i]/100.0])
+                # Print Train and Score Files
+                with open(model.scores_fn, 'w') as file:
+                    writer = csv.writer(file)
+                    writer.writerow(['Epoch Number', "Train Score", "Dev Score"])
+                    for i, train_value in enumerate(model.train_scores):
+                        writer.writerow([i, train_value/100.0, model.dev_scores[i]/100.0])
 
 if __name__ == '__main__':
     main(False)
