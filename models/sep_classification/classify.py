@@ -18,8 +18,8 @@ sys.path.insert(0, '../')
 from advanced_model import create_data_sets_for_model
 from util import create_tensorflow_saver
 from fnc1_utils.featurizer import create_embeddings
-from advanced.bidirectional_attention_bidirectional_conditional_lstm import BiDirAttnBidirCondConfig
-from advanced.bimpmp import Bidirectional_Attention_Conditonal_Encoding_LSTM_Model
+from advanced.bidirectional_attention_bidirectional_conditional_lstm import Bidirectional_Attention_Conditonal_Encoding_LSTM_Model
+from advanced.bimpmp import Bimpmp
 from advanced.linear_related_unrelated import classify_related_unrelated
 class BimpmpConfig(object):
     """Holds model hyperparams and data information.
