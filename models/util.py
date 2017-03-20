@@ -206,7 +206,7 @@ def confusion_matrix_backend(cm, classes,
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
     """
-    plt.title(title)
+    plt.title(title).set_size('x-large')
     tick_marks = np.arange(len(classes))
     plt.xticks(tick_marks, classes, rotation=45)
     plt.yticks(tick_marks, classes)
@@ -225,11 +225,11 @@ def confusion_matrix_backend(cm, classes,
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         plt.text(j, i, '{0:.4f}'.format(cm[i, j]),
                  horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black")
+                 color="white" if cm[i, j] > thresh else "black").set_size('x-large')
 
     plt.tight_layout()
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
+    plt.ylabel('True label').set_size('large')
+    plt.xlabel('Predicted label').set_size('large')
 
 def create_tensorflow_saver(exclude_names):
     train_vars = [var for var in tf.global_variables() if var.name not in exclude_names]
