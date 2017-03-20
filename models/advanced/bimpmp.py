@@ -32,7 +32,7 @@ class Config(object):
     """
     def __init__(self):
         self.num_classes = 3 # Number of classses for classification task.
-        self.embed_size = 100 # Size of Glove Vectors
+        self.embed_size = 300 # Size of Glove Vectors
 
         # Hyper Parameters
         self.context_hidden_size = 100 # Hidden State Size
