@@ -1,0 +1,2 @@
+model_checkpoint_path: "deep_bidirectional_attention_bidirectional_conditional_lstm_best_stance.weights"
+all_model_checkpoint_paths: "deep_bidirectional_attention_bidirectional_conditional_lstm_best_stance.weights"

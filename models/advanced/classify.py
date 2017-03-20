@@ -112,7 +112,7 @@ def create_sub_class_test_data(related, config):
     related_h_seq_lengths = np.transpose(np.transpose(h_seq_lengths)[related])
     related_a_seq_lengths = np.transpose(np.transpose(a_seq_lengths)[related])
 
-    return glove_matrix, related_h_glove_index_matrix, related_a_glove_index_matrix, related_h_seq_lengths, related_a_seq_lengths, related_labels, max_input_lengths, unrelated_labels
+    return glove_matrix, related_h_glove_index_matrix, related_a_glove_index_matrix, related_h_seq_lengths, related_a_seq_lengths, max_input_lengths, related_labels, unrelated_labels
 
 def report_pipeline_score(sub2_actual, sub2_preds, sub1_actual):
     '''
@@ -124,7 +124,7 @@ def report_pipeline_score(sub2_actual, sub2_preds, sub1_actual):
     actual = sub2_actual + sub1_actual
     num_sub1 = len(sub1_actual)
     preds = sub2_preds + [3]*num_sub1
-    report_score(actual, preds)
+    return report_score(actual, preds)
 
 def main():
     debug = False
