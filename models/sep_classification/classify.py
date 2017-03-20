@@ -83,11 +83,11 @@ class BiDirAttnBidirCondConfig(object):
         self.max_article_length = 800
         self.uniform_data_split = False  
 
-def create_sub_class_test_data(related):
+def create_sub_class_test_data(related, config):
     '''
         Args: related: a numpy array of booleans that are true if related, false if unrelated
     '''
-    unrelated = np.logical_not(related_unrelated_set)
+    unrelated = np.logical_not(related)
     # includes unrelated
     X, y, glove_matrix, max_input_lengths, word_to_glove_index = create_embeddings(
         training_size=config.training_size,
@@ -125,7 +125,8 @@ def report_pipeline_score(sub2_actual, sub2_preds, sub1_actual):
     preds = sub2_preds + [3]*num_sub1
     report_score(actual, preds)
 
-def main(debug=True):
+def main():
+    debug = False
     parser = argparse.ArgumentParser()
     parser.add_argument('--nn_weights', type=str)
     parser.add_argument('--output_file', type=str)
@@ -173,5 +174,5 @@ def main(debug=True):
                 file.write(preds)
 
 if __name__ == "__main__":
-    main(False)
+    main()
 
