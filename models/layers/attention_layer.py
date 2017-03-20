@@ -36,7 +36,7 @@ class AttentionLayer:
         output = tf.tanh(h_star_one + h_star_two) # dim: batch x hidden
         return output, alpha
 
-    def __call__(self, Y, h_n, scope=None):
+    def __call__(self, Y, h_n, scope=None, debug=False):
         """
         Args:
             Y: matrix of hidden vectors for A. [batch, A_time_steps, hidden_size]
@@ -56,7 +56,13 @@ class AttentionLayer:
             W_p = tf.get_variable("W_p", shape=[self.hidden_size, self.hidden_size])
             output, alpha = self.compute_attention(Y, h_n, W_y, W_h, w, W_x, W_p)
 
-        return output, alpha
+        # Debugging Ops
+        if debug:
+            alpha_print = tf.Print(alpha, [alpha], 'alpha', summarize=20)
+        else:
+            alpha_print = None
+
+        return output, alpha, alpha_print
 
 def test():
     batch_size = 3

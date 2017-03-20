@@ -406,11 +406,7 @@ def create_data_sets_for_model(X, y, debug=False):
 
         Returns lists in the form of [headline_glove_index_matrix, article_glove_index_matrix, h_seq_lengths, a_seq_lengths, labels]
     """
-    if debug:
-        train_examples = [np.repeat(X[0][0], 400, axis=0), np.repeat(X[0][1], 400, axis=0), X[0][2]*400, X[0][3]*400, np.repeat(y[0], 400, axis=0)]
-    else:    
-        train_examples = [X[0][0], X[0][1], X[0][2], X[0][3], y[0]]
-
+    train_examples = [X[0][0], X[0][1], X[0][2], X[0][3], y[0]]
     dev_set = [X[1][0], X[1][1], X[1][2], X[1][3], y[1]]
     test_set = [X[2][0], X[2][1], X[2][2], X[2][3], y[2]]
     return train_examples, dev_set, test_set
