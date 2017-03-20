@@ -12,10 +12,15 @@ import tensorflow as tf
 import os
 import argparse
 import sys
+import numpy as np
 sys.path.insert(0, '../')
 
-from fnc1_utils.featurizer import create_inputs_by_glove_split_on_class
-
+from advanced_model import create_data_sets_for_model
+from util import create_tensorflow_saver
+from fnc1_utils.featurizer import create_embeddings
+from advanced.bidirectional_attention_bidirectional_conditional_lstm import BiDirAttnBidirCondConfig
+from advanced.bimpmp import Bidirectional_Attention_Conditonal_Encoding_LSTM_Model
+from advanced.linear_related_unrelated import classify_related_unrelated
 class BimpmpConfig(object):
     """Holds model hyperparams and data information.
     The config class is used to store various hyperparameters and dataset
@@ -184,7 +189,6 @@ def main(debug=True):
         config = BiDirAttnBidirCondConfig()
 
     # Create result directories
-    model = Bidirectional_Attention_Conditonal_Encoding_LSTM_Model
     linear_related_preds = classify_related_unrelated()
     glove_matrix, related_h_glove_index_matrix, related_a_glove_index_matrix, related_h_seq_lengths, related_a_seq_lengths, max_input_lengths, related_labels, unrelated_labels = create_sub_class_test_data(linear_related_preds, config)
     test_set = [related_h_glove_index_matrix, related_a_glove_index_matrix, related_h_seq_lengths, related_a_seq_lengths, related_labels]
