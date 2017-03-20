@@ -41,8 +41,8 @@ class Config(object):
         self.n_epochs = None
         self.lr = 0.0001
         self.max_grad_norm = 5.
-        self.dropout_rate = 0.8
-        self.beta = 0.01
+        self.dropout_rate = 0.9
+        self.beta = 0.001
 
         # Data Params
         self.training_size = .80
