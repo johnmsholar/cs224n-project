@@ -15,8 +15,9 @@ import sys
 import numpy as np
 sys.path.insert(0, '../')
 
+from fnc1_utils.score import report_score
 from advanced_model import create_data_sets_for_model
-from util import create_tensorflow_saver
+from util import create_tensorflow_saver, vectorize_stances
 from fnc1_utils.featurizer import create_embeddings
 from advanced.bidirectional_attention_bidirectional_conditional_lstm import Bidirectional_Attention_Conditonal_Encoding_LSTM_Model
 from advanced.bimpmp import Bimpmp
