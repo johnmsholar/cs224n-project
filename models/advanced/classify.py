@@ -98,13 +98,13 @@ def create_sub_class_test_data(related, config):
         max_headline_length=config.max_headline_length,
         max_article_length=config.max_article_length,
         glove_set=None,
-        debug=debug
+        debug=False
     )
     # isolate test data for classification problem 2
     _, _, (h_glove_index_matrix, a_glove_index_matrix, h_seq_lengths, a_seq_lengths, labels) = create_data_sets_for_model(X, y)
 
-    unrelated_labels = unrelated[labels]
-    related_labels = related[labels]
+    unrelated_labels = labels[unrelated]
+    related_labels = labels[related]
 
     related_h_glove_index_matrix = related[h_glove_index_matrix]
     related_a_glove_index_matrix = related[a_glove_index_matrix]
