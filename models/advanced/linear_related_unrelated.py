@@ -239,8 +239,8 @@ def classify_related_unrelated():
     (X_indices, y, b_id_to_article, h_id_to_headline,
      h_id_b_id_to_stance, raw_article_id_to_b_id,
      headline_to_h_id) = compute_splits(random=False)
-    ((X_train_indices, X_test_indices, X_dev_indices),
-     (y_train, y_test, y_dev)) = X_indices, y
+    ((X_train_indices, X_dev_indices, X_test_indices),
+     (y_train, y_dev, y_test)) = X_indices, y
     (y_train, y_test, y_dev) = convert_to_two_class_problem(
         y_train, y_test, y_dev)
     X_vectors = scipy.io.mmread(

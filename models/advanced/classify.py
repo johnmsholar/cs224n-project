@@ -15,8 +15,9 @@ import sys
 import numpy as np
 sys.path.insert(0, '../')
 
+from fnc1_utils.score import report_score
 from advanced_model import create_data_sets_for_model
-from util import create_tensorflow_saver
+from util import create_tensorflow_saver, vectorize_stances
 from fnc1_utils.featurizer import create_embeddings
 from advanced.bidirectional_attention_bidirectional_conditional_lstm import Bidirectional_Attention_Conditonal_Encoding_LSTM_Model
 from advanced.bimpmp import Bimpmp
@@ -98,18 +99,18 @@ def create_sub_class_test_data(related, config):
         max_headline_length=config.max_headline_length,
         max_article_length=config.max_article_length,
         glove_set=None,
-        debug=debug
+        debug=False
     )
     # isolate test data for classification problem 2
     _, _, (h_glove_index_matrix, a_glove_index_matrix, h_seq_lengths, a_seq_lengths, labels) = create_data_sets_for_model(X, y)
 
-    unrelated_labels = unrelated[labels]
-    related_labels = related[labels]
+    unrelated_labels = labels[unrelated]
+    related_labels = labels[related]
 
-    related_h_glove_index_matrix = related[h_glove_index_matrix]
-    related_a_glove_index_matrix = related[a_glove_index_matrix]
-    related_h_seq_lengths = np.transpose(related[np.transpose(h_seq_lengths)])
-    related_a_seq_lengths = np.transpose(related[np.transpose(a_seq_lengths)])
+    related_h_glove_index_matrix = h_glove_index_matrix[related]
+    related_a_glove_index_matrix = a_glove_index_matrix[related]
+    related_h_seq_lengths = np.transpose(np.transpose(h_seq_lengths)[related])
+    related_a_seq_lengths = np.transpose(np.transpose(a_seq_lengths)[related])
 
     return glove_matrix, related_h_glove_index_matrix, related_a_glove_index_matrix, related_h_seq_lengths, related_a_seq_lengths, related_labels, max_input_lengths, unrelated_labels
 
