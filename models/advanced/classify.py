@@ -124,7 +124,7 @@ def report_pipeline_score(sub2_actual, sub2_preds, sub1_actual):
     actual = sub2_actual + sub1_actual
     num_sub1 = len(sub1_actual)
     preds = sub2_preds + [3]*num_sub1
-    report_score(actual, preds)
+    return report_score(actual, preds)
 
 def main():
     debug = False
@@ -152,7 +152,7 @@ def main():
         print "INITIALIZING"
         print 80 * "="
         print "Building model...",
-        scoring_fn = lambda actual, preds: report_pipeline_score(actual, preds, unrelated_labels)
+        scoring_fn = lambda actual, preds: report_pipeline_score(actual, preds, sub1_labels)
         if isBimpmp:
             model = Bimpmp(config, scoring_fn, max_input_lengths, glove_matrix, debug)
         else:
