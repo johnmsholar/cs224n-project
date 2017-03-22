@@ -111,23 +111,23 @@ class Bidirectional_Attention_Conditonal_Encoding_LSTM_Model(Advanced_Model):
         with tf.variable_scope("headline_to_article_attention_fw"):
             article_output = article_state[0][1]
             attention_layer_1 = AttentionLayer(self.config.hidden_size, self.h_max_length)
-            output_1, alpha_1, alpha_1_debug = attention_layer_1(headline_outputs[0], article_output, True)
+            output_1, alpha_1, alpha_1_debug = attention_layer_1(headline_outputs[0], article_output, debug=True)
 
         with tf.variable_scope("headline_to_article_attention_bw"):
             article_output = article_state[1][1] 
             attention_layer_2 = AttentionLayer(self.config.hidden_size, self.h_max_length)
-            output_2, alpha_2, alpha_2_debug = attention_layer_2(headline_outputs[1], article_output, True)
+            output_2, alpha_2, alpha_2_debug = attention_layer_2(headline_outputs[1], article_output, debug=True)
 
         # Apply attentin from article -> headline
         with tf.variable_scope("article_to_headline_attention_f"):
             headline_output = headline_states[0][1]
             attention_layer_3 = AttentionLayer(self.config.hidden_size, self.a_max_length)
-            output_3, alpha_3, alpha_3_debug = attention_layer_3(article_outputs[0], headline_output, True)
+            output_3, alpha_3, alpha_3_debug = attention_layer_3(article_outputs[0], headline_output, debug=True)
 
         with tf.variable_scope("article_to_headline_attention_bw"):
             headline_output = headline_states[1][1]
             attention_layer_4 = AttentionLayer(self.config.hidden_size, self.a_max_length)
-            output_4, alpha_4, alpha_4_debug = attention_layer_4(article_outputs[1], headline_output, True)
+            output_4, alpha_4, alpha_4_debug = attention_layer_4(article_outputs[1], headline_output, debug=True)
 
         # Compute predictions
         with tf.variable_scope("final_projection"):
