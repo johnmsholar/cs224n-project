@@ -273,7 +273,7 @@ class Advanced_Model(object):
             a_seq_lengths=a_seq_lengths
         )
         
-        if self.debug and self.debug_ops is not None:
+        if self.debug_ops is not None:
             sess.run(self.debug_ops, feed_dict=feed)
 
         if save_attention:
