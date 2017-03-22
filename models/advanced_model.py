@@ -241,7 +241,7 @@ class Advanced_Model(object):
         """Sets up the training Ops.
         """
         optimizer = tf.train.AdamOptimizer(self.config.lr)
-        train_op = optimizer.minimize(loss)
+        train_op = optimizer.minimize(loss, colocate_gradients_with_ops=True)
         return train_op
 
     def train_on_batch(self, sess, headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch):
@@ -294,7 +294,7 @@ class Advanced_Model(object):
         preds = sess.run(self.class_predictions, feed_dict=feed)
         return preds
 
-    def predict(self, sess, data_set, save_preds=False, save_attention=False):
+    def predict(self, sess, data_set, save_preds=False, UseShuffle=True, save_attention=False):
         """ Compute predictions on a given data set.
             data_set = [headlines, articles, labels]
             Return predictions and score
@@ -314,7 +314,7 @@ class Advanced_Model(object):
         else:
             batch_selected = -1
 
-        for i, (headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch) in enumerate(minibatches(data_set, self.config.batch_size)):
+        for i, (headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch) in enumerate(minibatches(data_set, self.config.batch_size, UseShuffle)):
             # Check whther to save attention for this batch
             if i == batch_selected and batch_selected != -1:
                 save_attention_now = True

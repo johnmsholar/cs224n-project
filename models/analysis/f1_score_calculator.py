@@ -156,6 +156,28 @@ def results():
     gold, preds = consruct_lists(deep_learning_bi_att_bi_condition)
     print "Conditional deep_learning_bi_att_bi_condition Micro F1 Score: {}".format(f1_score(gold, preds, labels=LABELS, average='micro'))
 
+    # Bimpm
+    bimpm = {
+        "agree": {
+            "agree": 421,
+            "disagree":  13,
+            "discuss": 211,        
+        },
+        "disagree": {
+            "agree": 56,
+            "disagree":  17,
+            "discuss": 88, 
+        },
+        "discuss": {
+            "agree": 296,
+            "disagree":  0,
+            "discuss": 1669, 
+        }
+    }
+    gold, preds = consruct_lists(bimpm)
+    print "Conditional bimpm Micro F1 Score: {}".format(f1_score(gold, preds, labels=LABELS, average='micro'))
+
+
 def hyperparameters():
     output_1 = {
         "agree": {
@@ -399,5 +421,5 @@ def hyperparameters():
 
  
 if __name__ == '__main__':
-    hyperparameters()
+    results()
 
