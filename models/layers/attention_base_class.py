@@ -77,9 +77,10 @@ class Attention_Base_Class(object):
 
     def __call__(self, A, B, scope=None):
         """
-        Args:
-            A: tuple of matrices(fw, bw) each one of which is [batch, A_time_steps, hidden_size]
-            B: tuple of matrices(fw, bw) each one of which is [batch, B_time_steps, hidden_size]
+        Args: Deals with one direction of encoding and one direction of attention (so to do all of them
+            you need to call this class 4 times)
+            A: [batch, A_time_steps, hidden_size]
+            B:[batch, B_time_steps, hidden_size]
             scope: is the name of the scope to be used when defining the variables inside.
         Returns:
             output: a tensor of size [batch x hidden]
@@ -87,23 +88,14 @@ class Attention_Base_Class(object):
         scope = scope or type(self).__name__
 
         with tf.variable_scope(scope):
-            # Expand the tuples
-            A_fw, A_bw = A[0], A[1]
-            B_fw, B_bw = B[0], B[1]
-
             # Infer hidden size
-            hidden_size = A_fw.get_shape()[2]
-            assert hidden_size == A_bw.get_shape()[2]
-            assert hidden_size == B_fw.get_shape()[2]
-            assert hidden_size == B_bw.get_shape()[2]
+            hidden_size = A.get_shape()[2]
+            assert hidden_size == B.get_shape()[2]
 
             # Create Scoring Matrices
-            self.W1 = tf.get_variable("W1", shape=[hidden_size, self.num_perspectives])
-            self.W2 = tf.get_variable("W2", shape=[hidden_size, self.num_perspectives])
+            self.W = tf.get_variable("W", shape=[hidden_size, self.num_perspectives])
 
-            fw_attention = self.compute_attention(A_fw, B_fw, self.W1)
-            bw_attention = self.compute_attention(A_bw, B_bw, self.W2)
-            output = tf.concat([fw_attention, bw_attention], 2)
+            output = self.compute_attention(A, B, self.W)
 
         return output
 

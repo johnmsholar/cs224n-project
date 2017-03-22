@@ -30,21 +30,22 @@ class BimpmpConfig(object):
     """
     def __init__(self):
         self.num_classes = 3 # Number of classses for classification task.
-        self.embed_size = 100 # Size of Glove Vectors
+        self.embed_size = 300 # Size of Glove Vectors
 
         # Hyper Parameters
         self.context_hidden_size = 100 # Hidden State Size
         self.aggregate_hidden_size = 100
         self.squashing_layer_hidden_size = 50
-        self.batch_size = 30
+        self.batch_size = 10
         self.n_epochs = None
         self.lr = 0.0001
         self.max_grad_norm = 5.
         self.dropout_rate = 0.90
         self.beta = 0.01
-        self.num_perspectives = 5
+        self.num_perspectives = 20
 
         # Data Params
+        self.split_gpus = True
         self.training_size = .80
         self.random_split = False
         self.truncate_headlines = False
@@ -52,7 +53,7 @@ class BimpmpConfig(object):
         self.classification_problem = 3
         self.max_headline_length = 500
         self.max_article_length = 800
-        self.uniform_data_split = False  
+        self.uniform_data_split = False
 
 class BiDirAttnBidirCondConfig(object):
     """Holds model hyperparams and data information.
@@ -131,15 +132,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--nn_weights', type=str)
     parser.add_argument('--output_file', type=str)
-    parser.add_argument('--bimpmp', type=bool, default=False)
+    parser.add_argument('--bimpmp', action='store_true')
     args = parser.parse_args()
     weightFn = args.nn_weights
     output_fn = args.output_file
     assert weightFn
     isBimpmp = args.bimpmp
     if isBimpmp:
+	print "using bimpmp"
         config = BimpmpConfig()
     else:
+	print "using bidirattn"
         config = BiDirAttnBidirCondConfig()
 
     # Create result directories

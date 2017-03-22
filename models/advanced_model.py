@@ -227,7 +227,7 @@ class Advanced_Model(object):
         """Sets up the training Ops.
         """
         optimizer = tf.train.AdamOptimizer(self.config.lr)
-        train_op = optimizer.minimize(loss)
+        train_op = optimizer.minimize(loss, colocate_gradients_with_ops=True)
         return train_op
 
     def train_on_batch(self, sess, headlines_batch, articles_batch, h_seq_lengths, a_seq_lengths, labels_batch):

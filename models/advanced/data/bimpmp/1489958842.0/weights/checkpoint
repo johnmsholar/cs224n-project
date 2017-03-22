@@ -1,0 +1,2 @@
+model_checkpoint_path: "bimpmp_best_stance.weights"
+all_model_checkpoint_paths: "bimpmp_best_stance.weights"

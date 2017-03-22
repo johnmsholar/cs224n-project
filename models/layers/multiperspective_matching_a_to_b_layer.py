@@ -15,18 +15,17 @@ class Multiperspective_Matching_A_to_B_Layer:
 
     def __call__(self, A, B, scope=None):
         """
-        Args:
-            A: tuple of matrices(fw, bw) each one of which is [batch, A_time_steps, hidden_size]
-            B: tuple of matrices(fw, bw) each one of which is [batch, B_time_steps, hidden_size]
+        Args: Performs fma layer and max pooling layer in a single encoding direction from A->B
+            A: [batch, A_time_steps, hidden_size]
+            B: [batch, B_time_steps, hidden_size]
             scope: is the name of the scope to be used when defining the variables inside.
         Returns:
-            output: a tensor of size [batch x A_time_steps x (num_perspectives x 8)]
+            output: a tensor of size [batch x A_time_steps x (num_perspectives x 2)]
         """
         scope = scope or type(self).__name__
 
         with tf.variable_scope(scope, initializer=tf.contrib.layers.xavier_initializer()):
-            # Output of each attention layer is [batch x A_time_steps x (num_perspectives x 2)]
-            # Concatenation order should always be foward and then backward
+            # Output of each attention layer is [batch x A_time_steps x (num_perspectives)]
             fma_layer = Full_Matching_Attention_Layer(self.num_perspectives)          
             fma_output = fma_layer(A, B)
 

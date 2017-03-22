@@ -225,7 +225,7 @@ def plot_feature_distribution(args):
     X_train, X_dev, X_test = create_feature_matrices(
         X_train_indices, X_test_indices, X_dev_indices,
         h_id_b_id_to_stance, X_vectors)
-    X = np.concatenate([X_train.toarray(), X_dev.toarray(), X_test.toarray()], axis=0)
+    X = np.concatenate([X_train, X_dev, X_test], axis=0)
     y = np.concatenate([np.array(y_train), np.array(y_dev), np.array(y_test)], axis=0)
     for i in range(X.shape[1]):
         filename= args.plot_prefix + '{0}.png'.format(i)
@@ -287,7 +287,7 @@ def parse_args():
 
 if __name__ == '__main__':
 
-    #args = parse_args()
-    #main(args)
-    classify_related_unrelated()
+    args = parse_args()
+    main(args)
+    #classify_related_unrelated()
 

@@ -32,21 +32,22 @@ class Config(object):
     """
     def __init__(self):
         self.num_classes = 3 # Number of classses for classification task.
-        self.embed_size = 100 # Size of Glove Vectors
+        self.embed_size = 300 # Size of Glove Vectors
 
         # Hyper Parameters
         self.context_hidden_size = 100 # Hidden State Size
         self.aggregate_hidden_size = 100
         self.squashing_layer_hidden_size = 50
-        self.batch_size = 30
+        self.batch_size = 10
         self.n_epochs = None
         self.lr = 0.0001
         self.max_grad_norm = 5.
         self.dropout_rate = 0.90
         self.beta = 0.01
-        self.num_perspectives = 5
+        self.num_perspectives = 10
 
         # Data Params
+        self.split_gpus = False
         self.training_size = .80
         self.random_split = False
         self.truncate_headlines = False
@@ -108,22 +109,37 @@ class Bimpmp(Advanced_Model):
         # copy over hidden state into padding region
         h_extend_fwd = extend_padded_matrix(headline_context_outputs[0], headline_context_state[0][1])
         h_extend_bwd = extend_padded_matrix(headline_context_outputs[1], headline_context_state[1][1])
-        h_padded_out = (h_extend_fwd, h_extend_bwd)
 
         a_extend_fwd = extend_padded_matrix(article_context_outputs[0], article_context_state[0][1])
         a_extend_bwd = extend_padded_matrix(article_context_outputs[1], article_context_state[1][1])
-        a_padded_out = (a_extend_fwd, a_extend_bwd)
 
-        # Matching Layer -- assume output is concatenated (fw and bw together)
-        # Output: [batch x A_time_steps x (num_perspectives x 8)]
-        with tf.variable_scope("matching_headline_to_article"):
-            matching_layer_headline_to_article = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
-            post_matching_h_to_a = matching_layer_headline_to_article(h_padded_out, a_padded_out)
+        attention_reqs = [
+            ("match_h_a_fwd", 0, h_extend_fwd, a_extend_fwd), # gpu 0, forward headline to article,
+            ("match_h_a_bwd", 1, h_extend_bwd, a_extend_bwd), # gpu 1, backward headline to article,
+            ("match_a_h_fwd", 2, a_extend_fwd, h_extend_fwd), # gpu 2, forward article to headline,
+            ("match_a_h_bwd", 3, a_extend_bwd, h_extend_bwd), # gpu 3, backward article to headline,
+        ]
+        # perform 4 attention mappings (in each direction (h->a, a->h) for each encoding direction (fwd, bwd))
+        attention_results = {}
+        if self.config.split_gpus:
+            with tf.variable_scope("multi_gpu_attention"):
+                # package to split across multiple gpus: {layer_name: [isFwd, isHtoA]}
+                for (attention_key, i, A, B) in attention_reqs:
+                    with tf.device('/gpu:%d' % i):
+                        with tf.variable_scope(attention_key):
+                            matching_layer = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
+                            attention_results[attention_key] = matching_layer(A, B) # batch x time_stepx x num_perspectives*2
+        else:
+            with tf.variable_scope("single_gpu_attention"):
+                # package to split across multiple gpus: {layer_name: [isFwd, isHtoA]}
+                for (attention_key, i, A, B) in attention_reqs:
+                        with tf.variable_scope(attention_key):
+                            matching_layer = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
+                            attention_results[attention_key] = matching_layer(A, B) # batch x time_stepx x num_perspectives*2
 
-        # [batch x B_time_steps x (num_perspectives x 8)]
-        with tf.variable_scope("matching_article_to_headline"):
-            matching_layer_article_to_headline = Multiperspective_Matching_A_to_B_Layer(self.config.num_perspectives)
-            post_matching_a_to_h = matching_layer_article_to_headline(a_padded_out, h_padded_out)
+
+        post_matching_h_to_a = tf.concat([attention_results["match_h_a_fwd"], attention_results["match_h_a_bwd"]], axis = 2) # batch x h_time_steps x num_perspectives*4
+        post_matching_a_to_h = tf.concat([attention_results["match_a_h_fwd"], attention_results["match_a_h_bwd"]], axis = 2) # batch x h_time_steps x num_perspectives*4
 
         # Aggregation Layer 
         with tf.variable_scope("aggregation_layer"):
@@ -220,7 +236,7 @@ def main(debug=True):
         init = tf.global_variables_initializer()
         saver = None if debug else tf.train.Saver()
 
-        with tf.Session() as session:
+        with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as session:
             # Load weights if necessary
             session.run(init)
             saver = create_tensorflow_saver(model.exclude_names)
