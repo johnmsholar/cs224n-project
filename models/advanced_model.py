@@ -112,7 +112,7 @@ class Advanced_Model(object):
         self.add_placeholders()
         # Bidirectional Attention Bidirectional Conditional LSTM
         # Special Case
-        self.pred, self.debug_ops, self.attention_vals = self.add_prediction_op(self.debug)
+        self.pred, self.debug_ops, self.attention_vals = self.add_prediction_op(True)
 
         self.class_predictions = tf.argmax(tf.nn.softmax(self.pred), axis=1)
         self.loss, self.debug_loss_ops = self.add_loss_op(self.pred)
